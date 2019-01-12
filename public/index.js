@@ -513,8 +513,8 @@ IS_HIDPI = true; // Force HIDPI for now.
 
                 // CSS animation definition.
                 var keyframes = '@-webkit-keyframes intro { ' +
-                    'from { width:' + Nath.config.WIDTH + 'px }' +
-                    'to { width: ' + this.dimensions.WIDTH + 'px }' +
+                    'from { border-radius: 20px; width:' + Nath.config.WIDTH + 'px }' +
+                    'to { border-radius: 10px; width: ' + this.dimensions.WIDTH + 'px }' +
                     '}';
                 
                 // create a style sheet to put the keyframe rule in 
