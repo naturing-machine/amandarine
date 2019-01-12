@@ -152,6 +152,7 @@ IS_HIDPI = true; // Force HIDPI for now.
         ICON: 'icon-offline',
         INVERTED: 'inverted',
         SNACKBAR: 'snackbar',
+        SPACEBAR: 'spacebar',
         SNACKBAR_SHOW: 'snackbar-show',
         TOUCH_CONTROLLER: 'controller'
     };
@@ -458,6 +459,18 @@ IS_HIDPI = true; // Force HIDPI for now.
 
             this.outerContainerEl.appendChild(this.containerEl);
 
+            this.spacebarEl = document.createElement('div');
+            this.spacebarEl.className = Runner.classes.SPACEBAR;
+            this.outerContainerEl.appendChild(this.spacebarEl);
+	    this.spacebarEl.style.width = '75px';
+	    this.spacebarEl.style.height = '19px';
+	    this.spacebarEl.style.zIndex = '3';
+	    this.spacebarEl.style.backgroundImage = 'url(assets/spacebar.png)';
+	    this.spacebarEl.style.top = this.containerEl.offsetTop + 90 +'px';
+	    this.spacebarEl.style.left = this.containerEl.offsetLeft + 30 +'px';
+	    this.spacebarEl.style.position = 'absolute';
+	    this.spacebarEl.style.animation = 'blinker 1s linear infinite';
+
             if (IS_MOBILE) {
                 this.createTouchController();
             }
@@ -760,6 +773,11 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {Event} e
          */
         onKeyDown: function (e) {
+	    if (this.spacebarEl) {
+		    this.spacebarEl.parentNode.removeChild(this.spacebarEl);
+		    delete this.spacebarEl;
+	    }
+
             // Prevent native page scrolling whilst tapping on mobile.
             if (IS_MOBILE && this.playing) {
                 e.preventDefault();
