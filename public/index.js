@@ -116,6 +116,7 @@ IS_HIDPI = true; // Force HIDPI for now.
         INITIAL_JUMP_VELOCITY: 12,
         INVERT_FADE_DURATION: 12000,
         INVERT_DISTANCE: 700,
+        SKY_SHADING_DURATION: 2000,
         MAX_BLINK_COUNT: 30,
         MAX_CLOUDS: 6,
         MAX_OBSTACLE_LENGTH: 3,
@@ -384,6 +385,34 @@ IS_HIDPI = true; // Force HIDPI for now.
             }
         },
 
+
+        /**
+         * Adjust sky light.
+         */
+	adjustSkyGradient: function(ratio) {
+
+	    let gradient;
+
+            if (ratio == 0) {
+                gradient = this.currentSkyRGB;
+	    } else if (ratio == 1) {
+                this.currentSkyRGB = gradient = this.skyRGB;
+            } else {
+		gradient = [
+                    Math.floor(this.currentSkyRGB[0] + (this.skyRGB[0] - this.currentSkyRGB[0]) * ratio),
+                    Math.floor(this.currentSkyRGB[1] + (this.skyRGB[1] - this.currentSkyRGB[1]) * ratio),
+                    Math.floor(this.currentSkyRGB[2] + (this.skyRGB[2] - this.currentSkyRGB[2]) * ratio),
+                    Math.floor(this.currentSkyRGB[3] + (this.skyRGB[3] - this.currentSkyRGB[3]) * ratio),
+                    Math.floor(this.currentSkyRGB[4] + (this.skyRGB[4] - this.currentSkyRGB[4]) * ratio),
+                    Math.floor(this.currentSkyRGB[5] + (this.skyRGB[5] - this.currentSkyRGB[5]) * ratio)
+		];
+            }
+
+            this.skyGradient = this.canvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
+	    this.skyGradient.addColorStop(0, "#" + ((1 << 24) + (gradient[0] << 16) + (gradient[1] << 8) + gradient[2]).toString(16).slice(1));
+	    this.skyGradient.addColorStop(1, "#" + ((1 << 24) + (gradient[3] << 16) + (gradient[4] << 8) + gradient[5]).toString(16).slice(1));
+	},
+
         /**
          * Game initialiser.
          */
@@ -408,13 +437,13 @@ IS_HIDPI = true; // Force HIDPI for now.
             this.canvasCtx.fill();
             Runner.updateCanvasScaling(this.canvas);
 
-	    this.gradient = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
-	    this.gradient.addColorStop(0, "#69a242");
-	    this.gradient.addColorStop(1, "#ADAE53");
+	    this.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
+	    this.grass.addColorStop(0, "#69a242");
+	    this.grass.addColorStop(1, "#ADAE53");
 
-	    this.skygradient = this.canvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
-	    this.skygradient.addColorStop(0, "#DDEEFF");
-	    this.skygradient.addColorStop(1, "#EEEEFF");
+	    /* Will switch to gradient on starting */
+	    this.skyRGB = this.currentSkyRGB = [255,255,255,255,255,255];
+            this.adjustSkyGradient(1);
 
             // Horizon contains clouds, obstacles and the ground.
             this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
@@ -563,15 +592,10 @@ IS_HIDPI = true; // Force HIDPI for now.
         },
 
         clearCanvas: function () {
-/*
-            this.canvasCtx.clearRect(0, 0, this.dimensions.WIDTH,
-                this.dimensions.HEIGHT);
-*/
-	    //this.canvasCtx.fillStyle = "#DDEEFF";
-	    this.canvasCtx.fillStyle = this.skygradient;
+	    this.canvasCtx.fillStyle = this.skyGradient;
 	    this.canvasCtx.fillRect(0, 0, this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
-	    this.canvasCtx.fillStyle = this.gradient;
+	    this.canvasCtx.fillStyle = this.grass;
 	    this.canvasCtx.fillRect(0, this.dimensions.HEIGHT-11, this.dimensions.WIDTH, 11);
         },
 
@@ -584,6 +608,16 @@ IS_HIDPI = true; // Force HIDPI for now.
             var now = getTimeStamp();
             var deltaTime = now - (this.time || now);
             this.time = now;
+
+            if (this.skyFadingStartTime) {
+                let delta = now - this.skyFadingStartTime;
+                if (delta > Runner.config.SKY_SHADING_DURATION) {
+                    delete this.skyFadingStartTime;
+                    this.adjustSkyGradient(1);
+                } else {
+                    this.adjustSkyGradient(delta/Runner.config.SKY_SHADING_DURATION);
+                }
+            }
 
 	    this.clearCanvas();
 
@@ -737,6 +771,10 @@ IS_HIDPI = true; // Force HIDPI for now.
                     if (!this.playing) {
                         this.loadSounds();
                         this.playing = true;
+
+                        this.skyRGB = [221,238,255,238,238,255];
+                        this.skyFadingStartTime = getTimeStamp();
+
                         this.update();
                         if (window.errorPageController) {
                             errorPageController.trackEasterEgg();
@@ -943,6 +981,14 @@ IS_HIDPI = true; // Force HIDPI for now.
             } else {
                 this.inverted = document.body.classList.toggle(Runner.classes.INVERTED,
                     this.invertTrigger);
+            }
+
+            if (this.inverted) {
+                this.skyRGB = [68,136,170,102,153,187];
+                this.skyFadingStartTime = getTimeStamp();
+            } else {
+                this.skyRGB = [221,238,255,238,238,255];
+                this.skyFadingStartTime = getTimeStamp();
             }
         }
     };
