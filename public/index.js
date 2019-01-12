@@ -183,7 +183,7 @@ IS_HIDPI = true; // Force HIDPI for now.
             HORIZON: { x: 2, y: 104 },
             MOON: { x: 954, y: 2 },
             NATHERINE: { x: 0, y: 0 },
-            PTERODACTYL: { x: 260, y: 2 },
+            PTERODACTYL: { x: 1537, y: 4 },
             RESTART: { x: 2, y: 2 },
             TEXT_SPRITE: { x: 1294, y: 2 },
             STAR: { x: 1276, y: 2 }
@@ -308,7 +308,7 @@ IS_HIDPI = true; // Force HIDPI for now.
 
 		Obstacle.types[3].sprite = Runner.imageSpriteBicycle;
 		Nath.animFrames.WAITING.sprite = Runner.imageSpriteNatIdling;
-		Nath.animFrames.JUMPING.sprite = Runner.imageSpriteNatIdling;
+		Nath.animFrames.JUMPING.sprite = Runner.imageSpriteNatRunning;
 		Nath.animFrames.RUNNING.sprite = Runner.imageSpriteNatRunning;
 		Nath.animFrames.CRASHED.sprite = Runner.imageSpriteNatCrashed;
 
@@ -1605,35 +1605,35 @@ IS_HIDPI = true; // Force HIDPI for now.
             yPos: [100, 75, 50], // Variable height.
             yPosMobile: [100, 50], // Variable height mobile.
             multipleSpeed: 999,
-            minSpeed: 8.5,
+//            minSpeed: 8.5,
+            minSpeed: 0,
             minGap: 150,
             collisionBoxes: [
-                new CollisionBox(15, 15, 16, 5),
-                new CollisionBox(18, 21, 24, 6),
-                new CollisionBox(2, 14, 4, 3),
-                new CollisionBox(6, 10, 4, 7),
-                new CollisionBox(10, 8, 6, 9)
+                new CollisionBox(15, 18, 16, 16),
+                new CollisionBox(31, 24, 12, 8),
+                new CollisionBox(1, 22, 13, 4)
             ],
-            numFrames: 2,
-            frameRate: 1000 / 6,
+            numFrames: 6,
+            frameRate: 1000 / 18,
             speedOffset: .8
         },
         {
             type: 'BICYCLE',
             width: 52,
             height: 52,
-            yPos: 85,
+            yPos: 88,
             multipleSpeed: 999,
             minSpeed: 0,
             minGap: 150,
             collisionBoxes: [
-                new CollisionBox(4, 23, 43, 27),
-                new CollisionBox(17, 3, 20, 20)
+                new CollisionBox(17, 3, 17, 20),
+                new CollisionBox(4, 23, 20, 27),
+                new CollisionBox(24, 30, 23, 20)
             ],
             numFrames: 8,
             frameRate: 1000 / 15,
             speedOffset: .3,
-            speedUp: 2.5 //FUN
+            speedUp: 2.5 //FUN FIXME Random a speed from a predefined range.
         }
     ];
 
@@ -1715,7 +1715,7 @@ IS_HIDPI = true; // Force HIDPI for now.
             new CollisionBox(9, 34, 15, 4)
 */
             new CollisionBox(15, 4, 15, 19),
-            new CollisionBox(12, 16, 16, 21)
+            new CollisionBox(12, 16, 16, 19)
         ]
     };
 
@@ -1749,15 +1749,15 @@ IS_HIDPI = true; // Force HIDPI for now.
             msPerFrame: 1000 / 6
         },
         RUNNING: {
-            frames: [0, 20, 40, 60],
-            msPerFrame: 1000 / 25
+            frames: [0, 20, 40, 60, 80, 100, 120, 140],
+            msPerFrame: 1000 / 48
         },
         CRASHED: {
             frames: [0],
-            msPerFrame: 1000 / 60
+            msPerFrame: 1000
         },
         JUMPING: {
-            frames: [0],
+            frames: [140],
             msPerFrame: 1000 / 60
         },
         DUCKING: {
@@ -1912,7 +1912,7 @@ if (this.currentSprite) //FIXME
          * Sets a random time for the blink to happen.
          */
         setBlinkDelay: function () {
-            this.blinkDelay = 5000 + Math.ceil(Math.random() * Nath.BLINK_TIMING);
+            this.blinkDelay =  + Math.ceil(Math.random() * Nath.BLINK_TIMING);
         },
 
         /**
