@@ -60,7 +60,10 @@ html, body {
   overflow: hidden;
   position: absolute;
   top: 35px;
-  width: 44px;
+  top: 150px;
+  width: 40px;
+  border-radius: 25px;
+  animation: wobble 15s ease-in-out alternate infinite;
 }
 
 .offline .runner-canvas {

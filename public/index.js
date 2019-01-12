@@ -528,6 +528,7 @@ IS_HIDPI = true; // Force HIDPI for now.
 
                 this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
                 this.containerEl.style.width = this.dimensions.WIDTH + 'px';
+                this.containerEl.style.borderRadius = "10px";
 
                 // if (this.touchController) {
                 //     this.outerContainerEl.appendChild(this.touchController);
