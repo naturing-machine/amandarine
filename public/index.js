@@ -874,8 +874,10 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Game over state.
          */
         gameOver: function () {
-	    this.clearCanvas();
-	    this.horizon.update(0, 0, true);
+	    if (!Runner.config.SHOW_COLLISION) {
+		    this.clearCanvas();
+		    this.horizon.update(0, 0, true);
+	    }
 
             this.playSound(this.soundFx.HIT);
             vibrate(200);
@@ -1136,8 +1138,8 @@ IS_HIDPI = true; // Force HIDPI for now.
     GameOverPanel.dimensions = {
         TEXT_X: 0,
         TEXT_Y: 13,
-        TEXT_WIDTH: 191,
-        TEXT_HEIGHT: 11,
+        TEXT_WIDTH: 90,
+        TEXT_HEIGHT: 31,
         RESTART_WIDTH: 36,
         RESTART_HEIGHT: 32
     };
@@ -1815,7 +1817,11 @@ IS_HIDPI = true; // Force HIDPI for now.
             }
 */
 
-	    this.draw(this.currentAnimFrames[this.currentFrame], 0);
+	    /* Don't draw crash state to observe the effective collision boxes */
+	    if (!Runner.config.SHOW_COLLISION || opt_status != Nath.status.CRASHED ) {
+		    this.draw(this.currentAnimFrames[this.currentFrame], 0);
+	    }
+
 
             // Update the frame position.
             if (this.timer >= this.msPerFrame) {
