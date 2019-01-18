@@ -1185,8 +1185,8 @@ IS_HIDPI = true; // Force HIDPI for now.
         TEXT_Y: 13,
         TEXT_WIDTH: 90,
         TEXT_HEIGHT: 31,
-        RESTART_WIDTH: 36,
-        RESTART_HEIGHT: 32
+        RESTART_WIDTH: 38,
+        RESTART_HEIGHT: 34
     };
 
 
