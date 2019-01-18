@@ -442,7 +442,7 @@ IS_HIDPI = true; // Force HIDPI for now.
 
             this.containerEl = document.createElement('div');
             this.containerEl.className = Runner.classes.CONTAINER;
-	    this.containerEl.style.borderRadius = "10px";
+//	    this.containerEl.style.borderRadius = "20px";
 
             // Player canvas container.
             this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
@@ -539,7 +539,7 @@ IS_HIDPI = true; // Force HIDPI for now.
 
                 this.distanceMeter.calcXPos(this.dimensions.WIDTH);
                 this.clearCanvas();
-                this.horizon.update(0, 0, true);
+                this.horizon.update(0, this.currentSpeed, true);
                 this.nath.update(0);
 
                 // Outer container and distance meter.
@@ -716,7 +716,7 @@ IS_HIDPI = true; // Force HIDPI for now.
                     }
                 }
             } else {
-		    this.horizon.update(0, 0, true);
+		    this.horizon.update(0, this.currentSpeed, true);
 	    }
 
 
