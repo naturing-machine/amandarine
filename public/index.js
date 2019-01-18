@@ -303,6 +303,7 @@ IS_HIDPI = true; // Force HIDPI for now.
             if (IS_HIDPI) {
                 Runner.imageSprite = document.getElementById('offline-resources-2x');
                 Runner.imageSpriteNatRunning = document.getElementById('offline-resources-nat-running');
+                Runner.imageSpriteNatSliding = document.getElementById('offline-resources-nat-sliding');
                 Runner.imageSpriteNatIdling = document.getElementById('offline-resources-nat-idling');
                 Runner.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
                 Runner.imageSpriteNatCrashed = document.getElementById('offline-resources-nat-crash');
@@ -316,6 +317,7 @@ IS_HIDPI = true; // Force HIDPI for now.
 		Obstacle.types[3].sprite = Runner.imageSpriteBicycle;
 		Nath.animFrames.WAITING.sprite = Runner.imageSpriteNatIdling;
 		Nath.animFrames.JUMPING.sprite = Runner.imageSpriteNatRunning;
+		Nath.animFrames.DUCKING.sprite = Runner.imageSpriteNatSliding;
 		Nath.animFrames.RUNNING.sprite = Runner.imageSpriteNatRunning;
 		Nath.animFrames.CRASHED.sprite = Runner.imageSpriteNatCrashed;
 
@@ -1730,7 +1732,9 @@ IS_HIDPI = true; // Force HIDPI for now.
      */
     Nath.collisionBoxes = {
         DUCKING: [
-            new CollisionBox(1, 18, 55, 25)
+            new CollisionBox(11, 12, 15, 12),
+            new CollisionBox(11, 25, 17, 12),
+            new CollisionBox(28, 32, 5, 5)
         ],
         RUNNING: [
 /*
@@ -1776,20 +1780,21 @@ IS_HIDPI = true; // Force HIDPI for now.
             msPerFrame: 1000 / 6
         },
         RUNNING: {
-            frames: [0, 20, 40, 60, 80, 100, 120, 140],
-            msPerFrame: 1000 / 48
+            frames: [0, 20, 40, 60, 40, 20, 0, 80],
+            msPerFrame: 1000 / 24
         },
         CRASHED: {
             frames: [0],
             msPerFrame: 1000
         },
         JUMPING: {
-            frames: [140],
+            frames: [80],
             msPerFrame: 1000 / 60
         },
         DUCKING: {
-            frames: [264, 323],
-            msPerFrame: 1000 / 8
+            frames: [0, 20, 40, 20],
+//            frames: [264, 323],
+            msPerFrame: 1000 / 24
         }
     };
 
