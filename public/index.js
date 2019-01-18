@@ -325,8 +325,10 @@ IS_HIDPI = true; // Force HIDPI for now.
             } else {
 		//NYI
 		console.error("NYI: 1x isn't supported ATM.");
+                /*
                 Runner.imageSprite = document.getElementById('offline-resources-1x');
                 this.spriteDef = Runner.spriteDefinition.LDPI;
+                */
             }
 
 	    var loader = {
@@ -591,6 +593,7 @@ IS_HIDPI = true; // Force HIDPI for now.
                 // }
                 this.playing = true;
                 this.activated = true;
+
             } else if (this.crashed) {
                 this.restart();
             }
@@ -842,6 +845,7 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {Event} e
          */
         onKeyUp: function (e) {
+
             var keyCode = String(e.keyCode);
             var isjumpKey = Runner.keycodes.JUMP[keyCode] ||
                 e.type == Runner.events.TOUCHEND ||
@@ -954,6 +958,7 @@ IS_HIDPI = true; // Force HIDPI for now.
                 this.time = getTimeStamp();
                 this.update();
             }
+
         },
 
         restart: function () {
@@ -1234,8 +1239,10 @@ IS_HIDPI = true; // Force HIDPI for now.
                 textSourceX *= 2;
                 textSourceWidth *= 2;
                 textSourceHeight *= 2;
+/* Since we switched to use a smaller version of the button.
                 restartSourceWidth *= 2;
                 restartSourceHeight *= 2;
+*/
             }
 
             textSourceX += this.textImgPos.x;
@@ -2340,10 +2347,14 @@ if (this.currentSprite) //FIXME
      * @param {Object} spritePos Position of image in sprite.
      * @param {number} containerWidth
      */
-    function Cloud(canvas, spritePos, containerWidth) {
+    function Cloud(canvas, spritePos, containerWidth, type) {
         this.canvas = canvas;
+        this.type = type;
         this.canvasCtx = this.canvas.getContext('2d');
-        this.spritePos = spritePos;
+        this.spritePos = {
+            x: spritePos.x,
+            y: spritePos.y[type],
+        };
         this.containerWidth = containerWidth;
         this.xPos = containerWidth;
         this.yPos = 0;
@@ -2360,7 +2371,7 @@ if (this.currentSprite) //FIXME
      * @enum {number}
      */
     Cloud.config = {
-        HEIGHT: 14,
+        HEIGHTS: [14,20,8],
         MAX_CLOUD_GAP: 400,
         MAX_SKY_LEVEL: 30,
         MIN_CLOUD_GAP: 100,
@@ -2385,7 +2396,7 @@ if (this.currentSprite) //FIXME
         draw: function () {
             this.canvasCtx.save();
             var sourceWidth = Cloud.config.WIDTH;
-            var sourceHeight = Cloud.config.HEIGHT;
+            var sourceHeight = Cloud.config.HEIGHTS[this.type];
 
             if (IS_HIDPI) {
                 sourceWidth = sourceWidth * 2;
@@ -2396,7 +2407,7 @@ if (this.currentSprite) //FIXME
                 this.spritePos.y,
                 sourceWidth, sourceHeight,
                 this.xPos, this.yPos,
-                Cloud.config.WIDTH, Cloud.config.HEIGHT);
+                Cloud.config.WIDTH, Cloud.config.HEIGHTS[this.type]);
 
             this.canvasCtx.restore();
         },
@@ -2520,7 +2531,8 @@ if (this.currentSprite) //FIXME
             var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
             var moonOutputWidth = moonSourceWidth;
             var starSize = NightMode.config.STAR_SIZE;
-            var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
+            //var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
+            var starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
 
             if (IS_HIDPI) {
                 moonSourceWidth *= 2;
@@ -2528,7 +2540,7 @@ if (this.currentSprite) //FIXME
                 moonSourceX = this.spritePos.x +
                     (NightMode.phases[this.currentPhase] * 2);
                 starSize *= 2;
-                starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
+                //starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
             }
 
             this.canvasCtx.save();
@@ -2567,10 +2579,10 @@ if (this.currentSprite) //FIXME
                 if (IS_HIDPI) {
                     this.stars[i].sourceY = Runner.spriteDefinition.HDPI.STAR.y +
                         NightMode.config.STAR_SIZE * 2 * i;
-                } else {
+                }/* else {
                     this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
                         NightMode.config.STAR_SIZE * i;
-                }
+                }*/
             }
         },
 
@@ -2927,8 +2939,17 @@ if (this.currentSprite) //FIXME
          * Add a new cloud to the horizon.
          */
         addCloud: function () {
+            let type = getRandomNum(0,this.spritePos.CLOUD.y.length - 1);
+            let len = this.clouds.length;
+            if (len >= 2) {
+                if (this.clouds[len-1].type == this.clouds[len-2].type && this.clouds[len-2].type == type) {
+                    type++;
+                    type %= this.spritePos.CLOUD.y.length;
+                }
+            }
+
             this.clouds.push(new Cloud(this.canvas, this.spritePos.CLOUD,
-                this.dimensions.WIDTH));
+                this.dimensions.WIDTH, type));
         }
     };
 })();
