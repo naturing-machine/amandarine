@@ -4,14 +4,15 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no">
-<title>ᵃᵐᵃⁿᵈᵃʳⁱⁿᵉ🏃ᴼⁿᵀʰᵉᴿᵘⁿ</title>
+<title>ᵃᵐᵃⁿᵈᵃʳⁱⁿᵉ👟ᴼⁿᴰᵃᴿᵘⁿ</title>
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"> 
     <script src="index.js"></script>
 </head>
 
 <body id="t" class="offline">
-<a id="github" onmouseover="gitHover()" href="https://github.com/enirehtan/amandarine/wiki"><img style="border: 0;" src="https://github.com/jamesflorentino/fork-ribbons/raw/master/ribbons/orange-black.png" alt="Fork me on GitHub"></a>
+<a id="github" onmouseover="gitHover()" href="https://github.com/enirehtan/amandarine/wiki"><img style="border: 0;" src="assets/github.png" alt="Fork me on GitHub"></a>
+<a id="facebook" onmouseover="gitHover()" href="https://www.facebook.com/Amandarine-Frontier-536061560224979"><img style="border: 0;" src="assets/facebook.png" alt="Facebook"></a>
 
 
 <!--
@@ -26,8 +27,9 @@
         <div id="offline-resources">
             <img id="offline-resources-1x" src="assets/default_100_percent/100-offline-sprite.png">
             <img id="offline-resources-2x" src="assets/default_200_percent/200-offline-sprite.png">
-            <img id="offline-resources-nat-running" src="assets/nat/running.png">
             <img id="offline-resources-nat-idling" src="assets/nat/idle.png">
+            <img id="offline-resources-nat-running" src="assets/nat/running.png">
+            <img id="offline-resources-nat-sliding" src="assets/nat/sliding.png">
             <img id="offline-resources-nat-crash" src="assets/nat/crash.png">
             <img id="offline-resources-bicycle" src="assets/biking.png">
             <template id="audio-resources">
@@ -45,21 +47,23 @@
 	    evt = evt || window.event;
 	    if (evt.keyCode == 32) {
 		    var box = document.getElementById("github");
-		    box.classList.add("off-screen");
+		    box.classList.add("banner-off-screen");
+		    box = document.getElementById("facebook");
+		    box.classList.add("banner-off-screen");
 	    }
     };
 
     document.onmousedown = function(evt) {
-	    var path = event.path || (event.composedPath && event.composedPath());
-	    if (!path || !path.length || path[0].alt != "Fork me on GitHub") {
 		    var box = document.getElementById("github");
-		    box.classList.add("off-screen");
-	    }
+		    box.classList.add("banner-off-screen");
+		    box = document.getElementById("facebook");
+		    box.classList.add("banner-off-screen");
     };
 
-    function gitHover() {
-	    var box = document.getElementById("github");
-	    box.classList.remove("off-screen");
+    function gitHover(evt) {
+	    var path = event.path || (event.composedPath && event.composedPath());
+	    var box = path[0];
+	    box.classList.remove("banner-off-screen");
     }
 
 /*
