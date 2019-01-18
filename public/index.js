@@ -128,6 +128,12 @@ IS_HIDPI = true; // Force HIDPI for now.
         SPEED: 6,
         SPEED_DROP_COEFFICIENT: 3,
 	SHOW_COLLISION: false,
+        SKY: {
+            DAY: [221,238,255,238,238,255],
+            //NIGHT: [68,136,170,102,153,187],
+            NIGHT: [68,136,170,84,183,187],
+            START: [255,255,255,255,255,255]
+        }
     };
 
 
@@ -395,23 +401,27 @@ IS_HIDPI = true; // Force HIDPI for now.
 	    let gradient;
 
             if (ratio == 0) {
-                gradient = this.currentSkyRGB;
+                gradient = this.gradients.sky1;
 	    } else if (ratio == 1) {
-                this.currentSkyRGB = gradient = this.skyRGB;
+                this.gradients.sky1 = gradient = this.gradients.sky2;
             } else {
-		gradient = [
-                    Math.floor(this.currentSkyRGB[0] + (this.skyRGB[0] - this.currentSkyRGB[0]) * ratio),
-                    Math.floor(this.currentSkyRGB[1] + (this.skyRGB[1] - this.currentSkyRGB[1]) * ratio),
-                    Math.floor(this.currentSkyRGB[2] + (this.skyRGB[2] - this.currentSkyRGB[2]) * ratio),
-                    Math.floor(this.currentSkyRGB[3] + (this.skyRGB[3] - this.currentSkyRGB[3]) * ratio),
-                    Math.floor(this.currentSkyRGB[4] + (this.skyRGB[4] - this.currentSkyRGB[4]) * ratio),
-                    Math.floor(this.currentSkyRGB[5] + (this.skyRGB[5] - this.currentSkyRGB[5]) * ratio)
-		];
+                gradient = [];
+                for(let i = 0; i < 6; i++) {
+                    gradient.push(Math.floor(this.gradients.sky1[i] +
+                                (this.gradients.sky2[i] - this.gradients.sky1[i]) * ratio));
+                }
             }
 
-            this.skyGradient = this.canvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
-	    this.skyGradient.addColorStop(0, "#" + ((1 << 24) + (gradient[0] << 16) + (gradient[1] << 8) + gradient[2]).toString(16).slice(1));
-	    this.skyGradient.addColorStop(1, "#" + ((1 << 24) + (gradient[3] << 16) + (gradient[4] << 8) + gradient[5]).toString(16).slice(1));
+            let rgb0x1 = ((1 << 24) + (gradient[0] << 16) + (gradient[1] << 8) + gradient[2]).toString(16).slice(1);
+            let rgb0x2 = ((1 << 24) + (gradient[3] << 16) + (gradient[4] << 8) + gradient[5]).toString(16).slice(1);
+
+            if (this.gradients.rgb0x1 != rgb0x1 || this.gradients.rgb0x2 != rgb0x2) {
+                this.skyGradient = this.canvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
+                this.skyGradient.addColorStop(0, "#" + rgb0x1);
+                this.skyGradient.addColorStop(1, "#" + rgb0x2);
+                this.gradients.rgb0x1 = rgb0x1;
+                this.gradients.rgb0x2 = rgb0x2;
+            }
 	},
 
         /**
@@ -437,13 +447,14 @@ IS_HIDPI = true; // Force HIDPI for now.
             this.canvasCtx.fillStyle = '#f7f7f7';
             this.canvasCtx.fill();
             Runner.updateCanvasScaling(this.canvas);
+            this.gradients = {};
 
-	    this.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
-	    this.grass.addColorStop(0, "#69a242");
-	    this.grass.addColorStop(1, "#ADAE53");
+	    this.gradients.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
+	    this.gradients.grass.addColorStop(0, "#B17A32");
+	    this.gradients.grass.addColorStop(1, "#69a242");
 
 	    /* Will switch to gradient on starting */
-	    this.skyRGB = this.currentSkyRGB = [255,255,255,255,255,255];
+	    this.gradients.sky2 = this.gradients.sky1 = Runner.config.SKY.START;
             this.adjustSkyGradient(1);
 
             // Horizon contains clouds, obstacles and the ground.
@@ -608,7 +619,7 @@ IS_HIDPI = true; // Force HIDPI for now.
 	    this.canvasCtx.fillStyle = this.skyGradient;
 	    this.canvasCtx.fillRect(0, 0, this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
-	    this.canvasCtx.fillStyle = this.grass;
+	    this.canvasCtx.fillStyle = this.gradients.grass;
 	    this.canvasCtx.fillRect(0, this.dimensions.HEIGHT-11, this.dimensions.WIDTH, 11);
         },
 
@@ -678,7 +689,6 @@ IS_HIDPI = true; // Force HIDPI for now.
                     this.playSound(this.soundFx.SCORE);
                 }
 
-                // Night mode.
                 if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
                     this.invertTimer = 0;
                     this.invertTrigger = false;
@@ -790,7 +800,7 @@ IS_HIDPI = true; // Force HIDPI for now.
                         this.loadSounds();
                         this.playing = true;
 
-                        this.skyRGB = [221,238,255,238,238,255];
+                        this.gradients.sky2 = Runner.config.SKY.DAY;
                         this.skyFadingStartTime = getTimeStamp();
 
                         this.update();
@@ -1003,13 +1013,29 @@ IS_HIDPI = true; // Force HIDPI for now.
                     this.invertTrigger);
             }
 
-            if (this.inverted) {
-                this.skyRGB = [68,136,170,102,153,187];
-                this.skyFadingStartTime = getTimeStamp();
-            } else {
-                this.skyRGB = [221,238,255,238,238,255];
-                this.skyFadingStartTime = getTimeStamp();
-            }
+            //FIXME setting sky2 should actually set sky1 to current ratio.
+            // setSky()
+            this.setSky(this.inverted ? Runner.config.SKY.NIGHT : Runner.config.SKY.DAY);
+        },
+
+
+        setSky: function (gr) {
+            let v1,v2;
+
+            v1 = parseInt(this.gradients.rgb0x1, 16);
+            v2 = parseInt(this.gradients.rgb0x2, 16);
+
+            this.gradients.sky1 = [
+                (v1 >> 16) & 0xFF,
+                (v1 >> 8) & 0xFF,
+                 v1 & 0xFF,
+                (v2 >> 16) & 0xFF,
+                (v2 >> 8) & 0xFF,
+                 v2 & 0xFF
+            ];
+            this.gradients.sky2 = gr;
+
+            this.skyFadingStartTime = getTimeStamp();
         }
     };
 
