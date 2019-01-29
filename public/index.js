@@ -438,16 +438,16 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Game initialiser.
          */
         init: function () {
-            // Hide the static icon.
-            document.querySelector('.' + Runner.classes.ICON).style.visibility =
-                'hidden';
+          // Hide the static icon.
+          document.querySelector('.' + Runner.classes.ICON).style.visibility =
+          'hidden';
 
-            this.adjustDimensions();
-            this.setSpeed();
+          this.adjustDimensions();
+          this.setSpeed();
 
-            this.containerEl = document.createElement('div');
-            this.containerEl.className = Runner.classes.CONTAINER;
-//	    this.containerEl.style.borderRadius = "20px";
+          this.containerEl = document.createElement('div');
+          this.containerEl.className = Runner.classes.CONTAINER;
+//	      this.containerEl.style.borderRadius = "20px";
 
             // Player canvas container.
             this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
@@ -462,21 +462,21 @@ IS_HIDPI = true; // Force HIDPI for now.
             Runner.updateCanvasScaling(this.canvas);
             this.gradients = {};
 
-	    this.gradients.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
-	    this.gradients.grass.addColorStop(0, "#B17A32");
-	    this.gradients.grass.addColorStop(1, "#69a242");
+            this.gradients.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
+            this.gradients.grass.addColorStop(0, "#B17A32");
+            this.gradients.grass.addColorStop(1, "#69a242");
 
-	    /* Will switch to gradient on starting */
-	    this.gradients.sky2 = this.gradients.sky1 = Runner.config.SKY.START;
+            /* Will switch to gradient on starting */
+            this.gradients.sky2 = this.gradients.sky1 = Runner.config.SKY.START;
             this.adjustSkyGradient(1);
 
             // Horizon contains clouds, obstacles and the ground.
             this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
-                this.config.GAP_COEFFICIENT);
+              this.config.GAP_COEFFICIENT);
 
             // Distance meter
             this.distanceMeter = new DistanceMeter(this.canvas,
-                this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
+              this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
 
             // Draw Natherine
             this.nath = new Nath(this.canvas, this.spriteDef.NATHERINE);
@@ -486,43 +486,43 @@ IS_HIDPI = true; // Force HIDPI for now.
             this.spacebarEl = document.createElement('div');
             this.spacebarEl.className = Runner.classes.SPACEBAR;
             this.outerContainerEl.appendChild(this.spacebarEl);
-	    this.spacebarEl.style.width = '75px';
-	    this.spacebarEl.style.height = '19px';
-	    this.spacebarEl.style.zIndex = '3';
-	    this.spacebarEl.style.backgroundImage = 'url(assets/spacebar.png)';
-	    this.spacebarEl.style.top = this.containerEl.offsetTop + 90 +'px';
-	    this.spacebarEl.style.left = this.containerEl.offsetLeft + 30 +'px';
-	    this.spacebarEl.style.position = 'absolute';
-	    this.spacebarEl.style.animation = 'blinker 1s linear infinite';
+            this.spacebarEl.style.width = '75px';
+            this.spacebarEl.style.height = '40px';
+            this.spacebarEl.style.zIndex = '3';
+            this.spacebarEl.style.backgroundImage = 'url(assets/spacebar.png)';
+            this.spacebarEl.style.top = this.containerEl.offsetTop + 120 +'px';
+            this.spacebarEl.style.left = this.containerEl.offsetLeft + 30 +'px';
+            this.spacebarEl.style.position = 'absolute';
+            this.spacebarEl.style.animation = 'blinker 1s linear infinite';
 
             if (IS_MOBILE) {
-                this.createTouchController();
+              this.createTouchController();
             }
 
             this.startListening();
             this.update();
 
             window.addEventListener(Runner.events.RESIZE,
-                this.debounceResize.bind(this));
+              this.debounceResize.bind(this));
         },
 
         /**
          * Create the touch controller. A div that covers whole screen.
          */
         createTouchController: function () {
-            this.touchController = document.createElement('div');
-            this.touchController.className = Runner.classes.TOUCH_CONTROLLER;
-            this.outerContainerEl.appendChild(this.touchController);
+          this.touchController = document.createElement('div');
+          this.touchController.className = Runner.classes.TOUCH_CONTROLLER;
+          this.outerContainerEl.appendChild(this.touchController);
         },
 
         /**
          * Debounce the resize event.
          */
         debounceResize: function () {
-            if (!this.resizeTimerId_) {
-                this.resizeTimerId_ =
-                    setInterval(this.adjustDimensions.bind(this), 250);
-            }
+          if (!this.resizeTimerId_) {
+            this.resizeTimerId_ =
+            setInterval(this.adjustDimensions.bind(this), 250);
+          }
         },
 
         /**
@@ -582,9 +582,9 @@ IS_HIDPI = true; // Force HIDPI for now.
                     'from { border-radius: 20px; width:' + Nath.config.WIDTH + 'px }' +
                     'to { border-radius: 10px; width: ' + this.dimensions.WIDTH + 'px }' +
                     '}';
-                
-                // create a style sheet to put the keyframe rule in 
-                // and then place the style sheet in the html head    
+
+                // create a style sheet to put the keyframe rule in
+                // and then place the style sheet in the html head
                 var sheet = document.createElement('style');
                 sheet.innerHTML = keyframes;
                 document.head.appendChild(sheet);
@@ -612,29 +612,29 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Update the game status to started.
          */
         startGame: function () {
-            this.runningTime = 0;
-            this.playingIntro = false;
-            this.nath.playingIntro = false;
-            this.containerEl.style.webkitAnimation = '';
-            this.playCount++;
+          this.runningTime = 0;
+          this.playingIntro = false;
+          this.nath.playingIntro = false;
+          this.containerEl.style.webkitAnimation = '';
+          this.playCount++;
 
-            // Handle tabbing off the page. Pause the current game.
-            document.addEventListener(Runner.events.VISIBILITY,
-                this.onVisibilityChange.bind(this));
+          // Handle tabbing off the page. Pause the current game.
+          document.addEventListener(Runner.events.VISIBILITY,
+            this.onVisibilityChange.bind(this));
 
-            window.addEventListener(Runner.events.BLUR,
-                this.onVisibilityChange.bind(this));
+          window.addEventListener(Runner.events.BLUR,
+            this.onVisibilityChange.bind(this));
 
-            window.addEventListener(Runner.events.FOCUS,
-                this.onVisibilityChange.bind(this));
+          window.addEventListener(Runner.events.FOCUS,
+            this.onVisibilityChange.bind(this));
         },
 
         clearCanvas: function () {
-	    this.canvasCtx.fillStyle = this.skyGradient;
-	    this.canvasCtx.fillRect(0, 0, this.dimensions.WIDTH, this.dimensions.HEIGHT);
+          this.canvasCtx.fillStyle = this.skyGradient;
+          this.canvasCtx.fillRect(0, 0, this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
-	    this.canvasCtx.fillStyle = this.gradients.grass;
-	    this.canvasCtx.fillRect(0, this.dimensions.HEIGHT-11, this.dimensions.WIDTH, 11);
+          this.canvasCtx.fillStyle = this.gradients.grass;
+          this.canvasCtx.fillRect(0, this.dimensions.HEIGHT-11, this.dimensions.WIDTH, 11);
         },
 
         /**
