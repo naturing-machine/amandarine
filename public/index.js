@@ -451,7 +451,10 @@ IS_HIDPI = true; // Force HIDPI for now.
 
             // Player canvas container.
             this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
-                this.dimensions.HEIGHT, Runner.classes.PLAYER);
+              this.dimensions.HEIGHT, Runner.classes.PLAYER);
+
+            // This or we won't recieve
+            this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
 
             this.canvasCtx = this.canvas.getContext('2d');
             this.canvasCtx.fillStyle = '#f7f7f7';
