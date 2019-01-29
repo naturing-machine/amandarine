@@ -207,7 +207,8 @@ IS_HIDPI = true; // Force HIDPI for now.
     Runner.sounds = {
         BUTTON_PRESS: 'offline-sound-press',
         HIT: 'offline-sound-hit',
-        SCORE: 'offline-sound-reached'
+        SCORE: 'offline-sound-reached',
+        SOUND_SLIDE: 'offline-sound-slide'
     };
 
 
@@ -682,22 +683,23 @@ IS_HIDPI = true; // Force HIDPI for now.
                 var collision = hasObstacles &&
                     checkForCollision(this.horizon.obstacles[0], this.nath, Runner.config.SHOW_COLLISION && this.canvasCtx);
 
-                if (!collision) {
-                    this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
+              if (!collision) {
+                this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
 
-                    if (this.currentSpeed < this.config.MAX_SPEED) {
-                        this.currentSpeed += this.config.ACCELERATION;
-                    }
-                } else {
-                    this.gameOver();
+                if (this.currentSpeed < this.config.MAX_SPEED) {
+                  this.currentSpeed += this.config.ACCELERATION;
                 }
+              } else {
+                this.gameOver();
+                this.playHackSlide(true);
+              }
 
-                var playAchievementSound = this.distanceMeter.update(deltaTime,
-                    Math.ceil(this.distanceRan));
+              var playAchievementSound = this.distanceMeter.update(deltaTime,
+                Math.ceil(this.distanceRan));
 
-                if (playAchievementSound) {
-                    this.playSound(this.soundFx.SCORE);
-                }
+              if (playAchievementSound) {
+                this.playSound(this.soundFx.SCORE);
+              }
 
                 if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
                     this.invertTimer = 0;
@@ -788,62 +790,81 @@ IS_HIDPI = true; // Force HIDPI for now.
             }
         },
 
+        playHackSlide: function (stop) {
+            if (stop) {
+                if (this.hackSlideSoundNode) {
+                    this.hackSlideSoundNode.stop(0);
+                    delete this.hackSlideSoundNode;
+                }
+            } else if (this.soundFx.SOUND_SLIDE && !this.hackSlideSoundNode) {
+                this.hackSlideSoundNode = this.audioContext.createBufferSource();
+                this.hackSlideSoundNode.buffer = this.soundFx.SOUND_SLIDE;
+                this.hackSlideSoundNode.connect(this.audioContext.destination);
+                this.hackSlideSoundNode.loop = true;
+                this.hackSlideSoundNode.start(0);
+            }
+        },
+
+
         /**
          * Process keydown.
          * @param {Event} e
          */
         onKeyDown: function (e) {
-	    if (this.spacebarEl) {
-		    this.spacebarEl.parentNode.removeChild(this.spacebarEl);
-		    delete this.spacebarEl;
-	    }
+          if (this.spacebarEl) {
+            this.spacebarEl.parentNode.removeChild(this.spacebarEl);
+            delete this.spacebarEl;
+          }
 
-            // Prevent native page scrolling whilst tapping on mobile.
-            if (IS_MOBILE && this.playing) {
-                e.preventDefault();
-            }
+          // Prevent native page scrolling whilst tapping on mobile.
+          if (IS_MOBILE && this.playing) {
+            e.preventDefault();
+          }
 
-            if (e.target != this.detailsButton) {
-                if (!this.crashed && (Runner.keycodes.JUMP[e.keyCode] ||
-                    e.type == Runner.events.TOUCHSTART)) {
-                    if (!this.playing) {
-                        this.loadSounds();
-                        this.playing = true;
+          if (e.target != this.detailsButton) {
+            if (!this.crashed && (Runner.keycodes.JUMP[e.keyCode] ||
+                e.type == Runner.events.TOUCHSTART)) {
 
-                        this.gradients.sky2 = Runner.config.SKY.DAY;
-                        this.skyFadingStartTime = getTimeStamp();
               this.willJump = true;
 
-                        this.update();
-                        if (window.errorPageController) {
-                            errorPageController.trackEasterEgg();
-                        }
-                    }
-                    //  Play sound effect and jump on starting the game for the first time.
-                    if (!this.nath.jumping && !this.nath.ducking) {
-                        this.playSound(this.soundFx.BUTTON_PRESS);
-                        this.nath.startJump(this.currentSpeed);
-                    }
-                }
+              if (!this.playing) {
+                this.loadSounds();
+                this.playing = true;
 
-                if (this.crashed && e.type == Runner.events.TOUCHSTART &&
-                    e.currentTarget == this.containerEl) {
-                    this.restart();
+                this.gradients.sky2 = Runner.config.SKY.DAY;
+                this.skyFadingStartTime = getTimeStamp();
+
+                this.update();
+                if (window.errorPageController) {
+                  errorPageController.trackEasterEgg();
                 }
+              }
+              // Start preparing the jump, the longer holding for the higher jump.
+              // Player can start a new jump in the midair but will jump on release.
+              if (!this.nath.ducking && !e.repeat) {
+                  this.jumpStart = e.timeStamp;
+//                  this.nath.startJump(this.currentSpeed);
+              }
             }
 
-            if (this.playing && !this.crashed && Runner.keycodes.DUCK[e.keyCode]) {
-                e.preventDefault();
-                if (this.nath.jumping) {
-                    // Speed drop, activated only when jump key is not pressed.
-                    this.nath.setSpeedDrop();
-                } else if (!this.nath.jumping && !this.nath.ducking) {
-                    // Duck.
-                    this.nath.setDuck(true);
-                }
+            if (this.crashed && e.type == Runner.events.TOUCHSTART &&
+                e.currentTarget == this.containerEl) {
+              this.restart();
             }
+          }
+
+          if (this.playing && !this.crashed && Runner.keycodes.DUCK[e.keyCode]) {
+              e.preventDefault();
+            if (this.nath.jumping) {
+                  // Speed drop, activated only when jump key is not pressed.
+                  //this.nath.setSpeedDrop();
+                  //FIXME if ducking in the air, should duck ASA hitting the ground.
+            } else if (!this.nath.jumping && !this.nath.ducking) {
+                // Duck.
+              this.nath.setDuck(true);
+            }
+          }
         },
-
 
         /**
          * Process key up.
