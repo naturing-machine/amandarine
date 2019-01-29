@@ -654,34 +654,35 @@ IS_HIDPI = true; // Force HIDPI for now.
                 }
             }
 
-	    this.clearCanvas();
+            this.clearCanvas();
+
+            this.playHackSlide(!this.nath.ducking);
 
             if (this.playing) {
 
-                if (this.nath.jumping) {
-                    this.nath.updateJump(deltaTime);
-                }
+              if (this.nath.jumping) {
+                this.nath.updateJump(deltaTime);
+              }
 
-                this.runningTime += deltaTime;
-                var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
+              this.runningTime += deltaTime;
+              var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
 
-                // First jump triggers the intro.
-                if (this.nath.jumpCount == 1 && !this.playingIntro) {
-                    this.playIntro();
-                }
+              // First jump triggers the intro.
+              if (this.nath.jumpCount == 1 && !this.playingIntro) {
+                this.playIntro();
+              }
 
-                // The horizon doesn't move until the intro is over.
-                if (this.playingIntro) {
-                    this.horizon.update(0, this.currentSpeed, hasObstacles);
-                } else {
-                    deltaTime = !this.activated ? 0 : deltaTime;
-                    this.horizon.update(deltaTime, this.currentSpeed, hasObstacles,
-                        this.inverted);
-                }
+              // The horizon doesn't move until the intro is over.
+              if (this.playingIntro) {
+                this.horizon.update(0, this.currentSpeed, hasObstacles);
+              } else {
+                deltaTime = !this.activated ? 0 : deltaTime;
+                this.horizon.update(deltaTime, this.currentSpeed, hasObstacles,
+                  this.inverted);
+              }
 
-                // Check for collisions.
-                var collision = hasObstacles &&
-                    checkForCollision(this.horizon.obstacles[0], this.nath, Runner.config.SHOW_COLLISION && this.canvasCtx);
+              // Check for collisions.
+              var collision = hasObstacles && checkForCollision(this.horizon.obstacles[0], this.nath, Runner.config.SHOW_COLLISION && this.canvasCtx);
 
               if (!collision) {
                 this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
@@ -701,35 +702,79 @@ IS_HIDPI = true; // Force HIDPI for now.
                 this.playSound(this.soundFx.SCORE);
               }
 
-                if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
-                    this.invertTimer = 0;
-                    this.invertTrigger = false;
-                    this.invert();
-                } else if (this.invertTimer) {
+              if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
+                this.invertTimer = 0;
+                this.invertTrigger = false;
+                this.invert();
+              } else if (this.invertTimer) {
+                this.invertTimer += deltaTime;
+              } else {
+                var actualDistance = this.distanceMeter.getActualDistance(Math.ceil(this.distanceRan));
+
+                if (actualDistance > 0) {
+                  this.invertTrigger = !(actualDistance % this.config.INVERT_DISTANCE);
+
+                  if (this.invertTrigger && this.invertTimer === 0) {
                     this.invertTimer += deltaTime;
-                } else {
-                    var actualDistance =
-                        this.distanceMeter.getActualDistance(Math.ceil(this.distanceRan));
-
-                    if (actualDistance > 0) {
-                        this.invertTrigger = !(actualDistance %
-                            this.config.INVERT_DISTANCE);
-
-                        if (this.invertTrigger && this.invertTimer === 0) {
-                            this.invertTimer += deltaTime;
-                            this.invert();
-                        }
-                    }
+                    this.invert();
+                  }
                 }
+              }
             } else {
-		    this.horizon.update(0, this.currentSpeed, true);
-	    }
-
+              this.horizon.update(0, this.currentSpeed, true);
+            }
 
             if (this.playing || (!this.activated &&
                 this.nath.blinkCount < Runner.config.MAX_BLINK_COUNT)) {
-                this.nath.update(deltaTime);
-                this.scheduleNextUpdate();
+
+              /* Draw dashes */
+//              if (this.jumpStart) {
+              if (this.willJump && this.nath.yPos == this.nath.groundYPos) {
+                let now = getTimeStamp();
+                let delta = Runner.config.MIN_JUMP_PRESS + now - this.jumpStart;
+                if (delta > Runner.config.MAX_JUMP_PRESS) {
+                  delta = Runner.config.MAX_JUMP_PRESS
+                }
+
+                let fallDuration = Math.sqrt(2000 * delta / Nath.config.GRAVITY);
+
+                let jumpTop = delta / 1000;
+
+                this.canvasCtx.save();
+                this.canvasCtx.beginPath();
+                this.canvasCtx.strokeStyle = "#000000";
+
+                let x = this.nath.xPos;
+                let y = this.nath.yPos + 35;
+                var increment = this.currentSpeed * (FPS / 20) ;
+
+                for (let t = -fallDuration + 50, i=1; t <= fallDuration + 50; t+= 50, i++) {
+                  let d = jumpTop - (0.0000005 * Nath.config.GRAVITY * t * t);
+                  let yy = y - d * 210;
+                  if (i == 0) {
+                    this.canvasCtx.moveTo(x + i*increment, yy);
+                  } else {
+                    this.canvasCtx.lineTo(x + i*increment, yy);
+                  }
+                }
+
+                // Shadow
+                now = 8 - now%8;
+                let alpha = (fallDuration-200)/200;
+                if (alpha > 1) alpha = 1;
+                this.canvasCtx.lineDashOffset = now;
+                this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
+                this.canvasCtx.setLineDash([2,6]);
+                this.canvasCtx.stroke();
+                this.canvasCtx.lineDashOffset = now + 4;
+                this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
+                this.canvasCtx.stroke();
+
+                this.canvasCtx.restore();
+              }
+
+              this.nath.update(deltaTime);
+              this.scheduleNextUpdate();
             }
         },
 
