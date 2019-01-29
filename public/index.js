@@ -187,6 +187,7 @@ IS_HIDPI = true; // Force HIDPI for now.
             CACTUS_LARGE: { x: 472, y: 2 },
             CACTUS_SMALL: { x: 266, y: 2 },
             CLOUD: { x: 166, y: [2,30,70] },
+            DUST: { x: 776, y: 2 },
             HORIZON: { x: 2, y: 104 },
             MOON: { x: 954, y: 2 },
             NATHERINE: { x: 0, y: 0 },
@@ -1708,9 +1709,11 @@ IS_HIDPI = true; // Force HIDPI for now.
         this.ducking = false;
         this.jumpVelocity = 0;
         this.reachedMinHeight = false;
-        this.speedDrop = false;
+        //this.speedDrop = false;
         this.jumpCount = 0;
         this.jumpspotX = 0;
+
+        this.dust = new Particles(canvas, this.xPos, this.yPos, Nath.config.DUST_DURATION);
 
         this.init();
     };
@@ -1723,6 +1726,7 @@ IS_HIDPI = true; // Force HIDPI for now.
     Nath.config = {
         DROP_VELOCITY: -5,
         GRAVITY: 0.6,
+        DUST_DURATION: 600,
         HEIGHT: 40,
         HEIGHT_DUCK: 25,
         INIITAL_JUMP_VELOCITY: -10,
@@ -1733,7 +1737,7 @@ IS_HIDPI = true; // Force HIDPI for now.
         SPRITE_WIDTH: 262,
         START_X_POS: 50,
         WIDTH: 40,
-        WIDTH_DUCK: 59
+        WIDTH_DUCK: 40
     };
 
 
@@ -1848,19 +1852,26 @@ IS_HIDPI = true; // Force HIDPI for now.
 
             // Update the status.
             if (opt_status) {
-                this.status = opt_status;
-                this.currentFrame = 0;
-                this.msPerFrame = Nath.animFrames[opt_status].msPerFrame;
-                this.currentAnimFrames = Nath.animFrames[opt_status].frames;
+              this.status = opt_status;
+              this.currentFrame = 0;
+              this.msPerFrame = Nath.animFrames[opt_status].msPerFrame;
+              this.currentAnimFrames = Nath.animFrames[opt_status].frames;
 
-/*
-                if (opt_status == Nath.status.WAITING) {
-                    this.animStartTime = getTimeStamp();
-                    this.setBlinkDelay();
+              /*
+              if (opt_status == Nath.status.WAITING) {
+              this.animStartTime = getTimeStamp();
+              this.setBlinkDelay();
+              */
+              if (opt_status != Nath.status.WAITING && opt_status != Nath.status.DUCKING) {
+                if (this.xPos == 0) {
+                  this.dust.x = -24;
+                } else {
+                  this.dust.x = 0;
                 }
-*/
+                this.dust.addPoint(0, 0, -40, -10 * Math.random());
+              }
 
-		this.currentSprite = Nath.animFrames[opt_status].sprite;
+              this.currentSprite = Nath.animFrames[opt_status].sprite;
             }
 
             // Game intro animation, Natherine moves in from the left.
@@ -1871,31 +1882,43 @@ IS_HIDPI = true; // Force HIDPI for now.
 
 /*
             if (this.status == Nath.status.WAITING) {
-                //this.blink(getTimeStamp());
-		this.draw(this.currentAnimFrames[this.currentFrame], 0);
+              //this.blink(getTimeStamp());
+              this.draw(this.currentAnimFrames[this.currentFrame], 0);
             } else {
-                this.draw(this.currentAnimFrames[this.currentFrame], 0);
+              this.draw(this.currentAnimFrames[this.currentFrame], 0);
             }
 */
 
-	    /* Don't draw crash state to observe the effective collision boxes */
-	    if (!Runner.config.SHOW_COLLISION || opt_status != Nath.status.CRASHED ) {
-		    this.draw(this.currentAnimFrames[this.currentFrame], 0);
-	    }
+	          /* Don't draw crash state to observe the effective collision boxes */
+            if (!Runner.config.SHOW_COLLISION || opt_status != Nath.status.CRASHED ) {
+              this.draw(this.currentAnimFrames[this.currentFrame], 0);
+            }
 
 
             // Update the frame position.
             if (this.timer >= this.msPerFrame) {
-                this.currentFrame = this.currentFrame ==
-                    this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
-                this.timer = 0;
+              this.currentFrame = this.currentFrame ==
+
+              this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
+              this.timer = 0;
+
+              if (this.status == Nath.status.DUCKING) {
+                this.dust.x = 0;
+                this.dust.addPoint(-10, 0, -90, -15 * Math.random());
+                this.dust.addPoint(5, 0, -75, -15 * Math.random());
+              }
+
             }
 
+            this.dust.update(deltaTime);
+
             // Speed drop becomes duck if the down key is still being pressed.
+            /*
             if (this.speedDrop && this.yPos == this.groundYPos) {
                 this.speedDrop = false;
                 this.setDuck(true);
             }
+            */
         },
 
         /**
@@ -1906,30 +1929,35 @@ IS_HIDPI = true; // Force HIDPI for now.
         draw: function (x, y) {
             var sourceX = x;
             var sourceY = y;
+            /* All Nat sprite sizes are equal for now.
             var sourceWidth = this.ducking && this.status != Nath.status.CRASHED ?
                 this.config.WIDTH_DUCK : this.config.WIDTH;
+            var sourceHeight = this.config.WIDTH;
             var sourceHeight = this.config.HEIGHT;
+                */
 
             if (IS_HIDPI) {
                 sourceX *= 2;
                 sourceY *= 2;
+                /*
                 sourceWidth *= 2;
                 sourceHeight *= 2;
+                */
             }
 
             // Adjustments for sprite sheet position.
             sourceX += this.spritePos.x;
             sourceY += this.spritePos.y;
 
+            if (this.currentSprite) //FIXME
+            {
+              this.canvasCtx.drawImage(this.currentSprite, sourceX, sourceY,
+                40, 40,
+                this.xPos, this.yPos,
+                this.config.WIDTH, this.config.HEIGHT);
 
-if (this.currentSprite) //FIXME
-{
-	    this.canvasCtx.drawImage(this.currentSprite, sourceX, sourceY,
-		    40, 40,
-		    this.xPos, this.yPos,
-		    this.config.WIDTH, this.config.HEIGHT);
-
-}
+                this.dust.draw();
+              }
 /*
             // Ducking.
             if (this.ducking && this.status != Nath.status.CRASHED) {
@@ -1965,7 +1993,7 @@ if (this.currentSprite) //FIXME
         blink: function (time) {
             var deltaTime = time - this.animStartTime;
 
-	    this.draw(this.currentAnimFrames[this.currentFrame], 0);
+            this.draw(this.currentAnimFrames[this.currentFrame], 0);
 /*
 
             if (deltaTime >= this.blinkDelay) {
@@ -2042,27 +2070,30 @@ if (this.currentSprite) //FIXME
             }
 
             this.update(deltaTime);
+            */
         },
 
         /**
          * Set the speed drop. Immediately cancels the current jump.
          */
+         /*
         setSpeedDrop: function () {
             this.speedDrop = true;
             this.jumpVelocity = 1;
         },
+        */
 
         /**
          * @param {boolean} isDucking.
          */
         setDuck: function (isDucking) {
-            if (isDucking && this.status != Nath.status.DUCKING) {
-                this.update(0, Nath.status.DUCKING);
-                this.ducking = true;
-            } else if (this.status == Nath.status.DUCKING) {
-                this.update(0, Nath.status.RUNNING);
-                this.ducking = false;
-            }
+          if (isDucking && this.status != Nath.status.DUCKING) {
+            this.update(0, Nath.status.DUCKING);
+            this.ducking = true;
+          } else if (this.status == Nath.status.DUCKING) {
+            this.update(0, Nath.status.RUNNING);
+            this.ducking = false;
+          }
         },
 
         /**
@@ -2075,8 +2106,9 @@ if (this.currentSprite) //FIXME
             this.ducking = false;
             this.update(0, Nath.status.RUNNING);
             this.midair = false;
-            this.speedDrop = false;
+            //this.speedDrop = false;
             this.jumpCount = 0;
+            this.dust.reset();
         }
     };
 
@@ -2341,6 +2373,60 @@ if (this.currentSprite) //FIXME
         }
     };
 
+    //******************************************************************************
+
+    /**
+     * Particles (Very Experimental)
+     */
+
+    function Particles(canvas, x, y, age) {
+        this.age = age; // Used for calculating sprite offset.
+        this.canvas = canvas;
+        this.canvasCtx = this.canvas.getContext('2d');
+        this.x = x;
+        this.y = y;
+        this.points = [];
+        this.init();
+        this.tag = 0;
+    };
+
+    Particles.prototype = {
+        init: function () {
+        },
+
+        draw: function () {
+            for(let i = 0, point; point = this.points[i]; i++) {
+                let ratio = (this.age - point.age) / this.age;
+                let x = this.x + point.x + 40 + point.w * ratio;
+                let y = this.y + point.y + Runner.defaultDimensions.HEIGHT-25 + point.h * ratio;
+                this.canvasCtx.drawImage(Runner.imageSprite,
+                        776 + 22 * Math.floor(8 * ratio), 2,
+                        22, 22,
+                        x, y,
+                        22, 22);
+            }
+        },
+
+        update: function (aging) {
+            let updatedPoints = [];
+            for(let i = 0, point; point = this.points[i]; i++) {
+                point.age -= aging;
+                if (point.age > 0) {
+                    updatedPoints.push(point);
+                }
+            }
+            this.points = updatedPoints;
+        },
+
+        addPoint: function(x, y, w, h) {
+            this.points.push({tag:this.tag++, x:x, y:y, w:w, h:h, age:this.age});
+        },
+
+        reset: function() {
+            this.points = [];
+        }
+    };
+
 
     //******************************************************************************
 
@@ -2353,8 +2439,8 @@ if (this.currentSprite) //FIXME
      */
     function Cloud(canvas, spritePos, containerWidth, type) {
         this.canvas = canvas;
-        this.type = type;
         this.canvasCtx = this.canvas.getContext('2d');
+        this.type = type;
         this.spritePos = {
             x: spritePos.x,
             y: spritePos.y[type],
@@ -2754,6 +2840,7 @@ if (this.currentSprite) //FIXME
         this.dimensions = dimensions;
         this.gapCoefficient = gapCoefficient;
         this.obstacles = [];
+        this.dusts = [];
         this.obstacleHistory = [];
         this.horizonOffsets = [0, 0];
         this.cloudFrequency = this.config.CLOUD_FREQUENCY;
