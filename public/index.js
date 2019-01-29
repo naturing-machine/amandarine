@@ -143,7 +143,7 @@ IS_HIDPI = true; // Force HIDPI for now.
      */
     Runner.defaultDimensions = {
         WIDTH: DEFAULT_WIDTH,
-        HEIGHT: 150
+        HEIGHT: 200
     };
 
 
@@ -1610,7 +1610,7 @@ IS_HIDPI = true; // Force HIDPI for now.
             type: 'CACTUS_SMALL',
             width: 17,
             height: 35,
-            yPos: 105,
+            yPos: Runner.defaultDimensions.HEIGHT - 45,
             multipleSpeed: 4,
             minGap: 120,
             minSpeed: 0,
@@ -1624,7 +1624,7 @@ IS_HIDPI = true; // Force HIDPI for now.
             type: 'CACTUS_LARGE',
             width: 25,
             height: 50,
-            yPos: 90,
+            yPos: Runner.defaultDimensions.HEIGHT - 60,
             multipleSpeed: 7,
             minGap: 120,
             minSpeed: 0,
@@ -1638,7 +1638,11 @@ IS_HIDPI = true; // Force HIDPI for now.
             type: 'RED_DUCK',
             width: 46,
             height: 40,
-            yPos: [100, 75, 50], // Variable height.
+            yPos: [
+              Runner.defaultDimensions.HEIGHT - 50,
+              Runner.defaultDimensions.HEIGHT - 75,
+              Runner.defaultDimensions.HEIGHT - 100
+            ], // Variable height.
             yPosMobile: [100, 50], // Variable height mobile.
             multipleSpeed: 999,
 //            minSpeed: 8.5,
@@ -1657,7 +1661,7 @@ IS_HIDPI = true; // Force HIDPI for now.
             type: 'BICYCLE',
             width: 52,
             height: 52,
-            yPos: 88,
+            yPos: Runner.defaultDimensions.HEIGHT - 62,
             multipleSpeed: 999,
             minSpeed: 0,
             minGap: 150,
@@ -2375,7 +2379,7 @@ if (this.currentSprite) //FIXME
         MAX_CLOUD_GAP: 400,
         MAX_SKY_LEVEL: 30,
         MIN_CLOUD_GAP: 100,
-        MIN_SKY_LEVEL: 71,
+        MIN_SKY_LEVEL: Runner.defaultDimensions.HEIGHT - 79,
         WIDTH: 46
     };
 
@@ -2395,6 +2399,7 @@ if (this.currentSprite) //FIXME
          */
         draw: function () {
             this.canvasCtx.save();
+	    this.canvasCtx.globalAlpha = 0.85;
             var sourceWidth = Cloud.config.WIDTH;
             var sourceHeight = Cloud.config.HEIGHTS[this.type];
 
@@ -2448,8 +2453,8 @@ if (this.currentSprite) //FIXME
         this.canvas = canvas;
         this.canvasCtx = canvas.getContext('2d');
         this.xPos = containerWidth - 50;
-        this.yPos = 30;
-        this.currentPhase = 0;
+        this.yPos = 50;
+        this.currentPhase = NightMode.phases.length - 1;
         this.opacity = 0;
         this.containerWidth = containerWidth;
         this.stars = [];
@@ -2464,10 +2469,10 @@ if (this.currentSprite) //FIXME
         FADE_SPEED: 0.035,
         HEIGHT: 40,
         MOON_SPEED: 0.25,
-        NUM_STARS: 2,
+        NUM_STARS: 10,
         STAR_SIZE: 9,
         STAR_SPEED: 0.3,
-        STAR_MAX_Y: 70,
+        STAR_MAX_Y: Runner.defaultDimensions.HEIGHT - 50,
         WIDTH: 20
     };
 
@@ -2544,25 +2549,27 @@ if (this.currentSprite) //FIXME
             }
 
             this.canvasCtx.save();
+
+            // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
             this.canvasCtx.globalAlpha = this.opacity;
-
-            // Stars.
-            if (this.drawStars) {
-                for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-                    this.canvasCtx.drawImage(Runner.imageSprite,
-                        starSourceX, this.stars[i].sourceY, starSize, starSize,
-                        Math.round(this.stars[i].x), this.stars[i].y,
-                        NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
-                }
-            }
-
-            // Moon.
             this.canvasCtx.drawImage(Runner.imageSprite, moonSourceX,
                 this.spritePos.y, moonSourceWidth, moonSourceHeight,
                 Math.round(this.xPos), this.yPos,
                 moonOutputWidth, NightMode.config.HEIGHT);
 
             this.canvasCtx.globalAlpha = 1;
+
+            // Stars.
+            if (this.drawStars) {
+              for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+                this.canvasCtx.globalAlpha = this.opacity * this.stars[i].opacity;
+                this.canvasCtx.drawImage(Runner.imageSprite,
+                  starSourceX, this.stars[i].sourceY, starSize, starSize,
+                  Math.round(this.stars[i].x), this.stars[i].y,
+                  NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
+                }
+            }
+
             this.canvasCtx.restore();
         },
 
@@ -2575,10 +2582,16 @@ if (this.currentSprite) //FIXME
                 this.stars[i] = {};
                 this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
                 this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
+                this.stars[i].opacity = 0.5 + 0.5 * Math.random();
+
+                let fading_range = 1/2 * NightMode.config.STAR_MAX_Y;
+                if (this.stars[i].y > 1/2 * NightMode.config.STAR_MAX_Y) {
+                  this.stars[i].opacity *= 2 - this.stars[i].y/fading_range;
+                }
 
                 if (IS_HIDPI) {
                     this.stars[i].sourceY = Runner.spriteDefinition.HDPI.STAR.y +
-                        NightMode.config.STAR_SIZE * 2 * i;
+                        NightMode.config.STAR_SIZE * 2 * getRandomNum(0, 3);
                 }/* else {
                     this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
                         NightMode.config.STAR_SIZE * i;
@@ -2628,7 +2641,7 @@ if (this.currentSprite) //FIXME
     HorizonLine.dimensions = {
         WIDTH: 600,
         HEIGHT: 12,
-        YPOS: 127
+        YPOS: Runner.defaultDimensions.HEIGHT-23
     };
 
 

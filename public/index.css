@@ -28,7 +28,7 @@ html, body {
 #github {
   position: absolute;
   top: 0px;
-  left: 0px; 
+  left: 0px;
   -webkit-transition: all 0.5s ease-out;
   z-index: 5;
 }
@@ -36,7 +36,7 @@ html, body {
 #facebook {
   position: absolute;
   top: 0px;
-  left: 43px; 
+  left: 43px;
   -webkit-transition: all 0.5s ease-out;
   z-index: 5;
 }
@@ -48,7 +48,7 @@ html, body {
 
 @keyframes blinker {
   50% {
-    opacity: 0;
+    opacity: 0.2;
   }
 }
 
@@ -65,19 +65,19 @@ html, body {
 }
 
 .offline .runner-container {
-  height: 150px;
+  height: 200px;
   max-width: 600px;
   overflow: hidden;
   position: absolute;
   top: 35px;
-  top: 150px;
+  top: 200px;
   width: 40px;
   border-radius: 25px;
   animation: wobble 15s ease-in-out alternate infinite;
 }
 
 .offline .runner-canvas {
-  height: 150px;
+  height: 200px;
   max-width: 600px;
   opacity: 1;
   overflow: hidden;
