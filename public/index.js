@@ -112,8 +112,7 @@ IS_HIDPI = true; // Force HIDPI for now.
         CLOUD_FREQUENCY: 0.5,
         GAMEOVER_CLEAR_TIME: 750,
         GAP_COEFFICIENT: 0.6,
-        GRAVITY: 0.6,
-        INITIAL_JUMP_VELOCITY: 12,
+        //INITIAL_JUMP_VELOCITY: 12,
         INVERT_FADE_DURATION: 12000,
         INVERT_DISTANCE: 700,
         SKY_SHADING_DURATION: 2000,
@@ -121,13 +120,15 @@ IS_HIDPI = true; // Force HIDPI for now.
         MAX_CLOUDS: 6,
         MAX_OBSTACLE_LENGTH: 3,
         MAX_OBSTACLE_DUPLICATION: 2,
+        MAX_JUMP_PRESS: 600,
+        MIN_JUMP_PRESS: 200,
         MAX_SPEED: 13,
         MIN_JUMP_HEIGHT: 35,
         MOBILE_SPEED_COEFFICIENT: 1.2,
         RESOURCE_TEMPLATE_ID: 'audio-resources',
         SPEED: 6,
         SPEED_DROP_COEFFICIENT: 3,
-	SHOW_COLLISION: false,
+        SHOW_COLLISION: false,
         SKY: {
             DAY: [221,238,255,238,238,255],
             //NIGHT: [68,136,170,102,153,187],
@@ -285,9 +286,11 @@ IS_HIDPI = true; // Force HIDPI for now.
                     case 'SPEED_DROP_COEFFICIENT':
                         this.nath.config[setting] = value;
                         break;
+                        /*
                     case 'INITIAL_JUMP_VELOCITY':
                         this.nath.setJumpVelocity(value);
                         break;
+                        */
                     case 'SPEED':
                         this.setSpeed(value);
                         break;
@@ -349,7 +352,7 @@ IS_HIDPI = true; // Force HIDPI for now.
 
 		    this.runner.init();
 		}
-		  
+
 	    }
 
 
@@ -809,6 +812,7 @@ IS_HIDPI = true; // Force HIDPI for now.
 
                         this.gradients.sky2 = Runner.config.SKY.DAY;
                         this.skyFadingStartTime = getTimeStamp();
+              this.willJump = true;
 
                         this.update();
                         if (window.errorPageController) {
@@ -847,34 +851,51 @@ IS_HIDPI = true; // Force HIDPI for now.
          */
         onKeyUp: function (e) {
 
-            var keyCode = String(e.keyCode);
-            var isjumpKey = Runner.keycodes.JUMP[keyCode] ||
-                e.type == Runner.events.TOUCHEND ||
-                e.type == Runner.events.MOUSEDOWN;
+          var keyCode = String(e.keyCode);
+          var isjumpKey = Runner.keycodes.JUMP[keyCode] ||
+          e.type == Runner.events.TOUCHEND ||
+          e.type == Runner.events.MOUSEDOWN;
 
-	    if (keyCode == '67') {
-		Runner.config.SHOW_COLLISION = !Runner.config.SHOW_COLLISION;
-	    }
+          if (keyCode == '67') {
+            Runner.config.SHOW_COLLISION = !Runner.config.SHOW_COLLISION;
+          }
 
-            if (this.isRunning() && isjumpKey) {
-                this.nath.endJump();
-            } else if (Runner.keycodes.DUCK[keyCode]) {
-                this.nath.speedDrop = false;
-                this.nath.setDuck(false);
-            } else if (this.crashed) {
-                // Check that enough time has elapsed before allowing jump key to restart.
-                var deltaTime = getTimeStamp() - this.time;
+          if (this.isRunning() && isjumpKey) {
 
-                if (Runner.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
-                    (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
-                        Runner.keycodes.JUMP[keyCode])) {
-                    this.restart();
-                }
-            } else if (this.paused && isjumpKey) {
-                // Reset the jump state
-                this.nath.reset();
-                this.play();
+            if (!this.nath.jumping) {
+              let delta = Runner.config.MIN_JUMP_PRESS + e.timeStamp - this.jumpStart;
+              this.jumpStart = 0;
+              this.nath.startJump(this.currentSpeed, (
+                delta > Runner.config.MAX_JUMP_PRESS
+                  ? Runner.config.MAX_JUMP_PRESS
+                  : delta/* < Runner.config.MIN_JUMP_PRESS
+                    ? Runner.config.MIN_JUMP_PRESS
+                    : delta*/)
+                /*turn into meter*/
+              );
+              this.playSound(this.soundFx.BUTTON_PRESS);
             }
+            this.nath.endJump();
+          } else if (Runner.keycodes.DUCK[keyCode]) {
+            //this.nath.speedDrop = false;
+            this.nath.setDuck(false);
+          } else if (this.crashed) {
+            // Check that enough time has elapsed before allowing jump key to restart.
+            var deltaTime = getTimeStamp() - this.time;
+
+            if (Runner.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
+            (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
+              Runner.keycodes.JUMP[keyCode])) {
+                this.restart();
+              }
+          } else if (this.paused && isjumpKey) {
+            // Reset the jump state
+            this.nath.reset();
+            this.play();
+          }
+
+          this.willJump = false;
+
         },
 
         /**
@@ -969,6 +990,7 @@ IS_HIDPI = true; // Force HIDPI for now.
                 this.playing = true;
                 this.crashed = false;
                 this.distanceRan = 0;
+                this.jumpStart = 0;
                 this.setSpeed(this.config.SPEED);
                 this.time = getTimeStamp();
                 this.containerEl.classList.remove(Runner.classes.CRASHED);
@@ -1702,6 +1724,7 @@ IS_HIDPI = true; // Force HIDPI for now.
         this.timer = 0;
         this.msPerFrame = 1000 / FPS;
         this.config = Nath.config;
+        this.config.GRAVITY_FACTOR = 0.0000005 * Nath.config.GRAVITY * Nath.config.SCALE_FACTOR;
         // Current status.
         this.status = Nath.status.WAITING;
 
@@ -1725,11 +1748,12 @@ IS_HIDPI = true; // Force HIDPI for now.
      */
     Nath.config = {
         DROP_VELOCITY: -5,
-        GRAVITY: 0.6,
         DUST_DURATION: 600,
+        GRAVITY: 9.8,
+        SCALE_FACTOR: 210,
         HEIGHT: 40,
         HEIGHT_DUCK: 25,
-        INIITAL_JUMP_VELOCITY: -10,
+        //INIITAL_JUMP_VELOCITY: -10,
         INTRO_DURATION: 1500,
         MAX_JUMP_HEIGHT: 30,
         MIN_JUMP_HEIGHT: 30,
@@ -1837,10 +1861,12 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Setter for the jump velocity.
          * The approriate drop velocity is also set.
          */
+         /*
         setJumpVelocity: function (setting) {
             this.config.INIITAL_JUMP_VELOCITY = -setting;
             this.config.DROP_VELOCITY = -setting / 2;
         },
+        */
 
         /**
          * Set the animation status.
@@ -2012,15 +2038,21 @@ IS_HIDPI = true; // Force HIDPI for now.
         /**
          * Initialise a jump.
          * @param {number} speed
+         * @param {number} height in centimeter
          */
-        startJump: function (speed) {
+        startJump: function (speed, height) {
             if (!this.jumping) {
                 this.update(0, Nath.status.JUMPING);
-                // Tweak the jump velocity based on the speed.
-                this.jumpVelocity = this.config.INIITAL_JUMP_VELOCITY - (speed / 10);
+
+                this.jumpTop = height / 1000;
+                this.fallDuration = Math.sqrt(2000 * height / Nath.config.GRAVITY);
+                this.jumpTimer = 0;
                 this.jumping = true;
+
+                //this.jumpVelocity = this.config.INIITAL_JUMP_VELOCITY - (speed / 10);
                 this.reachedMinHeight = false;
-                this.speedDrop = false;
+                //this.speedDrop = false;
+
             }
         },
 
@@ -2028,10 +2060,12 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Jump is complete, falling down.
          */
         endJump: function () {
+          /*
             if (this.reachedMinHeight &&
                 this.jumpVelocity < this.config.DROP_VELOCITY) {
                 this.jumpVelocity = this.config.DROP_VELOCITY;
             }
+            */
         },
 
         /**
@@ -2040,6 +2074,28 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} speed
          */
         updateJump: function (deltaTime, speed) {
+
+          this.jumpTimer += deltaTime;
+          let t = this.fallDuration - this.jumpTimer;
+          let d = this.jumpTop * this.config.SCALE_FACTOR
+            - this.config.GRAVITY_FACTOR * t * t;
+
+          /* For falling animation */
+          if (this.jumpTimer > this.jumpDuration) {
+          } else {
+            this.endJump();
+          }
+
+          this.yPos = this.groundYPos - d;
+
+          if (t < -this.fallDuration) {
+            this.reset();
+            this.jumpCount++;
+          }
+
+          this.update(deltaTime);
+
+          /*
             var msPerFrame = Nath.animFrames[this.status].msPerFrame;
             var framesElapsed = deltaTime / msPerFrame;
 
@@ -2051,7 +2107,7 @@ IS_HIDPI = true; // Force HIDPI for now.
                 this.yPos += Math.round(this.jumpVelocity * framesElapsed);
             }
 
-            this.jumpVelocity += this.config.GRAVITY * framesElapsed;
+            this.jumpVelocity += Nath.config.GRAVITY * framesElapsed;
 
             // Minimum height has been reached.
             if (this.yPos < this.minJumpHeight || this.speedDrop) {
