@@ -110,6 +110,8 @@ IS_HIDPI = true; // Force HIDPI for now.
         BOTTOM_PAD: 10,
         CLEAR_TIME: 3000,
         CLOUD_FREQUENCY: 0.5,
+        CRASH_WIDTH: 32,
+        CRASH_HEIGHT: 32,
         GAMEOVER_CLEAR_TIME: 750,
         GAP_COEFFICIENT: 0.6,
         //INITIAL_JUMP_VELOCITY: 12,
@@ -306,59 +308,59 @@ IS_HIDPI = true; // Force HIDPI for now.
          */
         loadImages: function () {
 
-            if (IS_HIDPI) {
-                Runner.imageSprite = document.getElementById('offline-resources-2x');
-                Runner.imageSpriteNatRunning = document.getElementById('offline-resources-nat-running');
-                Runner.imageSpriteNatSliding = document.getElementById('offline-resources-nat-sliding');
-                Runner.imageSpriteNatIdling = document.getElementById('offline-resources-nat-idling');
-                Runner.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
-                Runner.imageSpriteNatCrashed = document.getElementById('offline-resources-nat-crash');
-                this.spriteDef = Runner.spriteDefinition.HDPI;
+          if (IS_HIDPI) {
+            Runner.imageSprite = document.getElementById('offline-resources-2x');
+            Runner.imageSpriteNatRunning = document.getElementById('offline-resources-nat-running');
+            Runner.imageSpriteNatSliding = document.getElementById('offline-resources-nat-sliding');
+            Runner.imageSpriteNatIdling = document.getElementById('offline-resources-nat-idling');
+            Runner.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
+            Runner.imageSpriteNatCrashed = document.getElementById('offline-resources-nat-crash');
+            this.spriteDef = Runner.spriteDefinition.HDPI;
 
-		Obstacle.types[0].mag = 2;
-		Obstacle.types[1].mag = 2;
-		Obstacle.types[2].mag = 2;
-		Obstacle.types[3].mag = 1;
+            Obstacle.types[0].mag = 2;
+            Obstacle.types[1].mag = 2;
+            Obstacle.types[2].mag = 2;
+            Obstacle.types[3].mag = 1;
 
-		Obstacle.types[3].sprite = Runner.imageSpriteBicycle;
-		Nath.animFrames.WAITING.sprite = Runner.imageSpriteNatIdling;
-		Nath.animFrames.JUMPING.sprite = Runner.imageSpriteNatRunning;
-		Nath.animFrames.DUCKING.sprite = Runner.imageSpriteNatSliding;
-		Nath.animFrames.RUNNING.sprite = Runner.imageSpriteNatRunning;
-		Nath.animFrames.CRASHED.sprite = Runner.imageSpriteNatCrashed;
+            Obstacle.types[3].sprite = Runner.imageSpriteBicycle;
+            Nath.animFrames.WAITING.sprite = Runner.imageSpriteNatIdling;
+            Nath.animFrames.JUMPING.sprite = Runner.imageSpriteNatRunning;
+            Nath.animFrames.DUCKING.sprite = Runner.imageSpriteNatSliding;
+            Nath.animFrames.RUNNING.sprite = Runner.imageSpriteNatRunning;
+            Nath.animFrames.CRASHED.sprite = Runner.imageSpriteNatCrashed;
 
 
-            } else {
-		//NYI
-		console.error("NYI: 1x isn't supported ATM.");
-                /*
-                Runner.imageSprite = document.getElementById('offline-resources-1x');
-                this.spriteDef = Runner.spriteDefinition.LDPI;
-                */
+          } else {
+            //NYI
+            console.error("NYI: 1x isn't supported ATM.");
+            /*
+            Runner.imageSprite = document.getElementById('offline-resources-1x');
+            this.spriteDef = Runner.spriteDefinition.LDPI;
+            */
+          }
+
+          var loader = {
+            spriteList: [ Runner.imageSprite, Runner.imageSpriteNatRunning, Runner.imageSpriteNatIdling, Runner.imageSpriteNatCrashed, Runner.imageSpriteBicycle, ],
+            runner: this,
+            load: function() {
+
+              let sprite;
+
+              while (sprite = this.spriteList.shift()) {
+                if (!sprite.complete) {
+                  sprite.addEventListener(Runner.events.LOAD, this.load.bind(this));
+                  return;
+                }
+                console.debug("Sprites loaded.", sprite);
+              }
+
+              this.runner.init();
             }
 
-	    var loader = {
-		spriteList: [ Runner.imageSprite, Runner.imageSpriteNatRunning, Runner.imageSpriteNatIdling, Runner.imageSpriteNatCrashed, Runner.imageSpriteBicycle, ],
-		runner: this,
-		load: function() {
-
-		    let sprite;
-
-		    while (sprite = this.spriteList.shift()) {
-			    if (!sprite.complete) {
-				    sprite.addEventListener(Runner.events.LOAD, this.load.bind(this));
-				    return;
-			    }
-			    console.debug("Sprites loaded.", sprite);
-		    }
-
-		    this.runner.init();
-		}
-
-	    }
+          }
 
 
-	    loader.load();
+          loader.load();
 
         },
 
@@ -366,24 +368,24 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Load and decode base 64 encoded sounds.
          */
         loadSounds: function () {
-            if (!IS_IOS) {
-                this.audioContext = new AudioContext();
+          if (!IS_IOS) {
+            this.audioContext = new AudioContext();
 
-                var resourceTemplate =
-                    document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
+            var resourceTemplate =
+            document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
 
-                for (var sound in Runner.sounds) {
-                    var soundSrc =
-                        resourceTemplate.getElementById(Runner.sounds[sound]).src;
-                    soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
-                    var buffer = decodeBase64ToArrayBuffer(soundSrc);
+            for (var sound in Runner.sounds) {
+              var soundSrc =
+              resourceTemplate.getElementById(Runner.sounds[sound]).src;
+              soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
+              var buffer = decodeBase64ToArrayBuffer(soundSrc);
 
-                    // Async, so no guarantee of order in array.
-                    this.audioContext.decodeAudioData(buffer, function (index, audioData) {
-                        this.soundFx[index] = audioData;
-                    }.bind(this, sound));
-                }
+              // Async, so no guarantee of order in array.
+              this.audioContext.decodeAudioData(buffer, function (index, audioData) {
+                this.soundFx[index] = audioData;
+              }.bind(this, sound));
             }
+          }
         },
 
         /**
@@ -391,49 +393,48 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} opt_speed
          */
         setSpeed: function (opt_speed) {
-            var speed = opt_speed || this.currentSpeed;
+          var speed = opt_speed || this.currentSpeed;
 
-            // Reduce the speed on smaller mobile screens.
-            if (this.dimensions.WIDTH < DEFAULT_WIDTH) {
-                var mobileSpeed = speed * this.dimensions.WIDTH / DEFAULT_WIDTH *
-                    this.config.MOBILE_SPEED_COEFFICIENT;
-                this.currentSpeed = mobileSpeed > speed ? speed : mobileSpeed;
-            } else if (opt_speed) {
-                this.currentSpeed = opt_speed;
-            }
+          // Reduce the speed on smaller mobile screens.
+          if (this.dimensions.WIDTH < DEFAULT_WIDTH) {
+            var mobileSpeed = speed * this.dimensions.WIDTH / DEFAULT_WIDTH *
+            this.config.MOBILE_SPEED_COEFFICIENT;
+            this.currentSpeed = mobileSpeed > speed ? speed : mobileSpeed;
+          } else if (opt_speed) {
+            this.currentSpeed = opt_speed;
+          }
         },
 
 
         /**
          * Adjust sky light.
          */
-	adjustSkyGradient: function(ratio) {
+        adjustSkyGradient: function(ratio) {
 
-	    let gradient;
+          let gradient;
 
-            if (ratio == 0) {
-                gradient = this.gradients.sky1;
-	    } else if (ratio == 1) {
-                this.gradients.sky1 = gradient = this.gradients.sky2;
-            } else {
-                gradient = [];
-                for(let i = 0; i < 6; i++) {
-                    gradient.push(Math.floor(this.gradients.sky1[i] +
-                                (this.gradients.sky2[i] - this.gradients.sky1[i]) * ratio));
-                }
+          if (ratio == 0) {
+            gradient = this.gradients.sky1;
+          } else if (ratio == 1) {
+            this.gradients.sky1 = gradient = this.gradients.sky2;
+          } else {
+            gradient = [];
+            for(let i = 0; i < 6; i++) {
+              gradient.push(Math.floor(this.gradients.sky1[i] + (this.gradients.sky2[i] - this.gradients.sky1[i]) * ratio));
             }
+          }
 
-            let rgb0x1 = ((1 << 24) + (gradient[0] << 16) + (gradient[1] << 8) + gradient[2]).toString(16).slice(1);
-            let rgb0x2 = ((1 << 24) + (gradient[3] << 16) + (gradient[4] << 8) + gradient[5]).toString(16).slice(1);
+          let rgb0x1 = ((1 << 24) + (gradient[0] << 16) + (gradient[1] << 8) + gradient[2]).toString(16).slice(1);
+          let rgb0x2 = ((1 << 24) + (gradient[3] << 16) + (gradient[4] << 8) + gradient[5]).toString(16).slice(1);
 
-            if (this.gradients.rgb0x1 != rgb0x1 || this.gradients.rgb0x2 != rgb0x2) {
-                this.skyGradient = this.canvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
-                this.skyGradient.addColorStop(0, "#" + rgb0x1);
-                this.skyGradient.addColorStop(1, "#" + rgb0x2);
-                this.gradients.rgb0x1 = rgb0x1;
-                this.gradients.rgb0x2 = rgb0x2;
-            }
-	},
+          if (this.gradients.rgb0x1 != rgb0x1 || this.gradients.rgb0x2 != rgb0x2) {
+            this.skyGradient = this.canvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
+            this.skyGradient.addColorStop(0, "#" + rgb0x1);
+            this.skyGradient.addColorStop(1, "#" + rgb0x2);
+            this.gradients.rgb0x1 = rgb0x1;
+            this.gradients.rgb0x2 = rgb0x2;
+          }
+        },
 
         /**
          * Game initialiser.
@@ -450,61 +451,61 @@ IS_HIDPI = true; // Force HIDPI for now.
           this.containerEl.className = Runner.classes.CONTAINER;
 //	      this.containerEl.style.borderRadius = "20px";
 
-            // Player canvas container.
-            this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
-              this.dimensions.HEIGHT, Runner.classes.PLAYER);
+          // Player canvas container.
+          this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
+            this.dimensions.HEIGHT, Runner.classes.PLAYER);
 
             // This or we won't recieve
-            this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
+          this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
 
-            this.canvasCtx = this.canvas.getContext('2d');
-            this.canvasCtx.fillStyle = '#f7f7f7';
-            this.canvasCtx.fill();
-            Runner.updateCanvasScaling(this.canvas);
-            this.gradients = {};
+          this.canvasCtx = this.canvas.getContext('2d');
+          this.canvasCtx.fillStyle = '#f7f7f7';
+          this.canvasCtx.fill();
+          Runner.updateCanvasScaling(this.canvas);
+          this.gradients = {};
 
-            this.gradients.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
-            this.gradients.grass.addColorStop(0, "#B17A32");
-            this.gradients.grass.addColorStop(1, "#69a242");
+          this.gradients.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
+          this.gradients.grass.addColorStop(0, "#B17A32");
+          this.gradients.grass.addColorStop(1, "#69a242");
 
-            /* Will switch to gradient on starting */
-            this.gradients.sky2 = this.gradients.sky1 = Runner.config.SKY.START;
-            this.adjustSkyGradient(1);
+          /* Will switch to gradient on starting */
+          this.gradients.sky2 = this.gradients.sky1 = Runner.config.SKY.START;
+          this.adjustSkyGradient(1);
 
-            // Horizon contains clouds, obstacles and the ground.
-            this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
-              this.config.GAP_COEFFICIENT);
+          // Horizon contains clouds, obstacles and the ground.
+          this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
+            this.config.GAP_COEFFICIENT);
 
-            // Distance meter
-            this.distanceMeter = new DistanceMeter(this.canvas,
-              this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
+          // Distance meter
+          this.distanceMeter = new DistanceMeter(this.canvas,
+            this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
 
-            // Draw Natherine
-            this.nath = new Nath(this.canvas, this.spriteDef.NATHERINE);
+          // Draw Natherine
+          this.nath = new Nath(this.canvas, this.spriteDef.NATHERINE);
 
-            this.outerContainerEl.appendChild(this.containerEl);
+          this.outerContainerEl.appendChild(this.containerEl);
 
-            this.spacebarEl = document.createElement('div');
-            this.spacebarEl.className = Runner.classes.SPACEBAR;
-            this.outerContainerEl.appendChild(this.spacebarEl);
-            this.spacebarEl.style.width = '75px';
-            this.spacebarEl.style.height = '40px';
-            this.spacebarEl.style.zIndex = '3';
-            this.spacebarEl.style.backgroundImage = 'url(assets/spacebar.png)';
-            this.spacebarEl.style.top = this.containerEl.offsetTop + 120 +'px';
-            this.spacebarEl.style.left = this.containerEl.offsetLeft + 30 +'px';
-            this.spacebarEl.style.position = 'absolute';
-            this.spacebarEl.style.animation = 'blinker 1s linear infinite';
+          this.spacebarEl = document.createElement('div');
+          this.spacebarEl.className = Runner.classes.SPACEBAR;
+          this.outerContainerEl.appendChild(this.spacebarEl);
+          this.spacebarEl.style.width = '75px';
+          this.spacebarEl.style.height = '40px';
+          this.spacebarEl.style.zIndex = '3';
+          this.spacebarEl.style.backgroundImage = 'url(assets/spacebar.png)';
+          this.spacebarEl.style.top = this.containerEl.offsetTop + 120 +'px';
+          this.spacebarEl.style.left = this.containerEl.offsetLeft + 30 +'px';
+          this.spacebarEl.style.position = 'absolute';
+          this.spacebarEl.style.animation = 'blinker 1s linear infinite';
 
-            if (IS_MOBILE) {
-              this.createTouchController();
-            }
+          if (IS_MOBILE) {
+            this.createTouchController();
+          }
 
-            this.startListening();
-            this.update();
+          this.startListening();
+          this.update();
 
-            window.addEventListener(Runner.events.RESIZE,
-              this.debounceResize.bind(this));
+          window.addEventListener(Runner.events.RESIZE,
+            this.debounceResize.bind(this));
         },
 
         /**
@@ -530,43 +531,43 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Adjust game space dimensions on resize.
          */
         adjustDimensions: function () {
-            clearInterval(this.resizeTimerId_);
-            this.resizeTimerId_ = null;
+          clearInterval(this.resizeTimerId_);
+          this.resizeTimerId_ = null;
 
-            var boxStyles = window.getComputedStyle(this.outerContainerEl);
-            var padding = Number(boxStyles.paddingLeft.substr(0,
-                boxStyles.paddingLeft.length - 2));
+          var boxStyles = window.getComputedStyle(this.outerContainerEl);
+          var padding = Number(boxStyles.paddingLeft.substr(0,
+            boxStyles.paddingLeft.length - 2));
 
-            this.dimensions.WIDTH = this.outerContainerEl.offsetWidth - padding * 2;
+          this.dimensions.WIDTH = this.outerContainerEl.offsetWidth - padding * 2;
 
-            // Redraw the elements back onto the canvas.
-            if (this.canvas) {
-                this.canvas.width = this.dimensions.WIDTH;
-                this.canvas.height = this.dimensions.HEIGHT;
+          // Redraw the elements back onto the canvas.
+          if (this.canvas) {
+            this.canvas.width = this.dimensions.WIDTH;
+            this.canvas.height = this.dimensions.HEIGHT;
 
-                Runner.updateCanvasScaling(this.canvas);
+            Runner.updateCanvasScaling(this.canvas);
 
-                this.distanceMeter.calcXPos(this.dimensions.WIDTH);
-                this.clearCanvas();
-                this.horizon.update(0, this.currentSpeed, true);
-                this.nath.update(0);
+            this.distanceMeter.calcXPos(this.dimensions.WIDTH);
+            this.clearCanvas();
+            this.horizon.update(0, this.currentSpeed, true);
+            this.nath.update(0);
 
-                // Outer container and distance meter.
-                if (this.playing || this.crashed || this.paused) {
-                    this.containerEl.style.width = this.dimensions.WIDTH + 'px';
-                    this.containerEl.style.height = this.dimensions.HEIGHT + 'px';
-                    this.distanceMeter.update(0, Math.ceil(this.distanceRan));
-                    this.stop();
-                } else {
-                    this.nath.draw(0, 0);
-                }
-
-                // Game over panel.
-                if (this.crashed && this.gameOverPanel) {
-                    this.gameOverPanel.updateDimensions(this.dimensions.WIDTH);
-                    this.gameOverPanel.draw();
-                }
+            // Outer container and distance meter.
+            if (this.playing || this.crashed || this.paused) {
+              this.containerEl.style.width = this.dimensions.WIDTH + 'px';
+              this.containerEl.style.height = this.dimensions.HEIGHT + 'px';
+              this.distanceMeter.update(0, Math.ceil(this.distanceRan));
+              this.stop();
+            } else {
+              this.nath.draw(0, 0);
             }
+
+            // Game over panel.
+            if (this.crashed && this.gameOverPanel) {
+              this.gameOverPanel.updateDimensions(this.dimensions.WIDTH);
+              this.gameOverPanel.draw();
+            }
+          }
         },
 
         /**
@@ -574,40 +575,39 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Canvas container width expands out to the full width.
          */
         playIntro: function () {
-            if (!this.activated && !this.crashed) {
-                this.playingIntro = true;
-                this.nath.playingIntro = true;
+          if (!this.activated && !this.crashed) {
+            this.playingIntro = true;
+            this.nath.playingIntro = true;
 
-                // CSS animation definition.
-                var keyframes = '@-webkit-keyframes intro { ' +
-                    'from { border-radius: 20px; width:' + Nath.config.WIDTH + 'px }' +
-                    'to { border-radius: 10px; width: ' + this.dimensions.WIDTH + 'px }' +
-                    '}';
+            // CSS animation definition.
+            var keyframes = '@-webkit-keyframes intro { ' +
+            'from { border-radius: 20px; width:' + Nath.config.WIDTH + 'px }' +
+            'to { border-radius: 10px; width: ' + this.dimensions.WIDTH + 'px }' +
+            '}';
 
-                // create a style sheet to put the keyframe rule in
-                // and then place the style sheet in the html head
-                var sheet = document.createElement('style');
-                sheet.innerHTML = keyframes;
-                document.head.appendChild(sheet);
+            // create a style sheet to put the keyframe rule in
+            // and then place the style sheet in the html head
+            var sheet = document.createElement('style');
+            sheet.innerHTML = keyframes;
+            document.head.appendChild(sheet);
 
-                this.containerEl.addEventListener(Runner.events.ANIM_END,
-                    this.startGame.bind(this));
+            this.containerEl.addEventListener(Runner.events.ANIM_END,
+              this.startGame.bind(this));
 
-                this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
-                this.containerEl.style.width = this.dimensions.WIDTH + 'px';
-                this.containerEl.style.borderRadius = "10px";
+            this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
+            this.containerEl.style.width = this.dimensions.WIDTH + 'px';
+            this.containerEl.style.borderRadius = "10px";
 
-                // if (this.touchController) {
-                //     this.outerContainerEl.appendChild(this.touchController);
-                // }
-                this.playing = true;
-                this.activated = true;
+            // if (this.touchController) {
+            //     this.outerContainerEl.appendChild(this.touchController);
+            // }
+            this.playing = true;
+            this.activated = true;
 
-            } else if (this.crashed) {
-                this.restart();
-            }
+          } else if (this.crashed) {
+            this.restart();
+          }
         },
-
 
         /**
          * Update the game status to started.
@@ -642,231 +642,230 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Update the game frame and schedules the next one.
          */
         update: function () {
-            this.updatePending = false;
+          this.updatePending = false;
 
-            var now = getTimeStamp();
-            var deltaTime = now - (this.time || now);
-            this.time = now;
+          var now = getTimeStamp();
+          var deltaTime = now - (this.time || now);
+          this.time = now;
 
-            if (this.skyFadingStartTime) {
-                let delta = now - this.skyFadingStartTime;
-                if (delta > Runner.config.SKY_SHADING_DURATION) {
-                    delete this.skyFadingStartTime;
-                    this.adjustSkyGradient(1);
-                } else {
-                    this.adjustSkyGradient(delta/Runner.config.SKY_SHADING_DURATION);
-                }
+          if (this.skyFadingStartTime) {
+            let delta = now - this.skyFadingStartTime;
+            if (delta > Runner.config.SKY_SHADING_DURATION) {
+              delete this.skyFadingStartTime;
+              this.adjustSkyGradient(1);
+            } else {
+              this.adjustSkyGradient(delta/Runner.config.SKY_SHADING_DURATION);
+            }
+          }
+
+          this.clearCanvas();
+
+          this.playHackSlide(!this.nath.ducking);
+
+          if (this.playing) {
+
+            if (this.nath.jumping) {
+              this.nath.updateJump(deltaTime);
             }
 
-            this.clearCanvas();
+            this.runningTime += deltaTime;
+            var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
 
-            this.playHackSlide(!this.nath.ducking);
+            // First jump triggers the intro.
+            if (this.nath.jumpCount == 1 && !this.playingIntro) {
+              this.playIntro();
+            }
 
-            if (this.playing) {
+            // The horizon doesn't move until the intro is over.
+            if (this.playingIntro) {
+              this.horizon.update(0, this.currentSpeed, hasObstacles);
+            } else {
+              deltaTime = !this.activated ? 0 : deltaTime;
+              this.horizon.update(deltaTime, this.currentSpeed, hasObstacles,
+                this.inverted);
+            }
 
-              if (this.nath.jumping) {
-                this.nath.updateJump(deltaTime);
+            // Check for collisions.
+            let collisionBoxes;
+            let collision = false;
+
+            if (hasObstacles) {
+              collisionBoxes = checkForCollision(this.horizon.obstacles[0], this.nath, Runner.config.SHOW_COLLISION && this.canvasCtx);
+              if (collisionBoxes) {
+                collision = true;
               }
+            }
 
-              this.runningTime += deltaTime;
-              var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
+            if (!collision) {
+              this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
 
-              // First jump triggers the intro.
-              if (this.nath.jumpCount == 1 && !this.playingIntro) {
-                this.playIntro();
-              }
-
-              // The horizon doesn't move until the intro is over.
-              if (this.playingIntro) {
-                this.horizon.update(0, this.currentSpeed, hasObstacles);
-              } else {
-                deltaTime = !this.activated ? 0 : deltaTime;
-                this.horizon.update(deltaTime, this.currentSpeed, hasObstacles,
-                  this.inverted);
-              }
-
-              // Check for collisions.
-              let collisionBoxes;
-              let collision = false;
-
-              if (hasObstacles) {
-                collisionBoxes = checkForCollision(this.horizon.obstacles[0], this.nath, Runner.config.SHOW_COLLISION && this.canvasCtx);
-                if (collisionBoxes) {
-                  collision = true;
-                }
-              }
-
-              if (!collision) {
-                this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
-
-                if (this.currentSpeed < this.config.MAX_SPEED) {
-                  this.currentSpeed += this.config.ACCELERATION;
-                }
-              } else {
-                let box = boxIntersection(collisionBoxes[0],collisionBoxes[1]);
-                this.gameOver({x: box.x + box.width/2, y: box.y + box.height/2});
-                this.playHackSlide(true);
-              }
-
-              var playAchievementSound = this.distanceMeter.update(deltaTime,
-                Math.ceil(this.distanceRan));
-
-              if (playAchievementSound) {
-                this.playSound(this.soundFx.SCORE);
-              }
-
-              if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
-                this.invertTimer = 0;
-                this.invertTrigger = false;
-                this.invert();
-              } else if (this.invertTimer) {
-                this.invertTimer += deltaTime;
-              } else {
-                var actualDistance = this.distanceMeter.getActualDistance(Math.ceil(this.distanceRan));
-
-                if (actualDistance > 0) {
-                  this.invertTrigger = !(actualDistance % this.config.INVERT_DISTANCE);
-
-                  if (this.invertTrigger && this.invertTimer === 0) {
-                    this.invertTimer += deltaTime;
-                    this.invert();
-                  }
-                }
+              if (this.currentSpeed < this.config.MAX_SPEED) {
+                this.currentSpeed += this.config.ACCELERATION;
               }
             } else {
-              this.horizon.update(0, this.currentSpeed, true);
+              let box = boxIntersection(collisionBoxes[0],collisionBoxes[1]);
+              this.gameOver({x: box.x + box.width/2, y: box.y + box.height/2});
+              this.playHackSlide(true);
             }
 
-            if (this.playing || (!this.activated &&
-                this.nath.blinkCount < Runner.config.MAX_BLINK_COUNT)) {
+            var playAchievementSound = this.distanceMeter.update(deltaTime,
+              Math.ceil(this.distanceRan));
+
+            if (playAchievementSound) {
+              this.playSound(this.soundFx.SCORE);
+            }
+
+            if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
+              this.invertTimer = 0;
+              this.invertTrigger = false;
+              this.invert();
+            } else if (this.invertTimer) {
+              this.invertTimer += deltaTime;
+            } else {
+              var actualDistance = this.distanceMeter.getActualDistance(Math.ceil(this.distanceRan));
+
+              if (actualDistance > 0) {
+                this.invertTrigger = !(actualDistance % this.config.INVERT_DISTANCE);
+
+                if (this.invertTrigger && this.invertTimer === 0) {
+                  this.invertTimer += deltaTime;
+                  this.invert();
+                }
+              }
+            }
+          } else {
+            this.horizon.update(0, this.currentSpeed, true);
+          }
+
+          if (this.playing || (!this.activated &&
+            this.nath.blinkCount < Runner.config.MAX_BLINK_COUNT)) {
 
               /* Draw dashes */
-//              if (this.jumpStart) {
-              if (this.willJump && this.nath.yPos == this.nath.groundYPos) {
-                let now = getTimeStamp();
-                let delta = Runner.config.MIN_JUMP_PRESS + now - this.jumpStart;
-                if (delta > Runner.config.MAX_JUMP_PRESS) {
-                  delta = Runner.config.MAX_JUMP_PRESS
-                }
-
-                let fallDuration = Math.sqrt(2000 * delta / Nath.config.GRAVITY);
-
-                let jumpTop = delta / 1000;
-
-                this.canvasCtx.save();
-                this.canvasCtx.beginPath();
-                this.canvasCtx.strokeStyle = "#000000";
-
-                let x = this.nath.xPos;
-                let y = this.nath.yPos + 35;
-                var increment = this.currentSpeed * (FPS / 20) ;
-
-                for (let t = -fallDuration + 50, i=1; t <= fallDuration + 50; t+= 50, i++) {
-                  let d = jumpTop - (0.0000005 * Nath.config.GRAVITY * t * t);
-                  let yy = y - d * 210;
-                  if (i == 0) {
-                    this.canvasCtx.moveTo(x + i*increment, yy);
-                  } else {
-                    this.canvasCtx.lineTo(x + i*increment, yy);
-                  }
-                }
-
-                // Shadow
-                now = 8 - now%8;
-                let alpha = (fallDuration-200)/200;
-                if (alpha > 1) alpha = 1;
-                this.canvasCtx.setLineDash([2,6]);
-
-                this.canvasCtx.lineWidth = 2.0;
-                this.canvasCtx.lineDashOffset = now + 4;
-                this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
-                this.canvasCtx.stroke();
-
-                this.canvasCtx.lineWidth = 2.0;
-                this.canvasCtx.lineDashOffset = now;
-                this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
-                this.canvasCtx.stroke();
-
-                this.canvasCtx.restore();
+              //              if (this.jumpStart) {
+            if (this.willJump && this.nath.yPos == this.nath.groundYPos) {
+              let now = getTimeStamp();
+              let delta = Runner.config.MIN_JUMP_PRESS + now - this.jumpStart;
+              if (delta > Runner.config.MAX_JUMP_PRESS) {
+                delta = Runner.config.MAX_JUMP_PRESS
               }
 
-              this.nath.update(deltaTime);
-              this.scheduleNextUpdate();
+              let fallDuration = Math.sqrt(2000 * delta / Nath.config.GRAVITY);
+
+              let jumpTop = delta / 1000;
+
+              this.canvasCtx.save();
+              this.canvasCtx.beginPath();
+              this.canvasCtx.strokeStyle = "#000000";
+
+              let x = this.nath.xPos;
+              let y = this.nath.yPos + 35;
+              var increment = this.currentSpeed * (FPS / 20) ;
+
+              for (let t = -fallDuration + 50, i=1; t <= fallDuration + 50; t+= 50, i++) {
+                let d = jumpTop - (0.0000005 * Nath.config.GRAVITY * t * t);
+                let yy = y - d * 210;
+                if (i == 0) {
+                  this.canvasCtx.moveTo(x + i*increment, yy);
+                } else {
+                  this.canvasCtx.lineTo(x + i*increment, yy);
+                }
+              }
+
+              // Shadow
+              now = 8 - now%8;
+              let alpha = (fallDuration-200)/200;
+              if (alpha > 1) alpha = 1;
+              this.canvasCtx.setLineDash([2,6]);
+
+              this.canvasCtx.lineWidth = 2.0;
+              this.canvasCtx.lineDashOffset = now + 4;
+              this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
+              this.canvasCtx.stroke();
+
+              this.canvasCtx.lineWidth = 2.0;
+              this.canvasCtx.lineDashOffset = now;
+              this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
+              this.canvasCtx.stroke();
+
+              this.canvasCtx.restore();
             }
+
+            this.nath.update(deltaTime);
+            this.scheduleNextUpdate();
+          }
         },
 
         /**
          * Event handler.
          */
         handleEvent: function (e) {
-            return (function (evtType, events) {
-                switch (evtType) {
-                    case events.KEYDOWN:
-                    case events.TOUCHSTART:
-                    case events.MOUSEDOWN:
-                        this.onKeyDown(e);
-                        break;
-                    case events.KEYUP:
-                    case events.TOUCHEND:
-                    case events.MOUSEUP:
-                        this.onKeyUp(e);
-                        break;
-                }
-            }.bind(this))(e.type, Runner.events);
+          return (function (evtType, events) {
+            switch (evtType) {
+              case events.KEYDOWN:
+              case events.TOUCHSTART:
+              case events.MOUSEDOWN:
+              this.onKeyDown(e);
+              break;
+              case events.KEYUP:
+              case events.TOUCHEND:
+              case events.MOUSEUP:
+              this.onKeyUp(e);
+              break;
+            }
+          }.bind(this))(e.type, Runner.events);
         },
 
         /**
          * Bind relevant key / mouse / touch listeners.
          */
         startListening: function () {
-            // Keys.
-            document.addEventListener(Runner.events.KEYDOWN, this);
-            document.addEventListener(Runner.events.KEYUP, this);
+          // Keys.
+          document.addEventListener(Runner.events.KEYDOWN, this);
+          document.addEventListener(Runner.events.KEYUP, this);
 
-            if (IS_MOBILE) {
-                // Mobile only touch devices.
-                this.touchController.addEventListener(Runner.events.TOUCHSTART, this);
-                this.touchController.addEventListener(Runner.events.TOUCHEND, this);
-                this.containerEl.addEventListener(Runner.events.TOUCHSTART, this);
-            } else {
-                // Mouse.
-                document.addEventListener(Runner.events.MOUSEDOWN, this);
-                document.addEventListener(Runner.events.MOUSEUP, this);
-            }
+          if (IS_MOBILE) {
+            // Mobile only touch devices.
+            this.touchController.addEventListener(Runner.events.TOUCHSTART, this);
+            this.touchController.addEventListener(Runner.events.TOUCHEND, this);
+            this.containerEl.addEventListener(Runner.events.TOUCHSTART, this);
+          } else {
+            // Mouse.
+            document.addEventListener(Runner.events.MOUSEDOWN, this);
+            document.addEventListener(Runner.events.MOUSEUP, this);
+          }
         },
 
         /**
          * Remove all listeners.
          */
         stopListening: function () {
-            document.removeEventListener(Runner.events.KEYDOWN, this);
-            document.removeEventListener(Runner.events.KEYUP, this);
+          document.removeEventListener(Runner.events.KEYDOWN, this);
+          document.removeEventListener(Runner.events.KEYUP, this);
 
-            if (IS_MOBILE) {
-                this.touchController.removeEventListener(Runner.events.TOUCHSTART, this);
-                this.touchController.removeEventListener(Runner.events.TOUCHEND, this);
-                this.containerEl.removeEventListener(Runner.events.TOUCHSTART, this);
-            } else {
-                document.removeEventListener(Runner.events.MOUSEDOWN, this);
-                document.removeEventListener(Runner.events.MOUSEUP, this);
-            }
+          if (IS_MOBILE) {
+            this.touchController.removeEventListener(Runner.events.TOUCHSTART, this);
+            this.touchController.removeEventListener(Runner.events.TOUCHEND, this);
+            this.containerEl.removeEventListener(Runner.events.TOUCHSTART, this);
+          } else {
+            document.removeEventListener(Runner.events.MOUSEDOWN, this);
+            document.removeEventListener(Runner.events.MOUSEUP, this);
+          }
         },
 
         playHackSlide: function (stop) {
-            if (stop) {
-                if (this.hackSlideSoundNode) {
-                    this.hackSlideSoundNode.stop(0);
-                    delete this.hackSlideSoundNode;
-                }
-            } else if (this.soundFx.SOUND_SLIDE && !this.hackSlideSoundNode) {
-                this.hackSlideSoundNode = this.audioContext.createBufferSource();
-                this.hackSlideSoundNode.buffer = this.soundFx.SOUND_SLIDE;
-                this.hackSlideSoundNode.connect(this.audioContext.destination);
-                this.hackSlideSoundNode.loop = true;
-                this.hackSlideSoundNode.start(0);
+          if (stop) {
+            if (this.hackSlideSoundNode) {
+              this.hackSlideSoundNode.stop(0);
+              delete this.hackSlideSoundNode;
             }
+          } else if (this.soundFx.SOUND_SLIDE && !this.hackSlideSoundNode) {
+            this.hackSlideSoundNode = this.audioContext.createBufferSource();
+            this.hackSlideSoundNode.buffer = this.soundFx.SOUND_SLIDE;
+            this.hackSlideSoundNode.connect(this.audioContext.destination);
+            this.hackSlideSoundNode.loop = true;
+            this.hackSlideSoundNode.start(0);
+          }
         },
-
 
         /**
          * Process keydown.
@@ -988,18 +987,18 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @return {boolean}
          */
         isLeftClickOnCanvas: function (e) {
-            return e.button != null && e.button < 2 &&
-                e.type == Runner.events.MOUSEUP && e.target == this.canvas;
+          return e.button != null && e.button < 2 &&
+            e.type == Runner.events.MOUSEUP && e.target == this.canvas;
         },
 
         /**
          * RequestAnimationFrame wrapper.
          */
         scheduleNextUpdate: function () {
-            if (!this.updatePending) {
-                this.updatePending = true;
-                this.raqId = requestAnimationFrame(this.update.bind(this));
-            }
+          if (!this.updatePending) {
+            this.updatePending = true;
+            this.raqId = requestAnimationFrame(this.update.bind(this));
+          }
         },
 
         /**
@@ -1007,14 +1006,14 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @return {boolean}
          */
         isRunning: function () {
-            return !!this.raqId;
+          return !!this.raqId;
         },
 
         /**
          * Game over state.
-         * @param {point} p
+         * @param {point} crashPoint
          */
-        gameOver: function (p) {
+        gameOver: function (crashPoint) {
           if (!Runner.config.SHOW_COLLISION) {
             this.clearCanvas();
             this.horizon.update(0, 0, true);
@@ -1027,12 +1026,14 @@ IS_HIDPI = true; // Force HIDPI for now.
           this.crashed = true;
           this.distanceMeter.acheivement = false;
 
+          //
           this.canvasCtx.drawImage(Runner.imageSprite,
             Runner.spriteDefinition.HDPI.CRASH.x,
             Runner.spriteDefinition.HDPI.CRASH.y,
-            32, 32,
-            p.x-16, p.y-16,
-            32, 32);
+            this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
+            crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
+            this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
+
           this.nath.update(100, Nath.status.CRASHED);
 
           // Game over panel.
@@ -1056,55 +1057,54 @@ IS_HIDPI = true; // Force HIDPI for now.
         },
 
         stop: function () {
-            this.playing = false;
-            this.paused = true;
-            cancelAnimationFrame(this.raqId);
-            this.raqId = 0;
+          this.playing = false;
+          this.paused = true;
+          cancelAnimationFrame(this.raqId);
+          this.raqId = 0;
         },
 
         play: function () {
-            if (!this.crashed) {
-                this.playing = true;
-                this.paused = false;
-                this.nath.update(0, Nath.status.RUNNING);
-                this.time = getTimeStamp();
-                this.update();
-            }
-
+          if (!this.crashed) {
+            this.playing = true;
+            this.paused = false;
+            this.nath.update(0, Nath.status.RUNNING);
+            this.time = getTimeStamp();
+            this.update();
+          }
         },
 
         restart: function () {
-            if (!this.raqId) {
-                this.playCount++;
-                this.runningTime = 0;
-                this.playing = true;
-                this.crashed = false;
-                this.distanceRan = 0;
-                this.jumpStart = 0;
-                this.setSpeed(this.config.SPEED);
-                this.time = getTimeStamp();
-                this.containerEl.classList.remove(Runner.classes.CRASHED);
-                this.clearCanvas();
-                this.distanceMeter.reset(this.highestScore);
-                this.horizon.reset();
-                this.nath.reset();
-                this.playSound(this.soundFx.BUTTON_PRESS);
-                this.invert(true);
-                this.update();
-            }
+          if (!this.raqId) {
+            this.playCount++;
+            this.runningTime = 0;
+            this.playing = true;
+            this.crashed = false;
+            this.distanceRan = 0;
+            this.jumpStart = 0;
+            this.setSpeed(this.config.SPEED);
+            this.time = getTimeStamp();
+            this.containerEl.classList.remove(Runner.classes.CRASHED);
+            this.clearCanvas();
+            this.distanceMeter.reset(this.highestScore);
+            this.horizon.reset();
+            this.nath.reset();
+            this.playSound(this.soundFx.BUTTON_PRESS);
+            this.invert(true);
+            this.update();
+          }
         },
 
         /**
          * Pause the game if the tab is not in focus.
          */
         onVisibilityChange: function (e) {
-            if (document.hidden || document.webkitHidden || e.type == 'blur' ||
-                document.visibilityState != 'visible') {
-                this.stop();
-            } else if (!this.crashed) {
-                this.nath.reset();
-                this.play();
-            }
+          if (document.hidden || document.webkitHidden || e.type == 'blur' ||
+          document.visibilityState != 'visible') {
+            this.stop();
+          } else if (!this.crashed) {
+            this.nath.reset();
+            this.play();
+          }
         },
 
         /**
@@ -1112,12 +1112,12 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {SoundBuffer} soundBuffer
          */
         playSound: function (soundBuffer) {
-            if (soundBuffer) {
-                var sourceNode = this.audioContext.createBufferSource();
-                sourceNode.buffer = soundBuffer;
-                sourceNode.connect(this.audioContext.destination);
-                sourceNode.start(0);
-            }
+          if (soundBuffer) {
+            var sourceNode = this.audioContext.createBufferSource();
+            sourceNode.buffer = soundBuffer;
+            sourceNode.connect(this.audioContext.destination);
+            sourceNode.start(0);
+          }
         },
 
         /**
@@ -1125,13 +1125,13 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {boolean} Whether to reset colors.
          */
         invert: function (reset) {
-            if (reset) {
-                document.body.classList.toggle(Runner.classes.INVERTED, false);
-                this.invertTimer = 0;
-                this.inverted = false;
-            } else {
-                this.inverted = document.body.classList.toggle(Runner.classes.INVERTED,
-                    this.invertTrigger);
+          if (reset) {
+            document.body.classList.toggle(Runner.classes.INVERTED, false);
+            this.invertTimer = 0;
+            this.inverted = false;
+          } else {
+            this.inverted = document.body.classList.toggle(Runner.classes.INVERTED,
+              this.invertTrigger);
             }
 
             //FIXME setting sky2 should actually set sky1 to current ratio.
@@ -1141,22 +1141,22 @@ IS_HIDPI = true; // Force HIDPI for now.
 
 
         setSky: function (gr) {
-            let v1,v2;
+          let v1,v2;
 
-            v1 = parseInt(this.gradients.rgb0x1, 16);
-            v2 = parseInt(this.gradients.rgb0x2, 16);
+          v1 = parseInt(this.gradients.rgb0x1, 16);
+          v2 = parseInt(this.gradients.rgb0x2, 16);
 
-            this.gradients.sky1 = [
-                (v1 >> 16) & 0xFF,
-                (v1 >> 8) & 0xFF,
-                 v1 & 0xFF,
-                (v2 >> 16) & 0xFF,
-                (v2 >> 8) & 0xFF,
-                 v2 & 0xFF
-            ];
-            this.gradients.sky2 = gr;
+          this.gradients.sky1 = [
+            (v1 >> 16) & 0xFF,
+            (v1 >> 8) & 0xFF,
+            v1 & 0xFF,
+            (v2 >> 16) & 0xFF,
+            (v2 >> 8) & 0xFF,
+            v2 & 0xFF
+          ];
+          this.gradients.sky2 = gr;
 
-            this.skyFadingStartTime = getTimeStamp();
+          this.skyFadingStartTime = getTimeStamp();
         }
     };
 
@@ -1175,35 +1175,35 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @return {boolean} Whether the canvas was scaled.
      */
     Runner.updateCanvasScaling = function (canvas, opt_width, opt_height) {
-        var context = canvas.getContext('2d');
+      var context = canvas.getContext('2d');
 
-        // Query the various pixel ratios
-        var devicePixelRatio = Math.floor(window.devicePixelRatio) || 1;
-        var backingStoreRatio = Math.floor(context.webkitBackingStorePixelRatio) || 1;
-        var ratio = devicePixelRatio / backingStoreRatio;
+      // Query the various pixel ratios
+      var devicePixelRatio = Math.floor(window.devicePixelRatio) || 1;
+      var backingStoreRatio = Math.floor(context.webkitBackingStorePixelRatio) || 1;
+      var ratio = devicePixelRatio / backingStoreRatio;
 
-        // Upscale the canvas if the two ratios don't match
-        if (devicePixelRatio !== backingStoreRatio) {
-            var oldWidth = opt_width || canvas.width;
-            var oldHeight = opt_height || canvas.height;
+      // Upscale the canvas if the two ratios don't match
+      if (devicePixelRatio !== backingStoreRatio) {
+        var oldWidth = opt_width || canvas.width;
+        var oldHeight = opt_height || canvas.height;
 
-            canvas.width = oldWidth * ratio;
-            canvas.height = oldHeight * ratio;
+        canvas.width = oldWidth * ratio;
+        canvas.height = oldHeight * ratio;
 
-            canvas.style.width = oldWidth + 'px';
-            canvas.style.height = oldHeight + 'px';
+        canvas.style.width = oldWidth + 'px';
+        canvas.style.height = oldHeight + 'px';
 
-            // Scale the context to counter the fact that we've manually scaled
-            // our canvas element.
-            context.scale(ratio, ratio);
-            return true;
-        } else if (devicePixelRatio == 1) {
-            // Reset the canvas width / height. Fixes scaling bug when the page is
-            // zoomed and the devicePixelRatio changes accordingly.
-            canvas.style.width = canvas.width + 'px';
-            canvas.style.height = canvas.height + 'px';
-        }
-        return false;
+        // Scale the context to counter the fact that we've manually scaled
+        // our canvas element.
+        context.scale(ratio, ratio);
+        return true;
+      } else if (devicePixelRatio == 1) {
+        // Reset the canvas width / height. Fixes scaling bug when the page is
+        // zoomed and the devicePixelRatio changes accordingly.
+        canvas.style.width = canvas.width + 'px';
+        canvas.style.height = canvas.height + 'px';
+      }
+      return false;
     };
 
 
@@ -1214,7 +1214,7 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @param {number}
      */
     function getRandomNum(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
+      return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
 
@@ -1223,9 +1223,9 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @param {number} duration Duration of the vibration in milliseconds.
      */
     function vibrate(duration) {
-        if (IS_MOBILE && window.navigator.vibrate) {
-            window.navigator.vibrate(duration);
-        }
+      if (IS_MOBILE && window.navigator.vibrate) {
+        window.navigator.vibrate(duration);
+      }
     }
 
 
@@ -1238,14 +1238,14 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @return {HTMLCanvasElement}
      */
     function createCanvas(container, width, height, opt_classname) {
-        var canvas = document.createElement('canvas');
-        canvas.className = opt_classname ? Runner.classes.CANVAS + ' ' +
-            opt_classname : Runner.classes.CANVAS;
-        canvas.width = width;
-        canvas.height = height;
-        container.appendChild(canvas);
+      var canvas = document.createElement('canvas');
+      canvas.className = opt_classname ? Runner.classes.CANVAS + ' ' +
+        opt_classname : Runner.classes.CANVAS;
+      canvas.width = width;
+      canvas.height = height;
+      container.appendChild(canvas);
 
-        return canvas;
+      return canvas;
     }
 
 
@@ -1254,15 +1254,15 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @param {string} base64String
      */
     function decodeBase64ToArrayBuffer(base64String) {
-        var len = (base64String.length / 4) * 3;
-        var str = atob(base64String);
-        var arrayBuffer = new ArrayBuffer(len);
-        var bytes = new Uint8Array(arrayBuffer);
+      var len = (base64String.length / 4) * 3;
+      var str = atob(base64String);
+      var arrayBuffer = new ArrayBuffer(len);
+      var bytes = new Uint8Array(arrayBuffer);
 
-        for (var i = 0; i < len; i++) {
-            bytes[i] = str.charCodeAt(i);
-        }
-        return bytes.buffer;
+      for (var i = 0; i < len; i++) {
+        bytes[i] = str.charCodeAt(i);
+      }
+      return bytes.buffer;
     }
 
 
@@ -1271,7 +1271,7 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @return {number}
      */
     function getTimeStamp() {
-        return IS_IOS ? new Date().getTime() : performance.now();
+      return IS_IOS ? new Date().getTime() : performance.now();
     }
 
 
@@ -1287,12 +1287,12 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @constructor
      */
     function GameOverPanel(canvas, textImgPos, restartImgPos, dimensions) {
-        this.canvas = canvas;
-        this.canvasCtx = canvas.getContext('2d');
-        this.canvasDimensions = dimensions;
-        this.textImgPos = textImgPos;
-        this.restartImgPos = restartImgPos;
-        this.draw();
+      this.canvas = canvas;
+      this.canvasCtx = canvas.getContext('2d');
+      this.canvasDimensions = dimensions;
+      this.textImgPos = textImgPos;
+      this.restartImgPos = restartImgPos;
+      this.draw();
     };
 
 
@@ -1301,12 +1301,12 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {number}
      */
     GameOverPanel.dimensions = {
-        TEXT_X: 0,
-        TEXT_Y: 13,
-        TEXT_WIDTH: 90,
-        TEXT_HEIGHT: 31,
-        RESTART_WIDTH: 38,
-        RESTART_HEIGHT: 34
+      TEXT_X: 0,
+      TEXT_Y: 13,
+      TEXT_WIDTH: 90,
+      TEXT_HEIGHT: 31,
+      RESTART_WIDTH: 38,
+      RESTART_HEIGHT: 34
     };
 
 
@@ -1317,61 +1317,61 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} opt_height Optional new canvas height.
          */
         updateDimensions: function (width, opt_height) {
-            this.canvasDimensions.WIDTH = width;
-            if (opt_height) {
-                this.canvasDimensions.HEIGHT = opt_height;
-            }
+          this.canvasDimensions.WIDTH = width;
+          if (opt_height) {
+            this.canvasDimensions.HEIGHT = opt_height;
+          }
         },
 
         /**
          * Draw the panel.
          */
         draw: function () {
-            var dimensions = GameOverPanel.dimensions;
+          var dimensions = GameOverPanel.dimensions;
 
-            var centerX = this.canvasDimensions.WIDTH / 2;
+          var centerX = this.canvasDimensions.WIDTH / 2;
 
-            // Game over text.
-            var textSourceX = dimensions.TEXT_X;
-            var textSourceY = dimensions.TEXT_Y;
-            var textSourceWidth = dimensions.TEXT_WIDTH;
-            var textSourceHeight = dimensions.TEXT_HEIGHT;
+          // Game over text.
+          var textSourceX = dimensions.TEXT_X;
+          var textSourceY = dimensions.TEXT_Y;
+          var textSourceWidth = dimensions.TEXT_WIDTH;
+          var textSourceHeight = dimensions.TEXT_HEIGHT;
 
-            var textTargetX = Math.round(centerX - (dimensions.TEXT_WIDTH / 2));
-            var textTargetY = Math.round((this.canvasDimensions.HEIGHT - 25) / 3);
-            var textTargetWidth = dimensions.TEXT_WIDTH;
-            var textTargetHeight = dimensions.TEXT_HEIGHT;
+          var textTargetX = Math.round(centerX - (dimensions.TEXT_WIDTH / 2));
+          var textTargetY = Math.round((this.canvasDimensions.HEIGHT - 25) / 3);
+          var textTargetWidth = dimensions.TEXT_WIDTH;
+          var textTargetHeight = dimensions.TEXT_HEIGHT;
 
-            var restartSourceWidth = dimensions.RESTART_WIDTH;
-            var restartSourceHeight = dimensions.RESTART_HEIGHT;
-            var restartTargetX = centerX - (dimensions.RESTART_WIDTH / 2);
-            var restartTargetY = this.canvasDimensions.HEIGHT / 2;
+          var restartSourceWidth = dimensions.RESTART_WIDTH;
+          var restartSourceHeight = dimensions.RESTART_HEIGHT;
+          var restartTargetX = centerX - (dimensions.RESTART_WIDTH / 2);
+          var restartTargetY = this.canvasDimensions.HEIGHT / 2;
 
-            if (IS_HIDPI) {
-                textSourceY *= 2;
-                textSourceX *= 2;
-                textSourceWidth *= 2;
-                textSourceHeight *= 2;
-/* Since we switched to use a smaller version of the button.
-                restartSourceWidth *= 2;
-                restartSourceHeight *= 2;
-*/
-            }
+          if (IS_HIDPI) {
+            textSourceY *= 2;
+            textSourceX *= 2;
+            textSourceWidth *= 2;
+            textSourceHeight *= 2;
+            /* Since we switched to use a smaller version of the button.
+            restartSourceWidth *= 2;
+            restartSourceHeight *= 2;
+            */
+          }
 
-            textSourceX += this.textImgPos.x;
-            textSourceY += this.textImgPos.y;
+          textSourceX += this.textImgPos.x;
+          textSourceY += this.textImgPos.y;
 
-            // Game over text from sprite.
-            this.canvasCtx.drawImage(Runner.imageSprite,
-                textSourceX, textSourceY, textSourceWidth, textSourceHeight,
-                textTargetX, textTargetY, textTargetWidth, textTargetHeight);
+          // Game over text from sprite.
+          this.canvasCtx.drawImage(Runner.imageSprite,
+            textSourceX, textSourceY, textSourceWidth, textSourceHeight,
+            textTargetX, textTargetY, textTargetWidth, textTargetHeight);
 
-            // Restart button.
-            this.canvasCtx.drawImage(Runner.imageSprite,
-                this.restartImgPos.x, this.restartImgPos.y,
-                restartSourceWidth, restartSourceHeight,
-                restartTargetX, restartTargetY, dimensions.RESTART_WIDTH,
-                dimensions.RESTART_HEIGHT);
+          // Restart button.
+          this.canvasCtx.drawImage(Runner.imageSprite,
+            this.restartImgPos.x, this.restartImgPos.y,
+            restartSourceWidth, restartSourceHeight,
+            restartTargetX, restartTargetY, dimensions.RESTART_WIDTH,
+            dimensions.RESTART_HEIGHT);
         }
     };
 
@@ -1387,55 +1387,55 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @return {Array<CollisionBox>}
      */
     function checkForCollision(obstacle, nath, opt_canvasCtx) {
-        var obstacleBoxXPos = Runner.defaultDimensions.WIDTH + obstacle.xPos;
+      var obstacleBoxXPos = Runner.defaultDimensions.WIDTH + obstacle.xPos;
 
-        // Adjustments are made to the bounding box as there is a 1 pixel white
-        // border around Natherine and obstacles.
-        var nathBox = new CollisionBox(
-            nath.xPos + 1,
-            nath.yPos + 1,
-            nath.config.WIDTH - 2,
-            nath.config.HEIGHT - 2);
+      // Adjustments are made to the bounding box as there is a 1 pixel white
+      // border around Natherine and obstacles.
+      var nathBox = new CollisionBox(
+        nath.xPos + 1,
+        nath.yPos + 1,
+        nath.config.WIDTH - 2,
+        nath.config.HEIGHT - 2);
 
-        var obstacleBox = new CollisionBox(
-            obstacle.xPos + 1,
-            obstacle.yPos + 1,
-            obstacle.typeConfig.width * obstacle.size - 2,
-            obstacle.typeConfig.height - 2);
+      var obstacleBox = new CollisionBox(
+        obstacle.xPos + 1,
+        obstacle.yPos + 1,
+        obstacle.typeConfig.width * obstacle.size - 2,
+        obstacle.typeConfig.height - 2);
 
-        // Debug outer box
-        if (opt_canvasCtx) {
-            drawCollisionBoxes(opt_canvasCtx, nathBox, obstacleBox);
-        }
+      // Debug outer box
+      if (opt_canvasCtx) {
+        drawCollisionBoxes(opt_canvasCtx, nathBox, obstacleBox);
+      }
 
-        // Simple outer bounds check.
-        if (boxCompare(nathBox, obstacleBox)) {
-            var collisionBoxes = obstacle.collisionBoxes;
-            var nathCollisionBoxes = nath.ducking ?
-                Nath.collisionBoxes.DUCKING : Nath.collisionBoxes.RUNNING;
+      // Simple outer bounds check.
+      if (boxCompare(nathBox, obstacleBox)) {
+        var collisionBoxes = obstacle.collisionBoxes;
+        var nathCollisionBoxes = nath.ducking ?
+        Nath.collisionBoxes.DUCKING : Nath.collisionBoxes.RUNNING;
 
-            // Detailed axis aligned box check.
-            for (var t = 0; t < nathCollisionBoxes.length; t++) {
-                for (var i = 0; i < collisionBoxes.length; i++) {
-                    // Adjust the box to actual positions.
-                    var adjNathBox =
-                        createAdjustedCollisionBox(nathCollisionBoxes[t], nathBox);
-                    var adjObstacleBox =
-                        createAdjustedCollisionBox(collisionBoxes[i], obstacleBox);
-                    var crashed = boxCompare(adjNathBox, adjObstacleBox);
+        // Detailed axis aligned box check.
+        for (var t = 0; t < nathCollisionBoxes.length; t++) {
+          for (var i = 0; i < collisionBoxes.length; i++) {
+            // Adjust the box to actual positions.
+            var adjNathBox =
+              createAdjustedCollisionBox(nathCollisionBoxes[t], nathBox);
+            var adjObstacleBox =
+              createAdjustedCollisionBox(collisionBoxes[i], obstacleBox);
+            var crashed = boxCompare(adjNathBox, adjObstacleBox);
 
-                    // Draw boxes for debug.
-                    if (opt_canvasCtx) {
-                        drawCollisionBoxes(opt_canvasCtx, adjNathBox, adjObstacleBox);
-                    }
-
-                    if (crashed) {
-                        return [adjNathBox, adjObstacleBox];
-                    }
-                }
+            // Draw boxes for debug.
+            if (opt_canvasCtx) {
+              drawCollisionBoxes(opt_canvasCtx, adjNathBox, adjObstacleBox);
             }
+
+            if (crashed) {
+              return [adjNathBox, adjObstacleBox];
+            }
+          }
         }
-        return false;
+      }
+      return false;
     };
 
 
@@ -1446,11 +1446,11 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @return {CollisionBox} The adjusted collision box object.
      */
     function createAdjustedCollisionBox(box, adjustment) {
-        return new CollisionBox(
-            box.x + adjustment.x,
-            box.y + adjustment.y,
-            box.width,
-            box.height);
+      return new CollisionBox(
+        box.x + adjustment.x,
+        box.y + adjustment.y,
+        box.width,
+        box.height);
     };
 
 
@@ -1458,14 +1458,14 @@ IS_HIDPI = true; // Force HIDPI for now.
      * Draw the collision boxes for debug.
      */
     function drawCollisionBoxes(canvasCtx, nathBox, obstacleBox) {
-        canvasCtx.save();
-        canvasCtx.strokeStyle = '#f00';
-        canvasCtx.strokeRect(nathBox.x, nathBox.y, nathBox.width, nathBox.height);
+      canvasCtx.save();
+      canvasCtx.strokeStyle = '#f00';
+      canvasCtx.strokeRect(nathBox.x, nathBox.y, nathBox.width, nathBox.height);
 
-        canvasCtx.strokeStyle = '#0f0';
-        canvasCtx.strokeRect(obstacleBox.x, obstacleBox.y,
-            obstacleBox.width, obstacleBox.height);
-        canvasCtx.restore();
+      canvasCtx.strokeStyle = '#0f0';
+      canvasCtx.strokeRect(obstacleBox.x, obstacleBox.y,
+        obstacleBox.width, obstacleBox.height);
+      canvasCtx.restore();
     };
 
 
@@ -1476,19 +1476,19 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @return {boolean} Whether the boxes intersected.
      */
     function boxCompare(nathBox, obstacleBox) {
-        var crashed = false;
-        var nathBoxX = nathBox.x;
-        var nathBoxY = nathBox.y;
+      var crashed = false;
+      var nathBoxX = nathBox.x;
+      var nathBoxY = nathBox.y;
 
-        var obstacleBoxX = obstacleBox.x;
-        var obstacleBoxY = obstacleBox.y;
+      var obstacleBoxX = obstacleBox.x;
+      var obstacleBoxY = obstacleBox.y;
 
-        // Axis-Aligned Bounding Box method.
-        if (nathBox.x < obstacleBoxX + obstacleBox.width &&
-            nathBox.x + nathBox.width > obstacleBoxX &&
-            nathBox.y < obstacleBox.y + obstacleBox.height &&
-            nathBox.height + nathBox.y > obstacleBox.y) {
-            crashed = true;
+      // Axis-Aligned Bounding Box method.
+      if (nathBox.x < obstacleBoxX + obstacleBox.width &&
+        nathBox.x + nathBox.width > obstacleBoxX &&
+        nathBox.y < obstacleBox.y + obstacleBox.height &&
+        nathBox.height + nathBox.y > obstacleBox.y) {
+          crashed = true;
         }
 
         return crashed;
@@ -1536,10 +1536,10 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @param {number} h Height.
      */
     function CollisionBox(x, y, w, h) {
-        this.x = x;
-        this.y = y;
-        this.width = w;
-        this.height = h;
+      this.x = x;
+      this.y = y;
+      this.width = w;
+      this.height = h;
     };
 
 
@@ -1558,25 +1558,25 @@ IS_HIDPI = true; // Force HIDPI for now.
     function Obstacle(canvasCtx, type, spriteImgPos, dimensions,
         gapCoefficient, speed, opt_xOffset) {
 
-        this.canvasCtx = canvasCtx;
-        this.spritePos = spriteImgPos;
-        this.typeConfig = type;
-        this.gapCoefficient = gapCoefficient;
-        this.size = getRandomNum(1, Obstacle.MAX_OBSTACLE_LENGTH);
-        this.dimensions = dimensions;
-        this.remove = false;
-        this.xPos = dimensions.WIDTH + (opt_xOffset || 0);
-        this.yPos = 0;
-        this.width = 0;
-        this.collisionBoxes = [];
-        this.gap = 0;
-        this.speedOffset = 0;
+      this.canvasCtx = canvasCtx;
+      this.spritePos = spriteImgPos;
+      this.typeConfig = type;
+      this.gapCoefficient = gapCoefficient;
+      this.size = getRandomNum(1, Obstacle.MAX_OBSTACLE_LENGTH);
+      this.dimensions = dimensions;
+      this.remove = false;
+      this.xPos = dimensions.WIDTH + (opt_xOffset || 0);
+      this.yPos = 0;
+      this.width = 0;
+      this.collisionBoxes = [];
+      this.gap = 0;
+      this.speedOffset = 0;
 
-        // For animated obstacles.
-        this.currentFrame = 0;
-        this.timer = 0;
+      // For animated obstacles.
+      this.currentFrame = 0;
+      this.timer = 0;
 
-        this.init(speed);
+      this.init(speed);
     };
 
     /**
@@ -1598,79 +1598,79 @@ IS_HIDPI = true; // Force HIDPI for now.
              * @param {number} speed
              */
             init: function (speed) {
-                this.cloneCollisionBoxes();
+              this.cloneCollisionBoxes();
 
-                // Only allow sizing if we're at the right speed.
-                if (this.size > 1 && this.typeConfig.multipleSpeed > speed) {
-                    this.size = 1;
-                }
+              // Only allow sizing if we're at the right speed.
+              if (this.size > 1 && this.typeConfig.multipleSpeed > speed) {
+                this.size = 1;
+              }
 
-                this.width = this.typeConfig.width * this.size;
+              this.width = this.typeConfig.width * this.size;
 
-                // Check if obstacle can be positioned at various heights.
-                if (Array.isArray(this.typeConfig.yPos)) {
-                    var yPosConfig = IS_MOBILE ? this.typeConfig.yPosMobile :
-                        this.typeConfig.yPos;
-                    this.yPos = yPosConfig[getRandomNum(0, yPosConfig.length - 1)];
-                } else {
-                    this.yPos = this.typeConfig.yPos;
-                }
+              // Check if obstacle can be positioned at various heights.
+              if (Array.isArray(this.typeConfig.yPos)) {
+                var yPosConfig = IS_MOBILE ? this.typeConfig.yPosMobile :
+                this.typeConfig.yPos;
+                this.yPos = yPosConfig[getRandomNum(0, yPosConfig.length - 1)];
+              } else {
+                this.yPos = this.typeConfig.yPos;
+              }
 
-                this.draw();
+              this.draw();
 
-                // Make collision box adjustments,
-                // Central box is adjusted to the size as one box.
-                //      ____        ______        ________
-                //    _|   |-|    _|     |-|    _|       |-|
-                //   | |<->| |   | |<--->| |   | |<----->| |
-                //   | | 1 | |   | |  2  | |   | |   3   | |
-                //   |_|___|_|   |_|_____|_|   |_|_______|_|
-                //
-                if (this.size > 1) {
-                    this.collisionBoxes[1].width = this.width - this.collisionBoxes[0].width -
-                        this.collisionBoxes[2].width;
-                    this.collisionBoxes[2].x = this.width - this.collisionBoxes[2].width;
-                }
+              // Make collision box adjustments,
+              // Central box is adjusted to the size as one box.
+              //      ____        ______        ________
+              //    _|   |-|    _|     |-|    _|       |-|
+              //   | |<->| |   | |<--->| |   | |<----->| |
+              //   | | 1 | |   | |  2  | |   | |   3   | |
+              //   |_|___|_|   |_|_____|_|   |_|_______|_|
+              //
+              if (this.size > 1) {
+                this.collisionBoxes[1].width = this.width - this.collisionBoxes[0].width -
+                this.collisionBoxes[2].width;
+                this.collisionBoxes[2].x = this.width - this.collisionBoxes[2].width;
+              }
 
-                // For obstacles that go at a different speed from the horizon.
-                if (this.typeConfig.speedOffset) {
-                    this.speedOffset = Math.random() > 0.5 ? this.typeConfig.speedOffset :
-                        -this.typeConfig.speedOffset;
-                }
+              // For obstacles that go at a different speed from the horizon.
+              if (this.typeConfig.speedOffset) {
+                this.speedOffset = Math.random() > 0.5 ? this.typeConfig.speedOffset :
+                -this.typeConfig.speedOffset;
+              }
 
-		if (this.typeConfig.speedUp) {
-			this.speedOffset += this.typeConfig.speedUp;
-		}
+              if (this.typeConfig.speedUp) {
+                this.speedOffset += this.typeConfig.speedUp;
+              }
 
-                this.gap = this.getGap(this.gapCoefficient, speed);
+              this.gap = this.getGap(this.gapCoefficient, speed);
             },
 
             /**
              * Draw and crop based on size.
              */
             draw: function () {
-                var sourceWidth = this.typeConfig.width;
-                var sourceHeight = this.typeConfig.height;
+              var sourceWidth = this.typeConfig.width;
+              var sourceHeight = this.typeConfig.height;
 
-                if (IS_HIDPI) {
-                    sourceWidth = sourceWidth * this.typeConfig.mag;
-                    sourceHeight = sourceHeight * this.typeConfig.mag;
-                }
+              if (IS_HIDPI) {
+                sourceWidth = sourceWidth * this.typeConfig.mag;
+                sourceHeight = sourceHeight * this.typeConfig.mag;
+              }
 
-                // X position in sprite.
-                var sourceX = (sourceWidth * this.size) * (0.5 * (this.size - 1)) +
-                    this.spritePos.x;
+              // X position in sprite.
+              var sourceX = (sourceWidth * this.size) * (0.5 * (this.size - 1)) +
+              this.spritePos.x;
 
-                // Animation frames.
-                if (this.currentFrame > 0) {
-                    sourceX += sourceWidth * this.currentFrame;
-                }
+              // Animation frames.
+              if (this.currentFrame > 0) {
+                sourceX += sourceWidth * this.currentFrame;
+              }
 
-                this.canvasCtx.drawImage(this.typeConfig.sprite || Runner.imageSprite,
-                    sourceX, this.spritePos.y,
-                    sourceWidth * this.size, sourceHeight,
-                    this.xPos, this.yPos,
-                    this.typeConfig.width * this.size, this.typeConfig.height);
+              this.canvasCtx.drawImage(this.typeConfig.sprite || Runner.imageSprite,
+                sourceX, this.spritePos.y,
+                sourceWidth * this.size, sourceHeight,
+                this.xPos, this.yPos,
+                this.typeConfig.width * this.size, this.typeConfig.height);
 
             },
 
@@ -1680,28 +1680,28 @@ IS_HIDPI = true; // Force HIDPI for now.
              * @param {number} speed
              */
             update: function (deltaTime, speed) {
-                if (!this.remove) {
-                    if (this.typeConfig.speedOffset) {
-                        speed += this.speedOffset;
-                    }
-                    this.xPos -= Math.floor((speed * FPS / 1000) * deltaTime);
-
-                    // Update frame
-                    if (this.typeConfig.numFrames) {
-                        this.timer += deltaTime;
-                        if (this.timer >= this.typeConfig.frameRate) {
-                            this.currentFrame =
-                                this.currentFrame == this.typeConfig.numFrames - 1 ?
-                                    0 : this.currentFrame + 1;
-                            this.timer = 0;
-                        }
-                    }
-                    this.draw();
-
-                    if (!this.isVisible()) {
-                        this.remove = true;
-                    }
+              if (!this.remove) {
+                if (this.typeConfig.speedOffset) {
+                  speed += this.speedOffset;
                 }
+                this.xPos -= Math.floor((speed * FPS / 1000) * deltaTime);
+
+                // Update frame
+                if (this.typeConfig.numFrames) {
+                  this.timer += deltaTime;
+                  if (this.timer >= this.typeConfig.frameRate) {
+                    this.currentFrame =
+                    this.currentFrame == this.typeConfig.numFrames - 1 ?
+                    0 : this.currentFrame + 1;
+                    this.timer = 0;
+                  }
+                }
+                this.draw();
+
+                if (!this.isVisible()) {
+                  this.remove = true;
+                }
+              }
             },
 
             /**
@@ -1712,8 +1712,8 @@ IS_HIDPI = true; // Force HIDPI for now.
              * @return {number} The gap size.
              */
             getGap: function (gapCoefficient, speed) {
-                var minGap = Math.round(this.width * speed +
-                    this.typeConfig.minGap * gapCoefficient);
+              var minGap = Math.round(this.width * speed +
+                this.typeConfig.minGap * gapCoefficient);
                 var maxGap = Math.round(minGap * Obstacle.MAX_GAP_COEFFICIENT);
                 return getRandomNum(minGap, maxGap);
             },
@@ -1723,7 +1723,7 @@ IS_HIDPI = true; // Force HIDPI for now.
              * @return {boolean} Whether the obstacle is in the game area.
              */
             isVisible: function () {
-                return this.xPos + this.width > 0;
+              return this.xPos + this.width > 0;
             },
 
             /**
@@ -1731,13 +1731,13 @@ IS_HIDPI = true; // Force HIDPI for now.
              * obstacle type and size.
              */
             cloneCollisionBoxes: function () {
-                var collisionBoxes = this.typeConfig.collisionBoxes;
+              var collisionBoxes = this.typeConfig.collisionBoxes;
 
-                for (var i = collisionBoxes.length - 1; i >= 0; i--) {
-                    this.collisionBoxes[i] = new CollisionBox(collisionBoxes[i].x,
-                        collisionBoxes[i].y, collisionBoxes[i].width,
-                        collisionBoxes[i].height);
-                }
+              for (var i = collisionBoxes.length - 1; i >= 0; i--) {
+                this.collisionBoxes[i] = new CollisionBox(collisionBoxes[i].x,
+                  collisionBoxes[i].y, collisionBoxes[i].width,
+                  collisionBoxes[i].height);
+              }
             }
         };
 
@@ -1750,75 +1750,75 @@ IS_HIDPI = true; // Force HIDPI for now.
      * minSpeed: Minimum speed which the obstacle can make an appearance.
      */
     Obstacle.types = [
-        {
-            type: 'CACTUS_SMALL',
-            width: 17,
-            height: 35,
-            yPos: Runner.defaultDimensions.HEIGHT - 45,
-            multipleSpeed: 4,
-            minGap: 120,
-            minSpeed: 0,
-            collisionBoxes: [
-                new CollisionBox(0, 7, 5, 27),
-                new CollisionBox(4, 0, 6, 34),
-                new CollisionBox(10, 4, 7, 14)
-            ]
-        },
-        {
-            type: 'CACTUS_LARGE',
-            width: 25,
-            height: 50,
-            yPos: Runner.defaultDimensions.HEIGHT - 60,
-            multipleSpeed: 7,
-            minGap: 120,
-            minSpeed: 0,
-            collisionBoxes: [
-                new CollisionBox(0, 12, 7, 38),
-                new CollisionBox(8, 0, 7, 49),
-                new CollisionBox(13, 10, 10, 38)
-            ]
-        },
-        {
-            type: 'RED_DUCK',
-            width: 46,
-            height: 40,
-            yPos: [
-              Runner.defaultDimensions.HEIGHT - 50,
-              Runner.defaultDimensions.HEIGHT - 75,
-              Runner.defaultDimensions.HEIGHT - 100
-            ], // Variable height.
-            yPosMobile: [100, 50], // Variable height mobile.
-            multipleSpeed: 999,
-//            minSpeed: 8.5,
-            minSpeed: 0,
-            minGap: 150,
-            collisionBoxes: [
-                new CollisionBox(15, 18, 16, 16),
-                new CollisionBox(31, 24, 12, 8),
-                new CollisionBox(1, 22, 13, 4)
-            ],
-            numFrames: 6,
-            frameRate: 1000 / 18,
-            speedOffset: .8
-        },
-        {
-            type: 'BICYCLE',
-            width: 52,
-            height: 52,
-            yPos: Runner.defaultDimensions.HEIGHT - 62,
-            multipleSpeed: 999,
-            minSpeed: 0,
-            minGap: 150,
-            collisionBoxes: [
-                new CollisionBox(17, 3, 17, 20),
-                new CollisionBox(4, 23, 20, 27),
-                new CollisionBox(24, 30, 23, 20)
-            ],
-            numFrames: 8,
-            frameRate: 1000 / 15,
-            speedOffset: .3,
-            speedUp: 2.5 //FUN FIXME Random a speed from a predefined range.
-        }
+      {
+        type: 'CACTUS_SMALL',
+        width: 17,
+        height: 35,
+        yPos: Runner.defaultDimensions.HEIGHT - 45,
+        multipleSpeed: 4,
+        minGap: 120,
+        minSpeed: 0,
+        collisionBoxes: [
+          new CollisionBox(0, 7, 5, 27),
+          new CollisionBox(4, 0, 6, 34),
+          new CollisionBox(10, 4, 7, 14)
+        ]
+      },
+      {
+        type: 'CACTUS_LARGE',
+        width: 25,
+        height: 50,
+        yPos: Runner.defaultDimensions.HEIGHT - 60,
+        multipleSpeed: 7,
+        minGap: 120,
+        minSpeed: 0,
+        collisionBoxes: [
+          new CollisionBox(0, 12, 7, 38),
+          new CollisionBox(8, 0, 7, 49),
+          new CollisionBox(13, 10, 10, 38)
+        ]
+      },
+      {
+        type: 'RED_DUCK',
+        width: 46,
+        height: 40,
+        yPos: [
+          Runner.defaultDimensions.HEIGHT - 50,
+          Runner.defaultDimensions.HEIGHT - 75,
+          Runner.defaultDimensions.HEIGHT - 100
+        ], // Variable height.
+        yPosMobile: [100, 50], // Variable height mobile.
+        multipleSpeed: 999,
+        // minSpeed: 8.5,
+        minSpeed: 0,
+        minGap: 150,
+        collisionBoxes: [
+          new CollisionBox(15, 18, 16, 16),
+          new CollisionBox(31, 24, 12, 8),
+          new CollisionBox(1, 22, 13, 4)
+        ],
+        numFrames: 6,
+        frameRate: 1000 / 18,
+        speedOffset: .8
+      },
+      {
+        type: 'BICYCLE',
+        width: 52,
+        height: 52,
+        yPos: Runner.defaultDimensions.HEIGHT - 62,
+        multipleSpeed: 999,
+        minSpeed: 0,
+        minGap: 150,
+        collisionBoxes: [
+          new CollisionBox(17, 3, 17, 20),
+          new CollisionBox(4, 23, 20, 27),
+          new CollisionBox(24, 30, 23, 20)
+        ],
+        numFrames: 8,
+        frameRate: 1000 / 15,
+        speedOffset: .3,
+        speedUp: 2.5 //FUN FIXME Random a speed from a predefined range.
+      }
     ];
 
 
@@ -1830,36 +1830,36 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @constructor
      */
     function Nath(canvas, spritePos) {
-        this.canvas = canvas;
-        this.canvasCtx = canvas.getContext('2d');
-        this.spritePos = spritePos;
-        this.xPos = 0;
-        this.yPos = 0;
-        // Position when on the ground.
-        this.groundYPos = 0;
-        this.currentFrame = 0;
-        this.currentAnimFrames = [];
-        this.blinkDelay = 0;
-        this.blinkCount = 0;
-        this.animStartTime = 0;
-        this.timer = 0;
-        this.msPerFrame = 1000 / FPS;
-        this.config = Nath.config;
-        this.config.GRAVITY_FACTOR = 0.0000005 * Nath.config.GRAVITY * Nath.config.SCALE_FACTOR;
-        // Current status.
-        this.status = Nath.status.WAITING;
+      this.canvas = canvas;
+      this.canvasCtx = canvas.getContext('2d');
+      this.spritePos = spritePos;
+      this.xPos = 0;
+      this.yPos = 0;
+      // Position when on the ground.
+      this.groundYPos = 0;
+      this.currentFrame = 0;
+      this.currentAnimFrames = [];
+      this.blinkDelay = 0;
+      this.blinkCount = 0;
+      this.animStartTime = 0;
+      this.timer = 0;
+      this.msPerFrame = 1000 / FPS;
+      this.config = Nath.config;
+      this.config.GRAVITY_FACTOR = 0.0000005 * Nath.config.GRAVITY * Nath.config.SCALE_FACTOR;
+      // Current status.
+      this.status = Nath.status.WAITING;
 
-        this.jumping = false;
-        this.ducking = false;
-        this.jumpVelocity = 0;
-        this.reachedMinHeight = false;
-        //this.speedDrop = false;
-        this.jumpCount = 0;
-        this.jumpspotX = 0;
+      this.jumping = false;
+      this.ducking = false;
+      this.jumpVelocity = 0;
+      this.reachedMinHeight = false;
+      //this.speedDrop = false;
+      this.jumpCount = 0;
+      this.jumpspotX = 0;
 
-        this.dust = new Particles(canvas, this.xPos, this.yPos, Nath.config.DUST_DURATION);
+      this.dust = new Particles(canvas, this.xPos, this.yPos, Nath.config.DUST_DURATION);
 
-        this.init();
+      this.init();
     };
 
 
@@ -1868,21 +1868,21 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {number}
      */
     Nath.config = {
-        DROP_VELOCITY: -5,
-        DUST_DURATION: 600,
-        GRAVITY: 9.8,
-        SCALE_FACTOR: 210,
-        HEIGHT: 40,
-        HEIGHT_DUCK: 25,
-        //INIITAL_JUMP_VELOCITY: -10,
-        INTRO_DURATION: 1500,
-        MAX_JUMP_HEIGHT: 30,
-        MIN_JUMP_HEIGHT: 30,
-        SPEED_DROP_COEFFICIENT: 3,
-        SPRITE_WIDTH: 262,
-        START_X_POS: 50,
-        WIDTH: 40,
-        WIDTH_DUCK: 40
+      DROP_VELOCITY: -5,
+      DUST_DURATION: 600,
+      GRAVITY: 9.8,
+      SCALE_FACTOR: 210,
+      HEIGHT: 40,
+      HEIGHT_DUCK: 25,
+      //INIITAL_JUMP_VELOCITY: -10,
+      INTRO_DURATION: 1500,
+      MAX_JUMP_HEIGHT: 30,
+      MIN_JUMP_HEIGHT: 30,
+      SPEED_DROP_COEFFICIENT: 3,
+      SPRITE_WIDTH: 262,
+      START_X_POS: 50,
+      WIDTH: 40,
+      WIDTH_DUCK: 40
     };
 
 
@@ -1891,23 +1891,23 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @type {Array<CollisionBox>}
      */
     Nath.collisionBoxes = {
-        DUCKING: [
-            new CollisionBox(11, 12, 15, 12),
-            new CollisionBox(11, 25, 17, 12),
-            new CollisionBox(28, 32, 5, 5)
-        ],
-        RUNNING: [
-/*
-            new CollisionBox(22, 0, 17, 16),
-            new CollisionBox(1, 18, 30, 9),
-            new CollisionBox(10, 35, 14, 8),
-            new CollisionBox(1, 24, 29, 5),
-            new CollisionBox(5, 30, 21, 4),
-            new CollisionBox(9, 34, 15, 4)
-*/
-            new CollisionBox(15, 4, 15, 19),
-            new CollisionBox(12, 16, 16, 19)
-        ]
+      DUCKING: [
+        new CollisionBox(11, 12, 15, 12),
+        new CollisionBox(11, 25, 17, 12),
+        new CollisionBox(28, 32, 5, 5)
+      ],
+      RUNNING: [
+        /*
+        new CollisionBox(22, 0, 17, 16),
+        new CollisionBox(1, 18, 30, 9),
+        new CollisionBox(10, 35, 14, 8),
+        new CollisionBox(1, 24, 29, 5),
+        new CollisionBox(5, 30, 21, 4),
+        new CollisionBox(9, 34, 15, 4)
+        */
+        new CollisionBox(15, 4, 15, 19),
+        new CollisionBox(12, 16, 16, 19)
+      ]
     };
 
 
@@ -1916,11 +1916,11 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {string}
      */
     Nath.status = {
-        CRASHED: 'CRASHED',
-        DUCKING: 'DUCKING',
-        JUMPING: 'JUMPING',
-        RUNNING: 'RUNNING',
-        WAITING: 'WAITING'
+      CRASHED: 'CRASHED',
+      DUCKING: 'DUCKING',
+      JUMPING: 'JUMPING',
+      RUNNING: 'RUNNING',
+      WAITING: 'WAITING'
     };
 
     /**
@@ -1935,27 +1935,27 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {Object}
      */
     Nath.animFrames = {
-        WAITING: {
-            frames: [0, 20, 40, 60, 80, 100],
-            msPerFrame: 1000 / 6
-        },
-        RUNNING: {
-            frames: [0, 20, 40, 60, 40, 20, 0, 80],
-            msPerFrame: 1000 / 24
-        },
-        CRASHED: {
-            frames: [0],
-            msPerFrame: 1000
-        },
-        JUMPING: {
-            frames: [80],
-            msPerFrame: 1000 / 60
-        },
-        DUCKING: {
-            frames: [0, 20, 40, 20],
-//            frames: [264, 323],
-            msPerFrame: 1000 / 24
-        }
+      WAITING: {
+        frames: [0, 20, 40, 60, 80, 100],
+        msPerFrame: 1000 / 6
+      },
+      RUNNING: {
+        frames: [0, 20, 40, 60, 40, 20, 0, 80],
+        msPerFrame: 1000 / 24
+      },
+      CRASHED: {
+        frames: [0],
+        msPerFrame: 1000
+      },
+      JUMPING: {
+        frames: [80],
+        msPerFrame: 1000 / 60
+      },
+      DUCKING: {
+        frames: [0, 20, 40, 20],
+        //frames: [264, 323],
+        msPerFrame: 1000 / 24
+      }
     };
 
 
@@ -1965,17 +1965,17 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Sets Natherine to blink at random intervals.
          */
         init: function () {
-            this.groundYPos = Runner.defaultDimensions.HEIGHT - this.config.HEIGHT -
-                Runner.config.BOTTOM_PAD;
-            this.yPos = this.groundYPos;
-            this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT;
+          this.groundYPos = Runner.defaultDimensions.HEIGHT - this.config.HEIGHT -
+            Runner.config.BOTTOM_PAD;
+          this.yPos = this.groundYPos;
+          this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT;
 
-	    this.currentAnimFrames = Nath.animFrames.WAITING.frames;
-	    this.currentSprite = Nath.animFrames.WAITING.sprite;
-	    this.currentFrame = 0;
+          this.currentAnimFrames = Nath.animFrames.WAITING.frames;
+          this.currentSprite = Nath.animFrames.WAITING.sprite;
+          this.currentFrame = 0;
 
-            this.draw(0, 0);
-            this.update(0, Nath.status.WAITING);
+          this.draw(0, 0);
+          this.update(0, Nath.status.WAITING);
         },
 
         /**
@@ -1995,77 +1995,77 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {Nath.status} status Optional status to switch to.
          */
         update: function (deltaTime, opt_status) {
-            this.timer += deltaTime;
+          this.timer += deltaTime;
 
-            // Update the status.
-            if (opt_status) {
-              this.status = opt_status;
-              this.currentFrame = 0;
-              this.msPerFrame = Nath.animFrames[opt_status].msPerFrame;
-              this.currentAnimFrames = Nath.animFrames[opt_status].frames;
+          // Update the status.
+          if (opt_status) {
+            this.status = opt_status;
+            this.currentFrame = 0;
+            this.msPerFrame = Nath.animFrames[opt_status].msPerFrame;
+            this.currentAnimFrames = Nath.animFrames[opt_status].frames;
 
-              /*
-              if (opt_status == Nath.status.WAITING) {
-              this.animStartTime = getTimeStamp();
-              this.setBlinkDelay();
-              */
-              if (opt_status != Nath.status.CRASHED && opt_status != Nath.status.WAITING && opt_status != Nath.status.DUCKING) {
-                if (this.xPos == 0) {
-                  this.dust.x = -24;
-                } else {
-                  this.dust.x = 0;
-                }
-                this.dust.addPoint(0, 0, -40, -10 * Math.random());
+            /*
+            if (opt_status == Nath.status.WAITING) {
+            this.animStartTime = getTimeStamp();
+            this.setBlinkDelay();
+            */
+            if (opt_status != Nath.status.CRASHED && opt_status != Nath.status.WAITING && opt_status != Nath.status.DUCKING) {
+              if (this.xPos == 0) {
+                this.dust.x = -24;
+              } else {
+                this.dust.x = 0;
               }
-
-              this.currentSprite = Nath.animFrames[opt_status].sprite;
+              this.dust.addPoint(0, 0, -40, -10 * Math.random());
             }
 
-            // Game intro animation, Natherine moves in from the left.
-            if (this.playingIntro && this.xPos < this.config.START_X_POS) {
-                this.xPos += Math.round((this.config.START_X_POS /
-                    this.config.INTRO_DURATION) * deltaTime);
-            }
+            this.currentSprite = Nath.animFrames[opt_status].sprite;
+          }
+
+          // Game intro animation, Natherine moves in from the left.
+          if (this.playingIntro && this.xPos < this.config.START_X_POS) {
+            this.xPos += Math.round((this.config.START_X_POS /
+              this.config.INTRO_DURATION) * deltaTime);
+          }
 
 /*
-            if (this.status == Nath.status.WAITING) {
-              //this.blink(getTimeStamp());
-              this.draw(this.currentAnimFrames[this.currentFrame], 0);
-            } else {
-              this.draw(this.currentAnimFrames[this.currentFrame], 0);
-            }
+          if (this.status == Nath.status.WAITING) {
+            //this.blink(getTimeStamp());
+            this.draw(this.currentAnimFrames[this.currentFrame], 0);
+          } else {
+            this.draw(this.currentAnimFrames[this.currentFrame], 0);
+          }
 */
 
-	          /* Don't draw crash state to observe the effective collision boxes */
-            if (!Runner.config.SHOW_COLLISION || opt_status != Nath.status.CRASHED ) {
-              this.draw(this.currentAnimFrames[this.currentFrame], 0);
+          /* Don't draw crash state to observe the effective collision boxes */
+          if (!Runner.config.SHOW_COLLISION || opt_status != Nath.status.CRASHED ) {
+            this.draw(this.currentAnimFrames[this.currentFrame], 0);
+          }
+
+
+          // Update the frame position.
+          if (this.timer >= this.msPerFrame) {
+            this.currentFrame = this.currentFrame ==
+
+            this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
+            this.timer = 0;
+
+            if (this.status == Nath.status.DUCKING) {
+              this.dust.x = 0;
+              this.dust.addPoint(-10, 0, -90, -15 * Math.random());
+              this.dust.addPoint(5, 0, -75, -15 * Math.random());
             }
 
+          }
 
-            // Update the frame position.
-            if (this.timer >= this.msPerFrame) {
-              this.currentFrame = this.currentFrame ==
+          this.dust.update(deltaTime);
 
-              this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
-              this.timer = 0;
-
-              if (this.status == Nath.status.DUCKING) {
-                this.dust.x = 0;
-                this.dust.addPoint(-10, 0, -90, -15 * Math.random());
-                this.dust.addPoint(5, 0, -75, -15 * Math.random());
-              }
-
-            }
-
-            this.dust.update(deltaTime);
-
-            // Speed drop becomes duck if the down key is still being pressed.
-            /*
-            if (this.speedDrop && this.yPos == this.groundYPos) {
-                this.speedDrop = false;
-                this.setDuck(true);
-            }
-            */
+          // Speed drop becomes duck if the down key is still being pressed.
+          /*
+          if (this.speedDrop && this.yPos == this.groundYPos) {
+              this.speedDrop = false;
+              this.setDuck(true);
+          }
+          */
         },
 
         /**
@@ -2074,37 +2074,37 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} y
          */
         draw: function (x, y) {
-            var sourceX = x;
-            var sourceY = y;
-            /* All Nat sprite sizes are equal for now.
-            var sourceWidth = this.ducking && this.status != Nath.status.CRASHED ?
-                this.config.WIDTH_DUCK : this.config.WIDTH;
-            var sourceHeight = this.config.WIDTH;
-            var sourceHeight = this.config.HEIGHT;
-                */
+          var sourceX = x;
+          var sourceY = y;
+          /* All Nat sprite sizes are equal for now.
+          var sourceWidth = this.ducking && this.status != Nath.status.CRASHED ?
+          this.config.WIDTH_DUCK : this.config.WIDTH;
+          var sourceHeight = this.config.WIDTH;
+          var sourceHeight = this.config.HEIGHT;
+          */
 
-            if (IS_HIDPI) {
-                sourceX *= 2;
-                sourceY *= 2;
-                /*
-                sourceWidth *= 2;
-                sourceHeight *= 2;
-                */
-            }
+          if (IS_HIDPI) {
+            sourceX *= 2;
+            sourceY *= 2;
+            /*
+            sourceWidth *= 2;
+            sourceHeight *= 2;
+            */
+          }
 
-            // Adjustments for sprite sheet position.
-            sourceX += this.spritePos.x;
-            sourceY += this.spritePos.y;
+          // Adjustments for sprite sheet position.
+          sourceX += this.spritePos.x;
+          sourceY += this.spritePos.y;
 
-            if (this.currentSprite) //FIXME
-            {
-              this.canvasCtx.drawImage(this.currentSprite, sourceX, sourceY,
-                40, 40,
-                this.xPos, this.yPos,
-                this.config.WIDTH, this.config.HEIGHT);
+          //FIXME
+          if (this.currentSprite) {
+            this.canvasCtx.drawImage(this.currentSprite, sourceX, sourceY,
+              40, 40,
+              this.xPos, this.yPos,
+              this.config.WIDTH, this.config.HEIGHT);
 
-                this.dust.draw();
-              }
+              this.dust.draw();
+          }
 /*
             // Ducking.
             if (this.ducking && this.status != Nath.status.CRASHED) {
@@ -2130,7 +2130,7 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Sets a random time for the blink to happen.
          */
         setBlinkDelay: function () {
-            this.blinkDelay =  + Math.ceil(Math.random() * Nath.BLINK_TIMING);
+          this.blinkDelay =  + Math.ceil(Math.random() * Nath.BLINK_TIMING);
         },
 
         /**
@@ -2138,9 +2138,9 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} time Current time in milliseconds.
          */
         blink: function (time) {
-            var deltaTime = time - this.animStartTime;
+          var deltaTime = time - this.animStartTime;
 
-            this.draw(this.currentAnimFrames[this.currentFrame], 0);
+          this.draw(this.currentAnimFrames[this.currentFrame], 0);
 /*
 
             if (deltaTime >= this.blinkDelay) {
@@ -2162,19 +2162,19 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} height in centimeter
          */
         startJump: function (speed, height) {
-            if (!this.jumping) {
-                this.update(0, Nath.status.JUMPING);
+          if (!this.jumping) {
+            this.update(0, Nath.status.JUMPING);
 
-                this.jumpTop = height / 1000;
-                this.fallDuration = Math.sqrt(2000 * height / Nath.config.GRAVITY);
-                this.jumpTimer = 0;
-                this.jumping = true;
+            this.jumpTop = height / 1000;
+            this.fallDuration = Math.sqrt(2000 * height / Nath.config.GRAVITY);
+            this.jumpTimer = 0;
+            this.jumping = true;
 
-                //this.jumpVelocity = this.config.INIITAL_JUMP_VELOCITY - (speed / 10);
-                this.reachedMinHeight = false;
-                //this.speedDrop = false;
+            //this.jumpVelocity = this.config.INIITAL_JUMP_VELOCITY - (speed / 10);
+            this.reachedMinHeight = false;
+            //this.speedDrop = false;
 
-            }
+          }
         },
 
         /**
@@ -2277,15 +2277,15 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Reset Natherine to running at start of game.
          */
         reset: function () {
-            this.yPos = this.groundYPos;
-            this.jumpVelocity = 0;
-            this.jumping = false;
-            this.ducking = false;
-            this.update(0, Nath.status.RUNNING);
-            this.midair = false;
-            //this.speedDrop = false;
-            this.jumpCount = 0;
-            this.dust.reset();
+          this.yPos = this.groundYPos;
+          this.jumpVelocity = 0;
+          this.jumping = false;
+          this.ducking = false;
+          this.update(0, Nath.status.RUNNING);
+          this.midair = false;
+          //this.speedDrop = false;
+          this.jumpCount = 0;
+          this.dust.reset();
         }
     };
 
@@ -2300,28 +2300,28 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @constructor
      */
     function DistanceMeter(canvas, spritePos, canvasWidth) {
-        this.canvas = canvas;
-        this.canvasCtx = canvas.getContext('2d');
-        this.image = Runner.imageSprite;
-        this.spritePos = spritePos;
-        this.x = 0;
-        this.y = 5;
+      this.canvas = canvas;
+      this.canvasCtx = canvas.getContext('2d');
+      this.image = Runner.imageSprite;
+      this.spritePos = spritePos;
+      this.x = 0;
+      this.y = 5;
 
-        this.currentDistance = 0;
-        this.maxScore = 0;
-        this.highScore = 0;
-        this.container = null;
+      this.currentDistance = 0;
+      this.maxScore = 0;
+      this.highScore = 0;
+      this.container = null;
 
-        this.digits = [];
-        this.acheivement = false;
-        this.defaultString = '';
-        this.flashTimer = 0;
-        this.flashIterations = 0;
-        this.invertTrigger = false;
+      this.digits = [];
+      this.acheivement = false;
+      this.defaultString = '';
+      this.flashTimer = 0;
+      this.flashIterations = 0;
+      this.invertTrigger = false;
 
-        this.config = DistanceMeter.config;
-        this.maxScoreUnits = this.config.MAX_DISTANCE_UNITS;
-        this.init(canvasWidth);
+      this.config = DistanceMeter.config;
+      this.maxScoreUnits = this.config.MAX_DISTANCE_UNITS;
+      this.init(canvasWidth);
     };
 
 
@@ -2329,9 +2329,9 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {number}
      */
     DistanceMeter.dimensions = {
-        WIDTH: 10,
-        HEIGHT: 13,
-        DEST_WIDTH: 11
+      WIDTH: 10,
+      HEIGHT: 13,
+      DEST_WIDTH: 11
     };
 
 
@@ -2348,20 +2348,20 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {number}
      */
     DistanceMeter.config = {
-        // Number of digits.
-        MAX_DISTANCE_UNITS: 5,
+      // Number of digits.
+      MAX_DISTANCE_UNITS: 5,
 
-        // Distance that causes achievement animation.
-        ACHIEVEMENT_DISTANCE: 100,
+      // Distance that causes achievement animation.
+      ACHIEVEMENT_DISTANCE: 100,
 
-        // Used for conversion from pixel distance to a scaled unit.
-        COEFFICIENT: 0.025,
+      // Used for conversion from pixel distance to a scaled unit.
+      COEFFICIENT: 0.025,
 
-        // Flash duration in milliseconds.
-        FLASH_DURATION: 1000 / 4,
+      // Flash duration in milliseconds.
+      FLASH_DURATION: 1000 / 4,
 
-        // Flash iterations for achievement animation.
-        FLASH_ITERATIONS: 3
+      // Flash iterations for achievement animation.
+      FLASH_ITERATIONS: 3
     };
 
 
@@ -2371,17 +2371,17 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} width Canvas width in px.
          */
         init: function (width) {
-            var maxDistanceStr = '';
+          var maxDistanceStr = '';
 
-            this.calcXPos(width);
-            this.maxScore = this.maxScoreUnits;
-            for (var i = 0; i < this.maxScoreUnits; i++) {
-                this.draw(i, 0);
-                this.defaultString += '0';
-                maxDistanceStr += '9';
-            }
+          this.calcXPos(width);
+          this.maxScore = this.maxScoreUnits;
+          for (var i = 0; i < this.maxScoreUnits; i++) {
+            this.draw(i, 0);
+            this.defaultString += '0';
+            maxDistanceStr += '9';
+          }
 
-            this.maxScore = parseInt(maxDistanceStr);
+          this.maxScore = parseInt(maxDistanceStr);
         },
 
         /**
@@ -2389,8 +2389,8 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} canvasWidth
          */
         calcXPos: function (canvasWidth) {
-            this.x = canvasWidth - (DistanceMeter.dimensions.DEST_WIDTH *
-                (this.maxScoreUnits + 1));
+          this.x = canvasWidth - (DistanceMeter.dimensions.DEST_WIDTH *
+            (this.maxScoreUnits + 1));
         },
 
         /**
@@ -2400,44 +2400,44 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {boolean} opt_highScore Whether drawing the high score.
          */
         draw: function (digitPos, value, opt_highScore) {
-            var sourceWidth = DistanceMeter.dimensions.WIDTH;
-            var sourceHeight = DistanceMeter.dimensions.HEIGHT;
-            var sourceX = DistanceMeter.dimensions.WIDTH * value;
-            var sourceY = 0;
+          var sourceWidth = DistanceMeter.dimensions.WIDTH;
+          var sourceHeight = DistanceMeter.dimensions.HEIGHT;
+          var sourceX = DistanceMeter.dimensions.WIDTH * value;
+          var sourceY = 0;
 
-            var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH;
-            var targetY = this.y;
-            var targetWidth = DistanceMeter.dimensions.WIDTH;
-            var targetHeight = DistanceMeter.dimensions.HEIGHT;
+          var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH;
+          var targetY = this.y;
+          var targetWidth = DistanceMeter.dimensions.WIDTH;
+          var targetHeight = DistanceMeter.dimensions.HEIGHT;
 
-            // For high DPI we 2x source values.
-            if (IS_HIDPI) {
-                sourceWidth *= 2;
-                sourceHeight *= 2;
-                sourceX *= 2;
-            }
+          // For high DPI we 2x source values.
+          if (IS_HIDPI) {
+            sourceWidth *= 2;
+            sourceHeight *= 2;
+            sourceX *= 2;
+          }
 
-            sourceX += this.spritePos.x;
-            sourceY += this.spritePos.y;
+          sourceX += this.spritePos.x;
+          sourceY += this.spritePos.y;
 
-            this.canvasCtx.save();
+          this.canvasCtx.save();
 
-            if (opt_highScore) {
-                // Left of the current score.
-                var highScoreX = this.x - (this.maxScoreUnits * 2) *
-                    DistanceMeter.dimensions.WIDTH;
-                this.canvasCtx.translate(highScoreX, this.y);
-            } else {
-                this.canvasCtx.translate(this.x, this.y);
-            }
+          if (opt_highScore) {
+            // Left of the current score.
+            var highScoreX = this.x - (this.maxScoreUnits * 2) *
+            DistanceMeter.dimensions.WIDTH;
+            this.canvasCtx.translate(highScoreX, this.y);
+          } else {
+            this.canvasCtx.translate(this.x, this.y);
+          }
 
-            this.canvasCtx.drawImage(this.image, sourceX, sourceY,
-                sourceWidth, sourceHeight,
-                targetX, targetY,
-                targetWidth, targetHeight
-            );
+          this.canvasCtx.drawImage(this.image, sourceX, sourceY,
+            sourceWidth, sourceHeight,
+            targetX, targetY,
+            targetWidth, targetHeight
+          );
 
-            this.canvasCtx.restore();
+          this.canvasCtx.restore();
         },
 
         /**
@@ -2446,7 +2446,7 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @return {number} The 'real' distance ran.
          */
         getActualDistance: function (distance) {
-            return distance ? Math.round(distance * this.config.COEFFICIENT) : 0;
+          return distance ? Math.round(distance * this.config.COEFFICIENT) : 0;
         },
 
         /**
@@ -2456,76 +2456,78 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @return {boolean} Whether the acheivement sound fx should be played.
          */
         update: function (deltaTime, distance) {
-            var paint = true;
-            var playSound = false;
+          var paint = true;
+          var playSound = false;
 
-            if (!this.acheivement) {
-                distance = this.getActualDistance(distance);
-                // Score has gone beyond the initial digit count.
-                if (distance > this.maxScore && this.maxScoreUnits ==
-                    this.config.MAX_DISTANCE_UNITS) {
-                    this.maxScoreUnits++;
-                    this.maxScore = parseInt(this.maxScore + '9');
-                } else {
-                    this.distance = 0;
-                }
-
-                if (distance > 0) {
-                    // Acheivement unlocked
-                    if (distance % this.config.ACHIEVEMENT_DISTANCE == 0) {
-                        // Flash score and play sound.
-                        this.acheivement = true;
-                        this.flashTimer = 0;
-                        playSound = true;
-                    }
-
-                    // Create a string representation of the distance with leading 0.
-                    var distanceStr = (this.defaultString +
-                        distance).substr(-this.maxScoreUnits);
-                    this.digits = distanceStr.split('');
-                } else {
-                    this.digits = this.defaultString.split('');
-                }
+          if (!this.acheivement) {
+            distance = this.getActualDistance(distance);
+            // Score has gone beyond the initial digit count.
+            if (distance > this.maxScore && this.maxScoreUnits ==
+                this.config.MAX_DISTANCE_UNITS) {
+              this.maxScoreUnits++;
+              this.maxScore = parseInt(this.maxScore + '9');
             } else {
-                // Control flashing of the score on reaching acheivement.
-                if (this.flashIterations <= this.config.FLASH_ITERATIONS) {
-                    this.flashTimer += deltaTime;
-
-                    if (this.flashTimer < this.config.FLASH_DURATION) {
-                        paint = false;
-                    } else if (this.flashTimer >
-                        this.config.FLASH_DURATION * 2) {
-                        this.flashTimer = 0;
-                        this.flashIterations++;
-                    }
-                } else {
-                    this.acheivement = false;
-                    this.flashIterations = 0;
-                    this.flashTimer = 0;
-                }
+              this.distance = 0;
             }
 
-            // Draw the digits if not flashing.
-            if (paint) {
-                for (var i = this.digits.length - 1; i >= 0; i--) {
-                    this.draw(i, parseInt(this.digits[i]));
-                }
+            if (distance > 0) {
+              // Acheivement unlocked
+              if (distance % this.config.ACHIEVEMENT_DISTANCE == 0) {
+                // Flash score and play sound.
+                this.acheivement = true;
+                this.flashTimer = 0;
+                playSound = true;
+              }
+
+              // Create a string representation of the distance with leading 0.
+              var distanceStr = (this.defaultString +
+                distance).substr(-this.maxScoreUnits);
+
+              this.digits = distanceStr.split('');
+            } else {
+              this.digits = this.defaultString.split('');
             }
 
-            this.drawHighScore();
-            return playSound;
+          } else {
+            // Control flashing of the score on reaching acheivement.
+            if (this.flashIterations <= this.config.FLASH_ITERATIONS) {
+              this.flashTimer += deltaTime;
+
+              if (this.flashTimer < this.config.FLASH_DURATION) {
+                paint = false;
+              } else if (this.flashTimer >
+                  this.config.FLASH_DURATION * 2) {
+                this.flashTimer = 0;
+                this.flashIterations++;
+              }
+            } else {
+              this.acheivement = false;
+              this.flashIterations = 0;
+              this.flashTimer = 0;
+            }
+          }
+
+          // Draw the digits if not flashing.
+          if (paint) {
+            for (var i = this.digits.length - 1; i >= 0; i--) {
+              this.draw(i, parseInt(this.digits[i]));
+            }
+          }
+
+          this.drawHighScore();
+          return playSound;
         },
 
         /**
          * Draw the high score.
          */
         drawHighScore: function () {
-            this.canvasCtx.save();
-            this.canvasCtx.globalAlpha = .8;
-            for (var i = this.highScore.length - 1; i >= 0; i--) {
-                this.draw(i, parseInt(this.highScore[i], 10), true);
-            }
-            this.canvasCtx.restore();
+          this.canvasCtx.save();
+          this.canvasCtx.globalAlpha = .8;
+          for (var i = this.highScore.length - 1; i >= 0; i--) {
+            this.draw(i, parseInt(this.highScore[i], 10), true);
+          }
+          this.canvasCtx.restore();
         },
 
         /**
@@ -2534,19 +2536,19 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} distance Distance ran in pixels.
          */
         setHighScore: function (distance) {
-            distance = this.getActualDistance(distance);
-            var highScoreStr = (this.defaultString +
-                distance).substr(-this.maxScoreUnits);
+          distance = this.getActualDistance(distance);
+          var highScoreStr = (this.defaultString +
+            distance).substr(-this.maxScoreUnits);
 
-            this.highScore = ['10', '11', ''].concat(highScoreStr.split(''));
+          this.highScore = ['10', '11', ''].concat(highScoreStr.split(''));
         },
 
         /**
          * Reset the distance meter back to '00000'.
          */
         reset: function () {
-            this.update(0);
-            this.acheivement = false;
+          this.update(0);
+          this.acheivement = false;
         }
     };
 
@@ -2557,14 +2559,14 @@ IS_HIDPI = true; // Force HIDPI for now.
      */
 
     function Particles(canvas, x, y, age) {
-        this.age = age; // Used for calculating sprite offset.
-        this.canvas = canvas;
-        this.canvasCtx = this.canvas.getContext('2d');
-        this.x = x;
-        this.y = y;
-        this.points = [];
-        this.init();
-        this.tag = 0;
+      this.age = age; // Used for calculating sprite offset.
+      this.canvas = canvas;
+      this.canvasCtx = this.canvas.getContext('2d');
+      this.x = x;
+      this.y = y;
+      this.points = [];
+      this.init();
+      this.tag = 0;
     };
 
     Particles.prototype = {
@@ -2572,35 +2574,35 @@ IS_HIDPI = true; // Force HIDPI for now.
         },
 
         draw: function () {
-            for(let i = 0, point; point = this.points[i]; i++) {
-                let ratio = (this.age - point.age) / this.age;
-                let x = this.x + point.x + 40 + point.w * ratio;
-                let y = this.y + point.y + Runner.defaultDimensions.HEIGHT-25 + point.h * ratio;
-                this.canvasCtx.drawImage(Runner.imageSprite,
-                        776 + 22 * Math.floor(8 * ratio), 2,
-                        22, 22,
-                        x, y,
-                        22, 22);
-            }
+          for(let i = 0, point; point = this.points[i]; i++) {
+            let ratio = (this.age - point.age) / this.age;
+            let x = this.x + point.x + 40 + point.w * ratio;
+            let y = this.y + point.y + Runner.defaultDimensions.HEIGHT-25 + point.h * ratio;
+            this.canvasCtx.drawImage(Runner.imageSprite,
+              776 + 22 * Math.floor(8 * ratio), 2,
+              22, 22,
+              x, y,
+              22, 22);
+          }
         },
 
         update: function (aging) {
-            let updatedPoints = [];
-            for(let i = 0, point; point = this.points[i]; i++) {
-                point.age -= aging;
-                if (point.age > 0) {
-                    updatedPoints.push(point);
-                }
+          let updatedPoints = [];
+          for(let i = 0, point; point = this.points[i]; i++) {
+            point.age -= aging;
+            if (point.age > 0) {
+              updatedPoints.push(point);
             }
-            this.points = updatedPoints;
+          }
+          this.points = updatedPoints;
         },
 
         addPoint: function(x, y, w, h) {
-            this.points.push({tag:this.tag++, x:x, y:y, w:w, h:h, age:this.age});
+          this.points.push({tag:this.tag++, x:x, y:y, w:w, h:h, age:this.age});
         },
 
         reset: function() {
-            this.points = [];
+          this.points = [];
         }
     };
 
@@ -2615,21 +2617,21 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @param {number} containerWidth
      */
     function Cloud(canvas, spritePos, containerWidth, type) {
-        this.canvas = canvas;
-        this.canvasCtx = this.canvas.getContext('2d');
-        this.type = type;
-        this.spritePos = {
-            x: spritePos.x,
-            y: spritePos.y[type],
-        };
-        this.containerWidth = containerWidth;
-        this.xPos = containerWidth;
-        this.yPos = 0;
-        this.remove = false;
-        this.cloudGap = getRandomNum(Cloud.config.MIN_CLOUD_GAP,
-            Cloud.config.MAX_CLOUD_GAP);
+      this.canvas = canvas;
+      this.canvasCtx = this.canvas.getContext('2d');
+      this.type = type;
+      this.spritePos = {
+        x: spritePos.x,
+        y: spritePos.y[type],
+      };
+      this.containerWidth = containerWidth;
+      this.xPos = containerWidth;
+      this.yPos = 0;
+      this.remove = false;
+      this.cloudGap = getRandomNum(Cloud.config.MIN_CLOUD_GAP,
+        Cloud.config.MAX_CLOUD_GAP);
 
-        this.init();
+      this.init();
     };
 
 
@@ -2638,12 +2640,12 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {number}
      */
     Cloud.config = {
-        HEIGHTS: [14,20,8],
-        MAX_CLOUD_GAP: 400,
-        MAX_SKY_LEVEL: 30,
-        MIN_CLOUD_GAP: 100,
-        MIN_SKY_LEVEL: Runner.defaultDimensions.HEIGHT - 79,
-        WIDTH: 46
+      HEIGHTS: [14,20,8],
+      MAX_CLOUD_GAP: 400,
+      MAX_SKY_LEVEL: 30,
+      MIN_CLOUD_GAP: 100,
+      MIN_SKY_LEVEL: Runner.defaultDimensions.HEIGHT - 79,
+      WIDTH: 46
     };
 
 
@@ -2652,32 +2654,32 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Initialise the cloud. Sets the Cloud height.
          */
         init: function () {
-            this.yPos = getRandomNum(Cloud.config.MAX_SKY_LEVEL,
-                Cloud.config.MIN_SKY_LEVEL);
-            this.draw();
+          this.yPos = getRandomNum(Cloud.config.MAX_SKY_LEVEL,
+            Cloud.config.MIN_SKY_LEVEL);
+          this.draw();
         },
 
         /**
          * Draw the cloud.
          */
         draw: function () {
-            this.canvasCtx.save();
-	    this.canvasCtx.globalAlpha = 0.85;
-            var sourceWidth = Cloud.config.WIDTH;
-            var sourceHeight = Cloud.config.HEIGHTS[this.type];
+          this.canvasCtx.save();
+          this.canvasCtx.globalAlpha = 0.85;
+          var sourceWidth = Cloud.config.WIDTH;
+          var sourceHeight = Cloud.config.HEIGHTS[this.type];
 
-            if (IS_HIDPI) {
-                sourceWidth = sourceWidth * 2;
-                sourceHeight = sourceHeight * 2;
-            }
+          if (IS_HIDPI) {
+            sourceWidth = sourceWidth * 2;
+            sourceHeight = sourceHeight * 2;
+          }
 
-            this.canvasCtx.drawImage(Runner.imageSprite, this.spritePos.x,
-                this.spritePos.y,
-                sourceWidth, sourceHeight,
-                this.xPos, this.yPos,
-                Cloud.config.WIDTH, Cloud.config.HEIGHTS[this.type]);
+          this.canvasCtx.drawImage(Runner.imageSprite, this.spritePos.x,
+            this.spritePos.y,
+            sourceWidth, sourceHeight,
+            this.xPos, this.yPos,
+            Cloud.config.WIDTH, Cloud.config.HEIGHTS[this.type]);
 
-            this.canvasCtx.restore();
+          this.canvasCtx.restore();
         },
 
         /**
@@ -2685,15 +2687,15 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} speed
          */
         update: function (speed) {
-            if (!this.remove) {
-                this.xPos -= Math.ceil(speed);
-                this.draw();
+          if (!this.remove) {
+            this.xPos -= Math.ceil(speed);
+            this.draw();
 
-                // Mark as removeable if no longer in the canvas.
-                if (!this.isVisible()) {
-                    this.remove = true;
-                }
+            // Mark as removeable if no longer in the canvas.
+            if (!this.isVisible()) {
+              this.remove = true;
             }
+          }
         },
 
         /**
@@ -2701,7 +2703,7 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @return {boolean}
          */
         isVisible: function () {
-            return this.xPos + Cloud.config.WIDTH > 0;
+          return this.xPos + Cloud.config.WIDTH > 0;
         }
     };
 
@@ -2712,31 +2714,31 @@ IS_HIDPI = true; // Force HIDPI for now.
      * Nightmode shows a moon and stars on the horizon.
      */
     function NightMode(canvas, spritePos, containerWidth) {
-        this.spritePos = spritePos;
-        this.canvas = canvas;
-        this.canvasCtx = canvas.getContext('2d');
-        this.xPos = containerWidth - 50;
-        this.yPos = 50;
-        this.currentPhase = NightMode.phases.length - 1;
-        this.opacity = 0;
-        this.containerWidth = containerWidth;
-        this.stars = [];
-        this.drawStars = false;
-        this.placeStars();
+      this.spritePos = spritePos;
+      this.canvas = canvas;
+      this.canvasCtx = canvas.getContext('2d');
+      this.xPos = containerWidth - 50;
+      this.yPos = 50;
+      this.currentPhase = NightMode.phases.length - 1;
+      this.opacity = 0;
+      this.containerWidth = containerWidth;
+      this.stars = [];
+      this.drawStars = false;
+      this.placeStars();
     };
 
     /**
      * @enum {number}
      */
     NightMode.config = {
-        FADE_SPEED: 0.035,
-        HEIGHT: 40,
-        MOON_SPEED: 0.25,
-        NUM_STARS: 10,
-        STAR_SIZE: 9,
-        STAR_SPEED: 0.3,
-        STAR_MAX_Y: Runner.defaultDimensions.HEIGHT - 50,
-        WIDTH: 20
+      FADE_SPEED: 0.035,
+      HEIGHT: 40,
+      MOON_SPEED: 0.25,
+      NUM_STARS: 10,
+      STAR_SIZE: 9,
+      STAR_SPEED: 0.3,
+      STAR_MAX_Y: Runner.defaultDimensions.HEIGHT - 50,
+      WIDTH: 20
     };
 
     NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
@@ -2748,126 +2750,125 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} delta
          */
         update: function (activated, delta) {
-            // Moon phase.
-            if (activated && this.opacity == 0) {
-                this.currentPhase++;
+          // Moon phase.
+          if (activated && this.opacity == 0) {
+            this.currentPhase++;
 
-                if (this.currentPhase >= NightMode.phases.length) {
-                    this.currentPhase = 0;
-                }
+            if (this.currentPhase >= NightMode.phases.length) {
+              this.currentPhase = 0;
             }
+          }
 
-            // Fade in / out.
-            if (activated && (this.opacity < 1 || this.opacity == 0)) {
-                this.opacity += NightMode.config.FADE_SPEED;
-            } else if (this.opacity > 0) {
-                this.opacity -= NightMode.config.FADE_SPEED;
+          // Fade in / out.
+          if (activated && (this.opacity < 1 || this.opacity == 0)) {
+            this.opacity += NightMode.config.FADE_SPEED;
+          } else if (this.opacity > 0) {
+            this.opacity -= NightMode.config.FADE_SPEED;
+          }
+
+          // Set moon positioning.
+          if (this.opacity > 0) {
+            this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
+
+            // Update stars.
+            if (this.drawStars) {
+              for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+                this.stars[i].x = this.updateXPos(this.stars[i].x,
+                  NightMode.config.STAR_SPEED);
+              }
             }
-
-            // Set moon positioning.
-            if (this.opacity > 0) {
-                this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
-
-                // Update stars.
-                if (this.drawStars) {
-                    for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-                        this.stars[i].x = this.updateXPos(this.stars[i].x,
-                            NightMode.config.STAR_SPEED);
-                    }
-                }
-                this.draw();
-            } else {
-                this.opacity = 0;
-                this.placeStars();
-            }
-            this.drawStars = true;
+            this.draw();
+          } else {
+            this.opacity = 0;
+            this.placeStars();
+          }
+          this.drawStars = true;
         },
 
         updateXPos: function (currentPos, speed) {
-            if (currentPos < -NightMode.config.WIDTH) {
-                currentPos = this.containerWidth;
-            } else {
-                currentPos -= speed;
-            }
-            return currentPos;
+          if (currentPos < -NightMode.config.WIDTH) {
+            currentPos = this.containerWidth;
+          } else {
+            currentPos -= speed;
+          }
+          return currentPos;
         },
 
         draw: function () {
-            var moonSourceWidth = this.currentPhase == 3 ? NightMode.config.WIDTH * 2 :
-                NightMode.config.WIDTH;
-            var moonSourceHeight = NightMode.config.HEIGHT;
-            var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
-            var moonOutputWidth = moonSourceWidth;
-            var starSize = NightMode.config.STAR_SIZE;
-            //var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
-            var starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
+          var moonSourceWidth = this.currentPhase == 3 ? NightMode.config.WIDTH * 2 :
+          NightMode.config.WIDTH;
+          var moonSourceHeight = NightMode.config.HEIGHT;
+          var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
+          var moonOutputWidth = moonSourceWidth;
+          var starSize = NightMode.config.STAR_SIZE;
+          //var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
+          var starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
 
-            if (IS_HIDPI) {
-                moonSourceWidth *= 2;
-                moonSourceHeight *= 2;
-                moonSourceX = this.spritePos.x +
-                    (NightMode.phases[this.currentPhase] * 2);
-                starSize *= 2;
-                //starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
+          if (IS_HIDPI) {
+            moonSourceWidth *= 2;
+            moonSourceHeight *= 2;
+            moonSourceX = this.spritePos.x +
+            (NightMode.phases[this.currentPhase] * 2);
+            starSize *= 2;
+            //starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
+          }
+
+          this.canvasCtx.save();
+
+          // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
+          this.canvasCtx.globalAlpha = this.opacity;
+          this.canvasCtx.drawImage(Runner.imageSprite, moonSourceX,
+            this.spritePos.y, moonSourceWidth, moonSourceHeight,
+            Math.round(this.xPos), this.yPos,
+            moonOutputWidth, NightMode.config.HEIGHT);
+
+          this.canvasCtx.globalAlpha = 1;
+
+          // Stars.
+          if (this.drawStars) {
+            for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+              this.canvasCtx.globalAlpha = this.opacity * this.stars[i].opacity;
+              this.canvasCtx.drawImage(Runner.imageSprite,
+                starSourceX, this.stars[i].sourceY, starSize, starSize,
+                Math.round(this.stars[i].x), this.stars[i].y,
+                NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
             }
+          }
 
-            this.canvasCtx.save();
-
-            // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
-            this.canvasCtx.globalAlpha = this.opacity;
-            this.canvasCtx.drawImage(Runner.imageSprite, moonSourceX,
-                this.spritePos.y, moonSourceWidth, moonSourceHeight,
-                Math.round(this.xPos), this.yPos,
-                moonOutputWidth, NightMode.config.HEIGHT);
-
-            this.canvasCtx.globalAlpha = 1;
-
-            // Stars.
-            if (this.drawStars) {
-              for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-                this.canvasCtx.globalAlpha = this.opacity * this.stars[i].opacity;
-                this.canvasCtx.drawImage(Runner.imageSprite,
-                  starSourceX, this.stars[i].sourceY, starSize, starSize,
-                  Math.round(this.stars[i].x), this.stars[i].y,
-                  NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
-                }
-            }
-
-            this.canvasCtx.restore();
+          this.canvasCtx.restore();
         },
 
         // Do star placement.
         placeStars: function () {
-            var segmentSize = Math.round(this.containerWidth /
-                NightMode.config.NUM_STARS);
+          var segmentSize = Math.round(this.containerWidth /
+            NightMode.config.NUM_STARS);
 
-            for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-                this.stars[i] = {};
-                this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
-                this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
-                this.stars[i].opacity = 0.5 + 0.5 * Math.random();
+          for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+            this.stars[i] = {};
+            this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
+            this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
+            this.stars[i].opacity = 0.5 + 0.5 * Math.random();
 
-                let fading_range = 1/2 * NightMode.config.STAR_MAX_Y;
-                if (this.stars[i].y > 1/2 * NightMode.config.STAR_MAX_Y) {
-                  this.stars[i].opacity *= 2 - this.stars[i].y/fading_range;
-                }
-
-                if (IS_HIDPI) {
-                    this.stars[i].sourceY = Runner.spriteDefinition.HDPI.STAR.y +
-                        NightMode.config.STAR_SIZE * 2 * getRandomNum(0, 3);
-                }/* else {
-                    this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
-                        NightMode.config.STAR_SIZE * i;
-                }*/
+            let fading_range = 1/2 * NightMode.config.STAR_MAX_Y;
+            if (this.stars[i].y > 1/2 * NightMode.config.STAR_MAX_Y) {
+              this.stars[i].opacity *= 2 - this.stars[i].y/fading_range;
             }
+
+            if (IS_HIDPI) {
+              this.stars[i].sourceY = Runner.spriteDefinition.HDPI.STAR.y +
+              NightMode.config.STAR_SIZE * 2 * getRandomNum(0, 3);
+            }/* else {
+              this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
+              NightMode.config.STAR_SIZE * i;
+            }*/
+          }
         },
 
         reset: function () {
-            this.currentPhase = 0;
-            this.opacity = 0;
-            this.update(false);
+          this.currentPhase = 0;
+          this.opacity = 0;
+          this.update(false);
         }
-
     };
 
 
@@ -2881,19 +2882,19 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @constructor
      */
     function HorizonLine(canvas, spritePos) {
-        this.spritePos = spritePos;
-        this.canvas = canvas;
-        this.canvasCtx = canvas.getContext('2d');
-        this.sourceDimensions = {};
-        this.dimensions = HorizonLine.dimensions;
-        this.sourceXPos = [this.spritePos.x, this.spritePos.x +
-            this.dimensions.WIDTH];
-        this.xPos = [];
-        this.yPos = 0;
-        this.bumpThreshold = 0.5;
+      this.spritePos = spritePos;
+      this.canvas = canvas;
+      this.canvasCtx = canvas.getContext('2d');
+      this.sourceDimensions = {};
+      this.dimensions = HorizonLine.dimensions;
+      this.sourceXPos = [this.spritePos.x, this.spritePos.x +
+        this.dimensions.WIDTH];
+      this.xPos = [];
+      this.yPos = 0;
+      this.bumpThreshold = 0.5;
 
-        this.setSourceDimensions();
-        this.draw();
+      this.setSourceDimensions();
+      this.draw();
     };
 
 
@@ -2902,9 +2903,9 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {number}
      */
     HorizonLine.dimensions = {
-        WIDTH: 600,
-        HEIGHT: 12,
-        YPOS: Runner.defaultDimensions.HEIGHT-23
+      WIDTH: 600,
+      HEIGHT: 12,
+      YPOS: Runner.defaultDimensions.HEIGHT-23
     };
 
 
@@ -2913,22 +2914,21 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Set the source dimensions of the horizon line.
          */
         setSourceDimensions: function () {
-
-            for (var dimension in HorizonLine.dimensions) {
-                if (IS_HIDPI) {
-                    if (dimension != 'YPOS') {
-                        this.sourceDimensions[dimension] =
-                            HorizonLine.dimensions[dimension] * 2;
-                    }
-                } else {
-                    this.sourceDimensions[dimension] =
-                        HorizonLine.dimensions[dimension];
-                }
-                this.dimensions[dimension] = HorizonLine.dimensions[dimension];
+          for (var dimension in HorizonLine.dimensions) {
+            if (IS_HIDPI) {
+              if (dimension != 'YPOS') {
+                this.sourceDimensions[dimension] =
+                  HorizonLine.dimensions[dimension] * 2;
+              }
+            } else {
+              this.sourceDimensions[dimension] =
+                HorizonLine.dimensions[dimension];
             }
+            this.dimensions[dimension] = HorizonLine.dimensions[dimension];
+          }
 
-            this.xPos = [0, HorizonLine.dimensions.WIDTH];
-            this.yPos = HorizonLine.dimensions.YPOS;
+          this.xPos = [0, HorizonLine.dimensions.WIDTH];
+          this.yPos = HorizonLine.dimensions.YPOS;
         },
 
         /**
@@ -2942,46 +2942,46 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Draw the horizon line.
          */
         draw: function () {
-            this.canvasCtx.drawImage(Runner.imageSprite, this.sourceXPos[0],
-                this.spritePos.y,
-                this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
-                this.xPos[0], this.yPos,
-                this.dimensions.WIDTH, this.dimensions.HEIGHT);
+          this.canvasCtx.drawImage(Runner.imageSprite, this.sourceXPos[0],
+            this.spritePos.y,
+            this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
+            this.xPos[0], this.yPos,
+            this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
-            this.canvasCtx.drawImage(Runner.imageSprite, this.sourceXPos[1],
-                this.spritePos.y,
-                this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
-                this.xPos[1], this.yPos,
-                this.dimensions.WIDTH, this.dimensions.HEIGHT);
+          this.canvasCtx.drawImage(Runner.imageSprite, this.sourceXPos[1],
+            this.spritePos.y,
+            this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
+            this.xPos[1], this.yPos,
+            this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
 
-            this.canvasCtx.save();
+          this.canvasCtx.save();
 
-            this.canvasCtx.lineWidth = 1;
-            this.canvasCtx.lineCap = 'square';
-            this.canvasCtx.globalCompositeOperation = 'overlay';
-            //this.canvasCtx.lineDashOffset = -this.xPos[0];
+          this.canvasCtx.lineWidth = 1;
+          this.canvasCtx.lineCap = 'square';
+          this.canvasCtx.globalCompositeOperation = 'overlay';
+          //this.canvasCtx.lineDashOffset = -this.xPos[0];
 
-            let spinner = this.xPos[0] % 100;
-            for (let y = this.yPos + 12, i = 0,
-                width = HorizonLine.dimensions.WIDTH;
-              y + i < Runner.defaultDimensions.HEIGHT; i++,
-                width /= 1.02
-                ) {
+          let spinner = this.xPos[0] % 100;
+          for (let y = this.yPos + 12, i = 0,
+            width = HorizonLine.dimensions.WIDTH;
+            y + i < Runner.defaultDimensions.HEIGHT; i++,
+            width /= 1.02
+          ) {
 
-              this.canvasCtx.setLineDash([50,50]);
-              this.canvasCtx.strokeStyle = "rgba(255,255,255,"+(0.025 * i)+")";
-              this.canvasCtx.beginPath();
-              this.canvasCtx.moveTo(0, y + i);
-              this.canvasCtx.lineTo(width, y + i);
-              this.canvasCtx.lineDashOffset = -spinner - width/2;
-              this.canvasCtx.stroke();
-              this.canvasCtx.scale(1.02, 1);
+            this.canvasCtx.setLineDash([50,50]);
+            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+(0.025 * i)+")";
+            this.canvasCtx.beginPath();
+            this.canvasCtx.moveTo(0, y + i);
+            this.canvasCtx.lineTo(width, y + i);
+            this.canvasCtx.lineDashOffset = -spinner - width/2;
+            this.canvasCtx.stroke();
+            this.canvasCtx.scale(1.02, 1);
 
-            }
-            //TODO Ban also draw upward by scaling down.
+          }
+          //TODO Ban also draw upward by scaling down.
 
-            this.canvasCtx.restore();
+          this.canvasCtx.restore();
         },
 
         /**
@@ -2990,17 +2990,17 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} increment
          */
         updateXPos: function (pos, increment) {
-            var line1 = pos;
-            var line2 = pos == 0 ? 1 : 0;
+          var line1 = pos;
+          var line2 = pos == 0 ? 1 : 0;
 
-            this.xPos[line1] -= increment;
-            this.xPos[line2] = this.xPos[line1] + this.dimensions.WIDTH;
+          this.xPos[line1] -= increment;
+          this.xPos[line2] = this.xPos[line1] + this.dimensions.WIDTH;
 
-            if (this.xPos[line1] <= -this.dimensions.WIDTH) {
-                this.xPos[line1] += this.dimensions.WIDTH * 2;
-                this.xPos[line2] = this.xPos[line1] - this.dimensions.WIDTH;
-                this.sourceXPos[line1] = this.getRandomType() + this.spritePos.x;
-            }
+          if (this.xPos[line1] <= -this.dimensions.WIDTH) {
+            this.xPos[line1] += this.dimensions.WIDTH * 2;
+            this.xPos[line2] = this.xPos[line1] - this.dimensions.WIDTH;
+            this.sourceXPos[line1] = this.getRandomType() + this.spritePos.x;
+          }
         },
 
         /**
@@ -3009,22 +3009,22 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} speed
          */
         update: function (deltaTime, speed) {
-            var increment = Math.floor(speed * (FPS / 1000) * deltaTime);
+          var increment = Math.floor(speed * (FPS / 1000) * deltaTime);
 
-            if (this.xPos[0] <= 0) {
-                this.updateXPos(0, increment);
-            } else {
-                this.updateXPos(1, increment);
-            }
-            this.draw();
+          if (this.xPos[0] <= 0) {
+            this.updateXPos(0, increment);
+          } else {
+            this.updateXPos(1, increment);
+          }
+          this.draw();
         },
 
         /**
          * Reset horizon to the starting position.
          */
         reset: function () {
-            this.xPos[0] = 0;
-            this.xPos[1] = HorizonLine.dimensions.WIDTH;
+          this.xPos[0] = 0;
+          this.xPos[1] = HorizonLine.dimensions.WIDTH;
         }
     };
 
@@ -3040,25 +3040,25 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @constructor
      */
     function Horizon(canvas, spritePos, dimensions, gapCoefficient) {
-        this.canvas = canvas;
-        this.canvasCtx = this.canvas.getContext('2d');
-        this.config = Horizon.config;
-        this.dimensions = dimensions;
-        this.gapCoefficient = gapCoefficient;
-        this.obstacles = [];
-        this.obstacleHistory = [];
-        this.horizonOffsets = [0, 0];
-        this.cloudFrequency = this.config.CLOUD_FREQUENCY;
-        this.spritePos = spritePos;
-        this.nightMode = null;
+      this.canvas = canvas;
+      this.canvasCtx = this.canvas.getContext('2d');
+      this.config = Horizon.config;
+      this.dimensions = dimensions;
+      this.gapCoefficient = gapCoefficient;
+      this.obstacles = [];
+      this.obstacleHistory = [];
+      this.horizonOffsets = [0, 0];
+      this.cloudFrequency = this.config.CLOUD_FREQUENCY;
+      this.spritePos = spritePos;
+      this.nightMode = null;
 
-        // Cloud
-        this.clouds = [];
-        this.cloudSpeed = this.config.BG_CLOUD_SPEED;
+      // Cloud
+      this.clouds = [];
+      this.cloudSpeed = this.config.BG_CLOUD_SPEED;
 
-        // Horizon
-        this.horizonLine = null;
-        this.init();
+      // Horizon
+      this.horizonLine = null;
+      this.init();
     };
 
 
@@ -3067,11 +3067,11 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {number}
      */
     Horizon.config = {
-        BG_CLOUD_SPEED: 0.2,
-        BUMPY_THRESHOLD: .3,
-        CLOUD_FREQUENCY: .5,
-        HORIZON_HEIGHT: 16,
-        MAX_CLOUDS: 6
+      BG_CLOUD_SPEED: 0.2,
+      BUMPY_THRESHOLD: .3,
+      CLOUD_FREQUENCY: .5,
+      HORIZON_HEIGHT: 16,
+      MAX_CLOUDS: 6
     };
 
 
@@ -3080,10 +3080,10 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Initialise the horizon. Just add the line and a cloud. No obstacles.
          */
         init: function () {
-            this.addCloud();
-            this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
-            this.nightMode = new NightMode(this.canvas, this.spritePos.MOON,
-                this.dimensions.WIDTH);
+          this.addCloud();
+          this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
+          this.nightMode = new NightMode(this.canvas, this.spritePos.MOON,
+            this.dimensions.WIDTH);
         },
 
         /**
@@ -3095,14 +3095,14 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {boolean} showNightMode Night mode activated.
          */
         update: function (deltaTime, currentSpeed, updateObstacles, showNightMode) {
-            this.runningTime += deltaTime;
-            this.horizonLine.update(deltaTime, currentSpeed);
-            this.nightMode.update(showNightMode);
-            this.updateClouds(deltaTime, currentSpeed);
+          this.runningTime += deltaTime;
+          this.horizonLine.update(deltaTime, currentSpeed);
+          this.nightMode.update(showNightMode);
+          this.updateClouds(deltaTime, currentSpeed);
 
-            if (updateObstacles) {
-                this.updateObstacles(deltaTime, currentSpeed);
-            }
+          if (updateObstacles) {
+            this.updateObstacles(deltaTime, currentSpeed);
+          }
         },
 
         /**
@@ -3111,30 +3111,30 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} currentSpeed
          */
         updateClouds: function (deltaTime, speed) {
-            var cloudSpeed = this.cloudSpeed / 1000 * deltaTime * speed;
-            var numClouds = this.clouds.length;
+          var cloudSpeed = this.cloudSpeed / 1000 * deltaTime * speed;
+          var numClouds = this.clouds.length;
 
-            if (numClouds) {
-                for (var i = numClouds - 1; i >= 0; i--) {
-                    this.clouds[i].update(cloudSpeed);
-                }
-
-                var lastCloud = this.clouds[numClouds - 1];
-
-                // Check for adding a new cloud.
-                if (numClouds < this.config.MAX_CLOUDS &&
-                    (this.dimensions.WIDTH - lastCloud.xPos) > lastCloud.cloudGap &&
-                    this.cloudFrequency > Math.random()) {
-                    this.addCloud();
-                }
-
-                // Remove expired clouds.
-                this.clouds = this.clouds.filter(function (obj) {
-                    return !obj.remove;
-                });
-            } else {
-                this.addCloud();
+          if (numClouds) {
+            for (var i = numClouds - 1; i >= 0; i--) {
+              this.clouds[i].update(cloudSpeed);
             }
+
+            var lastCloud = this.clouds[numClouds - 1];
+
+            // Check for adding a new cloud.
+            if (numClouds < this.config.MAX_CLOUDS &&
+                (this.dimensions.WIDTH - lastCloud.xPos) > lastCloud.cloudGap &&
+                this.cloudFrequency > Math.random()) {
+              this.addCloud();
+            }
+
+            // Remove expired clouds.
+            this.clouds = this.clouds.filter(function (obj) {
+              return !obj.remove;
+            });
+          } else {
+            this.addCloud();
+          }
         },
 
         /**
@@ -3143,38 +3143,38 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} currentSpeed
          */
         updateObstacles: function (deltaTime, currentSpeed) {
-            // Obstacles, move to Horizon layer.
-            var updatedObstacles = this.obstacles.slice(0);
+          // Obstacles, move to Horizon layer.
+          var updatedObstacles = this.obstacles.slice(0);
 
-            for (var i = 0; i < this.obstacles.length; i++) {
-                var obstacle = this.obstacles[i];
-                obstacle.update(deltaTime, currentSpeed);
+          for (var i = 0; i < this.obstacles.length; i++) {
+            var obstacle = this.obstacles[i];
+            obstacle.update(deltaTime, currentSpeed);
 
-                // Clean up existing obstacles.
-                if (obstacle.remove) {
-                    updatedObstacles.shift();
-                }
+            // Clean up existing obstacles.
+            if (obstacle.remove) {
+              updatedObstacles.shift();
             }
-            this.obstacles = updatedObstacles;
+          }
+          this.obstacles = updatedObstacles;
 
-            if (this.obstacles.length > 0) {
-                var lastObstacle = this.obstacles[this.obstacles.length - 1];
+          if (this.obstacles.length > 0) {
+            var lastObstacle = this.obstacles[this.obstacles.length - 1];
 
-                if (lastObstacle && !lastObstacle.followingObstacleCreated &&
-                    lastObstacle.isVisible() &&
-                    (lastObstacle.xPos + lastObstacle.width + lastObstacle.gap) <
-                    this.dimensions.WIDTH) {
-                    this.addNewObstacle(currentSpeed);
-                    lastObstacle.followingObstacleCreated = true;
-                }
-            } else {
-                // Create new obstacles.
-                this.addNewObstacle(currentSpeed);
+            if (lastObstacle && !lastObstacle.followingObstacleCreated &&
+                lastObstacle.isVisible() &&
+                (lastObstacle.xPos + lastObstacle.width + lastObstacle.gap) <
+                this.dimensions.WIDTH) {
+              this.addNewObstacle(currentSpeed);
+              lastObstacle.followingObstacleCreated = true;
             }
+          } else {
+            // Create new obstacles.
+            this.addNewObstacle(currentSpeed);
+          }
         },
 
         removeFirstObstacle: function () {
-            this.obstacles.shift();
+          this.obstacles.shift();
         },
 
         /**
@@ -3182,27 +3182,27 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} currentSpeed
          */
         addNewObstacle: function (currentSpeed) {
-            var obstacleTypeIndex = getRandomNum(0, Obstacle.types.length - 1);
-            var obstacleType = Obstacle.types[obstacleTypeIndex];
+          var obstacleTypeIndex = getRandomNum(0, Obstacle.types.length - 1);
+          var obstacleType = Obstacle.types[obstacleTypeIndex];
 
-            // Check for multiples of the same type of obstacle.
-            // Also check obstacle is available at current speed.
-            if (this.duplicateObstacleCheck(obstacleType.type) ||
-                currentSpeed < obstacleType.minSpeed) {
-                this.addNewObstacle(currentSpeed);
-            } else {
-                var obstacleSpritePos = this.spritePos[obstacleType.type];
+          // Check for multiples of the same type of obstacle.
+          // Also check obstacle is available at current speed.
+          if (this.duplicateObstacleCheck(obstacleType.type) ||
+          currentSpeed < obstacleType.minSpeed) {
+            this.addNewObstacle(currentSpeed);
+          } else {
+            var obstacleSpritePos = this.spritePos[obstacleType.type];
 
-                this.obstacles.push(new Obstacle(this.canvasCtx, obstacleType,
-                    obstacleSpritePos, this.dimensions,
-                    this.gapCoefficient, currentSpeed, obstacleType.width));
+            this.obstacles.push(new Obstacle(this.canvasCtx, obstacleType,
+              obstacleSpritePos, this.dimensions,
+              this.gapCoefficient, currentSpeed, obstacleType.width));
 
-                this.obstacleHistory.unshift(obstacleType.type);
+            this.obstacleHistory.unshift(obstacleType.type);
 
-                if (this.obstacleHistory.length > 1) {
-                    this.obstacleHistory.splice(Runner.config.MAX_OBSTACLE_DUPLICATION);
-                }
+            if (this.obstacleHistory.length > 1) {
+              this.obstacleHistory.splice(Runner.config.MAX_OBSTACLE_DUPLICATION);
             }
+          }
         },
 
         /**
@@ -3211,13 +3211,13 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @return {boolean}
          */
         duplicateObstacleCheck: function (nextObstacleType) {
-            var duplicateCount = 0;
+          var duplicateCount = 0;
 
-            for (var i = 0; i < this.obstacleHistory.length; i++) {
-                duplicateCount = this.obstacleHistory[i] == nextObstacleType ?
-                    duplicateCount + 1 : 0;
-            }
-            return duplicateCount >= Runner.config.MAX_OBSTACLE_DUPLICATION;
+          for (var i = 0; i < this.obstacleHistory.length; i++) {
+            duplicateCount = this.obstacleHistory[i] == nextObstacleType ?
+              duplicateCount + 1 : 0;
+          }
+          return duplicateCount >= Runner.config.MAX_OBSTACLE_DUPLICATION;
         },
 
         /**
@@ -3225,9 +3225,9 @@ IS_HIDPI = true; // Force HIDPI for now.
          * Remove existing obstacles and reposition the horizon line.
          */
         reset: function () {
-            this.obstacles = [];
-            this.horizonLine.reset();
-            this.nightMode.reset();
+          this.obstacles = [];
+          this.horizonLine.reset();
+          this.nightMode.reset();
         },
 
         /**
@@ -3236,32 +3236,32 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {number} height Canvas height.
          */
         resize: function (width, height) {
-            this.canvas.width = width;
-            this.canvas.height = height;
+          this.canvas.width = width;
+          this.canvas.height = height;
         },
 
         /**
          * Add a new cloud to the horizon.
          */
         addCloud: function () {
-            let type = getRandomNum(0,this.spritePos.CLOUD.y.length - 1);
-            let len = this.clouds.length;
-            if (len >= 2) {
-                if (this.clouds[len-1].type == this.clouds[len-2].type && this.clouds[len-2].type == type) {
-                    type++;
-                    type %= this.spritePos.CLOUD.y.length;
-                }
+          let type = getRandomNum(0,this.spritePos.CLOUD.y.length - 1);
+          let len = this.clouds.length;
+          if (len >= 2) {
+            if (this.clouds[len-1].type == this.clouds[len-2].type && this.clouds[len-2].type == type) {
+              type++;
+              type %= this.spritePos.CLOUD.y.length;
             }
+          }
 
-            this.clouds.push(new Cloud(this.canvas, this.spritePos.CLOUD,
-                this.dimensions.WIDTH, type));
+          this.clouds.push(new Cloud(this.canvas, this.spritePos.CLOUD,
+            this.dimensions.WIDTH, type));
         }
     };
 })();
 
 
 function onDocumentLoad() {
-    new Runner('.interstitial-wrapper');
+  new Runner('.interstitial-wrapper');
 }
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
