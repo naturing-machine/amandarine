@@ -765,12 +765,16 @@ IS_HIDPI = true; // Force HIDPI for now.
                 now = 8 - now%8;
                 let alpha = (fallDuration-200)/200;
                 if (alpha > 1) alpha = 1;
-                this.canvasCtx.lineDashOffset = now;
-                this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
                 this.canvasCtx.setLineDash([2,6]);
-                this.canvasCtx.stroke();
+
+                this.canvasCtx.lineWidth = 2.0;
                 this.canvasCtx.lineDashOffset = now + 4;
                 this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
+                this.canvasCtx.stroke();
+
+                this.canvasCtx.lineWidth = 2.0;
+                this.canvasCtx.lineDashOffset = now;
+                this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
                 this.canvasCtx.stroke();
 
                 this.canvasCtx.restore();
@@ -2901,6 +2905,35 @@ IS_HIDPI = true; // Force HIDPI for now.
                 this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
                 this.xPos[1], this.yPos,
                 this.dimensions.WIDTH, this.dimensions.HEIGHT);
+
+
+            this.canvasCtx.save();
+
+            this.canvasCtx.lineWidth = 1;
+            this.canvasCtx.lineCap = 'square';
+            this.canvasCtx.globalCompositeOperation = 'overlay';
+            //this.canvasCtx.lineDashOffset = -this.xPos[0];
+
+            let spinner = this.xPos[0] % 100;
+            for (let y = this.yPos + 12, i = 0,
+                width = HorizonLine.dimensions.WIDTH;
+              y + i < Runner.defaultDimensions.HEIGHT; i++,
+                width /= 1.02
+                ) {
+
+              this.canvasCtx.setLineDash([50,50]);
+              this.canvasCtx.strokeStyle = "rgba(255,255,255,"+(0.025 * i)+")";
+              this.canvasCtx.beginPath();
+              this.canvasCtx.moveTo(0, y + i);
+              this.canvasCtx.lineTo(width, y + i);
+              this.canvasCtx.lineDashOffset = -spinner - width/2;
+              this.canvasCtx.stroke();
+              this.canvasCtx.scale(1.02, 1);
+
+            }
+            //TODO Ban also draw upward by scaling down.
+
+            this.canvasCtx.restore();
         },
 
         /**
