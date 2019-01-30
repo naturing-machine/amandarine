@@ -188,6 +188,7 @@ IS_HIDPI = true; // Force HIDPI for now.
             CACTUS_LARGE: { x: 472, y: 2 },
             CACTUS_SMALL: { x: 266, y: 2 },
             CLOUD: { x: 166, y: [2,30,70] },
+            CRASH: { x: 800, y: 35},
             DUST: { x: 776, y: 2 },
             HORIZON: { x: 2, y: 104 },
             MOON: { x: 954, y: 2 },
@@ -685,7 +686,15 @@ IS_HIDPI = true; // Force HIDPI for now.
               }
 
               // Check for collisions.
-              var collision = hasObstacles && checkForCollision(this.horizon.obstacles[0], this.nath, Runner.config.SHOW_COLLISION && this.canvasCtx);
+              let collisionBoxes;
+              let collision = false;
+
+              if (hasObstacles) {
+                collisionBoxes = checkForCollision(this.horizon.obstacles[0], this.nath, Runner.config.SHOW_COLLISION && this.canvasCtx);
+                if (collisionBoxes) {
+                  collision = true;
+                }
+              }
 
               if (!collision) {
                 this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
@@ -694,7 +703,8 @@ IS_HIDPI = true; // Force HIDPI for now.
                   this.currentSpeed += this.config.ACCELERATION;
                 }
               } else {
-                this.gameOver();
+                let box = boxIntersection(collisionBoxes[0],collisionBoxes[1]);
+                this.gameOver({x: box.x + box.width/2, y: box.y + box.height/2});
                 this.playHackSlide(true);
               }
 
@@ -1002,39 +1012,46 @@ IS_HIDPI = true; // Force HIDPI for now.
 
         /**
          * Game over state.
+         * @param {point} p
          */
-        gameOver: function () {
-	    if (!Runner.config.SHOW_COLLISION) {
-		    this.clearCanvas();
-		    this.horizon.update(0, 0, true);
-	    }
+        gameOver: function (p) {
+          if (!Runner.config.SHOW_COLLISION) {
+            this.clearCanvas();
+            this.horizon.update(0, 0, true);
+          }
 
-            this.playSound(this.soundFx.HIT);
-            vibrate(200);
+          this.playSound(this.soundFx.HIT);
+          vibrate(200);
 
-            this.stop();
-            this.crashed = true;
-            this.distanceMeter.acheivement = false;
+          this.stop();
+          this.crashed = true;
+          this.distanceMeter.acheivement = false;
 
-            this.nath.update(100, Nath.status.CRASHED);
+          this.canvasCtx.drawImage(Runner.imageSprite,
+            Runner.spriteDefinition.HDPI.CRASH.x,
+            Runner.spriteDefinition.HDPI.CRASH.y,
+            32, 32,
+            p.x-16, p.y-16,
+            32, 32);
+          this.nath.update(100, Nath.status.CRASHED);
 
-            // Game over panel.
-            if (!this.gameOverPanel) {
-                this.gameOverPanel = new GameOverPanel(this.canvas,
-                    this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
-                    this.dimensions);
-            } else {
-                this.gameOverPanel.draw();
-            }
+          // Game over panel.
+          if (!this.gameOverPanel) {
+              this.gameOverPanel = new GameOverPanel(this.canvas,
+                  this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
+                  this.dimensions);
+          } else {
+              this.gameOverPanel.draw();
+          }
 
-            // Update the high score.
-            if (this.distanceRan > this.highestScore) {
-                this.highestScore = Math.ceil(this.distanceRan);
-                this.distanceMeter.setHighScore(this.highestScore);
-            }
+          // Update the high score.
+          if (this.distanceRan > this.highestScore) {
+              this.highestScore = Math.ceil(this.distanceRan);
+              this.distanceMeter.setHighScore(this.highestScore);
+          }
 
-            // Reset the time clock.
-            this.time = getTimeStamp();
+          // Reset the time clock.
+          this.time = getTimeStamp();
 
         },
 
@@ -1476,6 +1493,37 @@ IS_HIDPI = true; // Force HIDPI for now.
 
         return crashed;
     };
+
+    function boxIntersection(aBox, bBox) {
+
+      let box = {x:0, y:0, width:0, height:0};
+
+      if (aBox.x <= bBox.x) {
+        box.x = bBox.x;
+      } else {
+        box.x = aBox.x;
+      }
+
+      if (aBox.y <= bBox.y) {
+        box.y = bBox.y;
+      } else {
+        box.y = aBox.y;
+      }
+
+      if (aBox.x + aBox.width >= bBox.x + bBox.width) {
+        box.width = bBox.x + bBox.width - box.x;
+      } else {
+        box.width = aBox.x + aBox.width - box.x;
+      }
+
+      if (aBox.y + aBox.height >= bBox.y + bBox.height) {
+        box.height = bBox.y + bBox.height - box.y;
+      } else {
+        box.height = aBox.y + aBox.height - box.y;
+      }
+
+      return box;
+    }
 
 
     //******************************************************************************
@@ -1961,7 +2009,7 @@ IS_HIDPI = true; // Force HIDPI for now.
               this.animStartTime = getTimeStamp();
               this.setBlinkDelay();
               */
-              if (opt_status != Nath.status.WAITING && opt_status != Nath.status.DUCKING) {
+              if (opt_status != Nath.status.CRASHED && opt_status != Nath.status.WAITING && opt_status != Nath.status.DUCKING) {
                 if (this.xPos == 0) {
                   this.dust.x = -24;
                 } else {
@@ -2998,7 +3046,6 @@ IS_HIDPI = true; // Force HIDPI for now.
         this.dimensions = dimensions;
         this.gapCoefficient = gapCoefficient;
         this.obstacles = [];
-        this.dusts = [];
         this.obstacleHistory = [];
         this.horizonOffsets = [0, 0];
         this.cloudFrequency = this.config.CLOUD_FREQUENCY;
