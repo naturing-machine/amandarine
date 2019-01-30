@@ -13,65 +13,66 @@
      * @export
      */
     function Runner(outerContainerId, opt_config) {
-        // Singleton
-        if (Runner.instance_) {
-            return Runner.instance_;
-        }
-        Runner.instance_ = this;
+      // Singleton
+      if (Runner.instance_) {
+        return Runner.instance_;
+      }
+      Runner.instance_ = this;
 
-        this.outerContainerEl = document.querySelector(outerContainerId);
-        this.containerEl = null;
-        this.snackbarEl = null;
-        this.detailsButton = this.outerContainerEl.querySelector('#details-button');
+      this.outerContainerEl = document.querySelector(outerContainerId);
+      this.containerEl = null;
+      this.snackbarEl = null;
+      this.detailsButton = this.outerContainerEl.querySelector('#details-button');
 
-        this.config = opt_config || Runner.config;
+      this.config = opt_config || Runner.config;
 
-        this.dimensions = Runner.defaultDimensions;
+      this.dimensions = Runner.defaultDimensions;
 
-        this.canvas = null;
-        this.canvasCtx = null;
+      this.canvas = null;
+      this.canvasCtx = null;
 
-        this.nath = null;
+      this.nath = null;
 
-        this.distanceMeter = null;
-        this.distanceRan = 0;
+      this.distanceMeter = null;
+      this.distanceRan = 0;
 
-        this.highestScore = 0;
+      this.highestScore = 0;
 
-        this.time = 0;
-        this.runningTime = 0;
-        this.msPerFrame = 1000 / FPS;
-        this.currentSpeed = this.config.SPEED;
+      this.time = 0;
+      this.runningTime = 0;
+      this.msPerFrame = 1000 / FPS;
+      this.currentSpeed = this.config.SPEED;
 
-        this.obstacles = [];
+      this.obstacles = [];
 
-        this.activated = false; // Whether the easter egg has been activated.
-        this.playing = false; // Whether the game is currently in play state.
-        this.crashed = false;
-        this.paused = false;
-        this.inverted = false;
-        this.invertTimer = 0;
-        this.resizeTimerId_ = null;
+      this.activated = false; // Whether the easter egg has been activated.
+      this.playing = false; // Whether the game is currently in play state.
+      this.crashed = false;
+      this.paused = false;
+      this.inverted = false;
+      this.invertTimer = 0;
+      this.resizeTimerId_ = null;
 
-        this.playCount = 0;
+      this.playCount = 0;
 
-        // Sound FX.
-        this.audioBuffer = null;
-        this.soundFx = {};
+      // Sound FX.
+      this.audioBuffer = null;
+      this.soundFx = {};
 
-        // Global web audio context for playing sounds.
-        this.audioContext = null;
+      // Global web audio context for playing sounds.
+      this.audioContext = null;
 
-        // Images.
-        this.images = {};
-        this.imagesLoaded = 0;
+      // Images.
+      this.images = {};
+      this.imagesLoaded = 0;
 
-        if (this.isDisabled()) {
-            this.setupDisabledRunner();
-        } else {
-            this.loadImages();
-        }
+      if (this.isDisabled()) {
+        this.setupDisabledRunner();
+      } else {
+        this.loadImages();
+      }
     }
+
     window['Runner'] = Runner;
 
 
@@ -89,7 +90,7 @@
 
     /** @const */
     var IS_HIDPI = window.devicePixelRatio > 1;
-IS_HIDPI = true; // Force HIDPI for now.
+    IS_HIDPI = true; // Force HIDPI for now.
 
     /** @const */
     var IS_IOS = /iPad|iPhone|iPod/.test(window.navigator.platform);
@@ -105,38 +106,38 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {number}
      */
     Runner.config = {
-        ACCELERATION: 0.001,
-        BG_CLOUD_SPEED: 0.2,
-        BOTTOM_PAD: 10,
-        CLEAR_TIME: 3000,
-        CLOUD_FREQUENCY: 0.5,
-        CRASH_WIDTH: 32,
-        CRASH_HEIGHT: 32,
-        GAMEOVER_CLEAR_TIME: 750,
-        GAP_COEFFICIENT: 0.6,
-        //INITIAL_JUMP_VELOCITY: 12,
-        INVERT_FADE_DURATION: 12000,
-        INVERT_DISTANCE: 700,
-        SKY_SHADING_DURATION: 2000,
-        MAX_BLINK_COUNT: 30,
-        MAX_CLOUDS: 6,
-        MAX_OBSTACLE_LENGTH: 3,
-        MAX_OBSTACLE_DUPLICATION: 2,
-        MAX_JUMP_PRESS: 600,
-        MIN_JUMP_PRESS: 200,
-        MAX_SPEED: 13,
-        MIN_JUMP_HEIGHT: 35,
-        MOBILE_SPEED_COEFFICIENT: 1.2,
-        RESOURCE_TEMPLATE_ID: 'audio-resources',
-        SPEED: 6,
-        SPEED_DROP_COEFFICIENT: 3,
-        SHOW_COLLISION: false,
-        SKY: {
-            DAY: [221,238,255,238,238,255],
-            //NIGHT: [68,136,170,102,153,187],
-            NIGHT: [68,136,170,84,183,187],
-            START: [255,255,255,255,255,255]
-        }
+      ACCELERATION: 0.001,
+      BG_CLOUD_SPEED: 0.2,
+      BOTTOM_PAD: 10,
+      CLEAR_TIME: 3000,
+      CLOUD_FREQUENCY: 0.5,
+      CRASH_WIDTH: 32,
+      CRASH_HEIGHT: 32,
+      GAMEOVER_CLEAR_TIME: 750,
+      GAP_COEFFICIENT: 0.6,
+      //INITIAL_JUMP_VELOCITY: 12,
+      INVERT_FADE_DURATION: 12000,
+      INVERT_DISTANCE: 700,
+      SKY_SHADING_DURATION: 2000,
+      MAX_BLINK_COUNT: 30,
+      MAX_CLOUDS: 6,
+      MAX_OBSTACLE_LENGTH: 3,
+      MAX_OBSTACLE_DUPLICATION: 2,
+      MAX_JUMP_PRESS: 600,
+      MIN_JUMP_PRESS: 200,
+      MAX_SPEED: 13,
+      MIN_JUMP_HEIGHT: 35,
+      MOBILE_SPEED_COEFFICIENT: 1.2,
+      RESOURCE_TEMPLATE_ID: 'audio-resources',
+      SPEED: 6,
+      SPEED_DROP_COEFFICIENT: 3,
+      SHOW_COLLISION: false,
+      SKY: {
+        DAY: [221,238,255,238,238,255],
+        //NIGHT: [68,136,170,102,153,187],
+        NIGHT: [68,136,170,84,183,187],
+        START: [255,255,255,255,255,255]
+      }
     };
 
 
@@ -145,8 +146,8 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {string}
      */
     Runner.defaultDimensions = {
-        WIDTH: DEFAULT_WIDTH,
-        HEIGHT: 200
+      WIDTH: DEFAULT_WIDTH,
+      HEIGHT: 200
     };
 
 
@@ -155,15 +156,15 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {string}
      */
     Runner.classes = {
-        CANVAS: 'runner-canvas',
-        CONTAINER: 'runner-container',
-        CRASHED: 'crashed',
-        ICON: 'icon-offline',
-        INVERTED: 'inverted',
-        SNACKBAR: 'snackbar',
-        SPACEBAR: 'spacebar',
-        SNACKBAR_SHOW: 'snackbar-show',
-        TOUCH_CONTROLLER: 'controller'
+      CANVAS: 'runner-canvas',
+      CONTAINER: 'runner-container',
+      CRASHED: 'crashed',
+      ICON: 'icon-offline',
+      INVERTED: 'inverted',
+      SNACKBAR: 'snackbar',
+      SPACEBAR: 'spacebar',
+      SNACKBAR_SHOW: 'snackbar-show',
+      TOUCH_CONTROLLER: 'controller'
     };
 
 
@@ -172,34 +173,34 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {Object}
      */
     Runner.spriteDefinition = {
-        /*
-        LDPI: {
-            CACTUS_LARGE: { x: 332, y: 2 },
-            CACTUS_SMALL: { x: 228, y: 2 },
-            CLOUD: { x: 86, y: 2 },
-            HORIZON: { x: 2, y: 54 },
-            MOON: { x: 484, y: 2 },
-            RED_DUCK: { x: 134, y: 2 },
-            RESTART: { x: 2, y: 2 },
-            TEXT_SPRITE: { x: 655, y: 2 },
-            NATHERINE: { x: 848, y: 2 },
-            STAR: { x: 645, y: 2 }
-        },*/
-        HDPI: {
-            BICYCLE: { x: 0, y: 0 },
-            CACTUS_LARGE: { x: 472, y: 2 },
-            CACTUS_SMALL: { x: 266, y: 2 },
-            CLOUD: { x: 166, y: [2,30,70] },
-            CRASH: { x: 800, y: 35},
-            DUST: { x: 776, y: 2 },
-            HORIZON: { x: 2, y: 104 },
-            MOON: { x: 954, y: 2 },
-            NATHERINE: { x: 0, y: 0 },
-            RED_DUCK: { x: 1537, y: 4 },
-            RESTART: { x: 2, y: 2 },
-            TEXT_SPRITE: { x: 1294, y: 2 },
-            STAR: { x: 1276, y: 2 }
-        }
+      /*
+      LDPI: {
+      CACTUS_LARGE: { x: 332, y: 2 },
+      CACTUS_SMALL: { x: 228, y: 2 },
+      CLOUD: { x: 86, y: 2 },
+      HORIZON: { x: 2, y: 54 },
+      MOON: { x: 484, y: 2 },
+      RED_DUCK: { x: 134, y: 2 },
+      RESTART: { x: 2, y: 2 },
+      TEXT_SPRITE: { x: 655, y: 2 },
+      NATHERINE: { x: 848, y: 2 },
+      STAR: { x: 645, y: 2 }
+    },*/
+      HDPI: {
+        BICYCLE: { x: 0, y: 0 },
+        CACTUS_LARGE: { x: 472, y: 2 },
+        CACTUS_SMALL: { x: 266, y: 2 },
+        CLOUD: { x: 166, y: [2,30,70] },
+        CRASH: { x: 800, y: 35},
+        DUST: { x: 776, y: 2 },
+        HORIZON: { x: 2, y: 104 },
+        MOON: { x: 954, y: 2 },
+        NATHERINE: { x: 0, y: 0 },
+        RED_DUCK: { x: 1537, y: 4 },
+        RESTART: { x: 2, y: 2 },
+        TEXT_SPRITE: { x: 1294, y: 2 },
+        STAR: { x: 1276, y: 2 }
+      }
     };
 
 
@@ -208,10 +209,10 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {string}
      */
     Runner.sounds = {
-        BUTTON_PRESS: 'offline-sound-press',
-        HIT: 'offline-sound-hit',
-        SCORE: 'offline-sound-reached',
-        SOUND_SLIDE: 'offline-sound-slide'
+      BUTTON_PRESS: 'offline-sound-press',
+      HIT: 'offline-sound-hit',
+      SCORE: 'offline-sound-reached',
+      SOUND_SLIDE: 'offline-sound-slide'
     };
 
 
@@ -220,9 +221,9 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {Object}
      */
     Runner.keycodes = {
-        JUMP: { '38': 1, '32': 1 },  // Up, spacebar
-        DUCK: { '40': 1 },  // Down
-        RESTART: { '13': 1 }  // Enter
+      JUMP: { '38': 1, '32': 1 },  // Up, spacebar
+      DUCK: { '40': 1 },  // Down
+      RESTART: { '13': 1 }  // Enter
     };
 
 
@@ -231,19 +232,19 @@ IS_HIDPI = true; // Force HIDPI for now.
      * @enum {string}
      */
     Runner.events = {
-        ANIM_END: 'webkitAnimationEnd',
-        CLICK: 'click',
-        KEYDOWN: 'keydown',
-        KEYUP: 'keyup',
-        MOUSEDOWN: 'mousedown',
-        MOUSEUP: 'mouseup',
-        RESIZE: 'resize',
-        TOUCHEND: 'touchend',
-        TOUCHSTART: 'touchstart',
-        VISIBILITY: 'visibilitychange',
-        BLUR: 'blur',
-        FOCUS: 'focus',
-        LOAD: 'load'
+      ANIM_END: 'webkitAnimationEnd',
+      CLICK: 'click',
+      KEYDOWN: 'keydown',
+      KEYUP: 'keyup',
+      MOUSEDOWN: 'mousedown',
+      MOUSEUP: 'mouseup',
+      RESIZE: 'resize',
+      TOUCHEND: 'touchend',
+      TOUCHSTART: 'touchstart',
+      VISIBILITY: 'visibilitychange',
+      BLUR: 'blur',
+      FOCUS: 'focus',
+      LOAD: 'load'
     };
 
 
@@ -253,26 +254,26 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @return {boolean}
          */
         isDisabled: function () {
-            // return loadTimeData && loadTimeData.valueExists('disabledEasterEgg');
-            return false;
+          // return loadTimeData && loadTimeData.valueExists('disabledEasterEgg');
+          return false;
         },
 
         /**
          * For disabled instances, set up a snackbar with the disabled message.
          */
         setupDisabledRunner: function () {
-            this.containerEl = document.createElement('div');
-            this.containerEl.className = Runner.classes.SNACKBAR;
-            this.containerEl.textContent = loadTimeData.getValue('disabledEasterEgg');
-            this.outerContainerEl.appendChild(this.containerEl);
+          this.containerEl = document.createElement('div');
+          this.containerEl.className = Runner.classes.SNACKBAR;
+          this.containerEl.textContent = loadTimeData.getValue('disabledEasterEgg');
+          this.outerContainerEl.appendChild(this.containerEl);
 
-            // Show notification when the activation key is pressed.
-            document.addEventListener(Runner.events.KEYDOWN, function (e) {
-                if (Runner.keycodes.JUMP[e.keyCode]) {
-                    this.containerEl.classList.add(Runner.classes.SNACKBAR_SHOW);
-                    document.querySelector('.icon').classList.add('icon-disabled');
-                }
-            }.bind(this));
+          // Show notification when the activation key is pressed.
+          document.addEventListener(Runner.events.KEYDOWN, function (e) {
+            if (Runner.keycodes.JUMP[e.keyCode]) {
+              this.containerEl.classList.add(Runner.classes.SNACKBAR_SHOW);
+              document.querySelector('.icon').classList.add('icon-disabled');
+            }
+          }.bind(this));
         },
 
         /**
@@ -281,25 +282,25 @@ IS_HIDPI = true; // Force HIDPI for now.
          * @param {*} value
          */
         updateConfigSetting: function (setting, value) {
-            if (setting in this.config && value != undefined) {
-                this.config[setting] = value;
+          if (setting in this.config && value != undefined) {
+            this.config[setting] = value;
 
-                switch (setting) {
-                    case 'GRAVITY':
-                    case 'MIN_JUMP_HEIGHT':
-                    case 'SPEED_DROP_COEFFICIENT':
-                        this.nath.config[setting] = value;
-                        break;
-                        /*
-                    case 'INITIAL_JUMP_VELOCITY':
-                        this.nath.setJumpVelocity(value);
-                        break;
-                        */
-                    case 'SPEED':
-                        this.setSpeed(value);
-                        break;
-                }
+            switch (setting) {
+              case 'GRAVITY':
+              case 'MIN_JUMP_HEIGHT':
+              case 'SPEED_DROP_COEFFICIENT':
+                this.nath.config[setting] = value;
+                break;
+              /*
+              case 'INITIAL_JUMP_VELOCITY':
+              this.nath.setJumpVelocity(value);
+              break;
+              */
+              case 'SPEED':
+                this.setSpeed(value);
+                break;
             }
+          }
         },
 
         /**
@@ -804,12 +805,12 @@ IS_HIDPI = true; // Force HIDPI for now.
               case events.KEYDOWN:
               case events.TOUCHSTART:
               case events.MOUSEDOWN:
-              this.onKeyDown(e);
-              break;
+                this.onKeyDown(e);
+                break;
               case events.KEYUP:
               case events.TOUCHEND:
               case events.MOUSEUP:
-              this.onKeyUp(e);
+                this.onKeyUp(e);
               break;
             }
           }.bind(this))(e.type, Runner.events);
