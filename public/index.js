@@ -2960,21 +2960,32 @@
           this.canvasCtx.globalCompositeOperation = 'overlay';
           //this.canvasCtx.lineDashOffset = -this.xPos[0];
 
-          let spinner = this.xPos[0] % 100;
-          for (let y = this.yPos + 12, i = 0,
-            width = HorizonLine.dimensions.WIDTH;
-            y + i < Runner.defaultDimensions.HEIGHT; i++,
-            width /= 1.02
-          ) {
 
+          //Draw striping lawn
+          //TODO add superfluous switch
+          for ( let
+            spinner = this.xPos[0] % 100,
+            scale = 1.02,
+            step = 2,
+            pwStep = Math.pow(scale, step),
+            y = this.yPos + 12,
+            i = -8,
+            pw = Math.pow(scale,i),
+            width = HorizonLine.dimensions.WIDTH;
+
+                y + i < Dusita.defaultDimensions.HEIGHT;
+
+                    i += 2, pw *= pwStep ) {
+            let width = HorizonLine.dimensions.WIDTH / pw;
+
+            this.canvasCtx.setTransform(pw, 0, 0, 1, 0, 0);
             this.canvasCtx.setLineDash([50,50]);
-            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+(0.025 * i)+")";
+            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+(0.035 * (i+8))+")";
             this.canvasCtx.beginPath();
             this.canvasCtx.moveTo(0, y + i);
             this.canvasCtx.lineTo(width, y + i);
             this.canvasCtx.lineDashOffset = -spinner - width/2;
             this.canvasCtx.stroke();
-            this.canvasCtx.scale(1.02, 1);
 
           }
           //TODO Ban also draw upward by scaling down.
