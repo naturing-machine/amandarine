@@ -45,6 +45,8 @@
 
       this.obstacles = [];
 
+      this.actions = [];
+
       this.activated = false; // Whether the easter egg has been activated.
       this.playing = false; // Whether the game is currently in play state.
       this.crashed = false;
@@ -115,7 +117,6 @@
       CRASH_HEIGHT: 32,
       GAMEOVER_CLEAR_TIME: 750,
       GAP_COEFFICIENT: 0.6,
-      //INITIAL_JUMP_VELOCITY: 12,
       INVERT_FADE_DURATION: 12000,
       INVERT_DISTANCE: 700,
       SKY_SHADING_DURATION: 2000,
@@ -130,7 +131,6 @@
       MOBILE_SPEED_COEFFICIENT: 1.2,
       RESOURCE_TEMPLATE_ID: 'audio-resources',
       SPEED: 6,
-      SPEED_DROP_COEFFICIENT: 3,
       SHOW_COLLISION: false,
       SKY: {
         DAY: [221,238,255,238,238,255],
@@ -288,14 +288,8 @@
             switch (setting) {
               case 'GRAVITY':
               case 'MIN_JUMP_HEIGHT':
-              case 'SPEED_DROP_COEFFICIENT':
                 this.amdr.config[setting] = value;
                 break;
-              /*
-              case 'INITIAL_JUMP_VELOCITY':
-              this.amdr.setJumpVelocity(value);
-              break;
-              */
               case 'SPEED':
                 this.setSpeed(value);
                 break;
@@ -643,6 +637,24 @@
          * Update the game frame and schedules the next one.
          */
         update: function () {
+
+          // Filter ended action(s).
+          this.actions = this.actions.filter(function(action){ return action.status != -1 });
+          if (this.actions.length) {
+            let action = this.actions[0];
+            // The action is ready to be triggered.
+            if (action.status == 1) {
+              //action.speed = this.currentSpeed;
+              this.amdr.setAction(action);
+              switch (action.type) {
+                case AMDR.status.JUMPING:
+                  this.playSound(this.soundFx.BUTTON_PRESS);
+                  break;
+                default:;
+              }
+            }
+          }
+
           this.updatePending = false;
 
           var now = getTimeStamp();
@@ -665,9 +677,7 @@
 
           if (this.playing) {
 
-            if (this.amdr.jumping) {
-              this.amdr.updateJump(deltaTime);
-            }
+            this.amdr.updateAction(deltaTime);
 
             this.runningTime += deltaTime;
             var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
@@ -739,61 +749,63 @@
           }
 
           if (this.playing || (!this.activated &&
-            this.amdr.blinkCount < Dusita.config.MAX_BLINK_COUNT)) {
+              this.amdr.blinkCount < Dusita.config.MAX_BLINK_COUNT)) {
 
-              /* Draw dashes */
-              //              if (this.jumpStart) {
-            if (this.willJump && this.amdr.yPos == this.amdr.groundYPos) {
-              let now = getTimeStamp();
-              let delta = Dusita.config.MIN_JUMP_PRESS + now - this.jumpStart;
-              if (delta > Dusita.config.MAX_JUMP_PRESS) {
-                delta = Dusita.config.MAX_JUMP_PRESS
-              }
-
-              let fallDuration = Math.sqrt(2000 * delta / AMDR.config.GRAVITY);
-
-              let jumpTop = delta / 1000;
-
-              this.canvasCtx.save();
-              this.canvasCtx.beginPath();
-              this.canvasCtx.strokeStyle = "#000000";
-
-              let x = this.amdr.xPos;
-              let y = this.amdr.yPos + 35;
-              var increment = this.currentSpeed * (FPS / 20) ;
-
-              for (let t = -fallDuration + 50, i=1; t <= fallDuration + 50; t+= 50, i++) {
-                let d = jumpTop - (0.0000005 * AMDR.config.GRAVITY * t * t);
-                let yy = y - d * 210;
-                if (i == 0) {
-                  this.canvasCtx.moveTo(x + i*increment, yy);
-                } else {
-                  this.canvasCtx.lineTo(x + i*increment, yy);
-                }
-              }
-
-              // Shadow
-              now = 8 - now%8;
-              let alpha = (fallDuration-200)/200;
-              if (alpha > 1) alpha = 1;
-              this.canvasCtx.setLineDash([2,6]);
-
-              this.canvasCtx.lineWidth = 2.0;
-              this.canvasCtx.lineDashOffset = now + 4;
-              this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
-              this.canvasCtx.stroke();
-
-              this.canvasCtx.lineWidth = 2.0;
-              this.canvasCtx.lineDashOffset = now;
-              this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
-              this.canvasCtx.stroke();
-
-              this.canvasCtx.restore();
+            if (this.actions.length && this.actions[0].type == AMDR.status.JUMPING && this.actions[0].status == 0) {
+              this.drawJumpingGuide(this.actions[0]);
             }
 
             this.amdr.update(deltaTime);
             this.scheduleNextUpdate();
           }
+        },
+
+        drawJumpingGuide: function (a) {
+        /* Draw jumping guide */
+          let now = getTimeStamp();
+          let delta = Dusita.config.MIN_JUMP_PRESS + now - a.begin;
+          if (delta > Dusita.config.MAX_JUMP_PRESS) {
+            delta = Dusita.config.MAX_JUMP_PRESS
+          }
+
+          let fallDuration = Math.sqrt(2000 * delta / AMDR.config.GRAVITY);
+
+          let jumpTop = delta / 1000;
+
+          this.canvasCtx.save();
+          this.canvasCtx.beginPath();
+          this.canvasCtx.strokeStyle = "#000000";
+
+          let x = this.amdr.xPos;
+          let y = this.amdr.yPos + 35;
+          var increment = this.currentSpeed * (FPS / 20) ;
+
+          for (let t = -fallDuration + 50, i=1; t <= fallDuration + 50; t+= 50, i++) {
+            let d = jumpTop - (0.0000005 * AMDR.config.GRAVITY * t * t);
+            let yy = y - d * 210;
+            if (i == 0) {
+              this.canvasCtx.moveTo(x + i*increment, yy);
+            } else {
+              this.canvasCtx.lineTo(x + i*increment, yy);
+            }
+          }
+
+          now = 8 - now%8;
+          let alpha = (fallDuration-200)/200;
+          if (alpha > 1) alpha = 1;
+          this.canvasCtx.setLineDash([2,6]);
+
+          this.canvasCtx.lineWidth = 2.0;
+          this.canvasCtx.lineDashOffset = now + 4;
+          this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
+          this.canvasCtx.stroke();
+
+          this.canvasCtx.lineWidth = 2.0;
+          this.canvasCtx.lineDashOffset = now;
+          this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
+          this.canvasCtx.stroke();
+
+          this.canvasCtx.restore();
         },
 
         /**
@@ -887,8 +899,17 @@
             if (!this.crashed && (Dusita.keycodes.JUMP[e.keyCode] ||
                 e.type == Dusita.events.TOUCHSTART)) {
 
-              this.willJump = true;
+              // Push a jump action to the queue.
+              if (!e.repeat && this.actions.length < 2) {
+                this.actions.push({
+                  begin: e.timeStamp,
+                  type: AMDR.status.JUMPING,
+                  code: e.keyCode,
+                  status: 0
+                });
+              }
 
+              // If not already, start the game.
               if (!this.playing) {
                 this.loadSounds();
                 this.playing = true;
@@ -901,12 +922,6 @@
                   errorPageController.trackEasterEgg();
                 }
               }
-              // Start preparing the jump, the longer holding for the higher jump.
-              // Player can start a new jump in the midair but will jump on release.
-              if (!this.amdr.ducking && !e.repeat) {
-                  this.jumpStart = e.timeStamp;
-//                  this.amdr.startJump(this.currentSpeed);
-              }
             }
 
             if (this.crashed && e.type == Dusita.events.TOUCHSTART && e.currentTarget == this.containerEl) {
@@ -916,12 +931,9 @@
 
           if (this.playing && !this.crashed && Dusita.keycodes.DUCK[e.keyCode]) {
             e.preventDefault();
-            if (this.amdr.jumping) {
-                  // Speed drop, activated only when jump key is not pressed.
-                  //this.amdr.setSpeedDrop();
-                  //FIXME if ducking in the air, should duck ASA hitting the ground.
-            } else if (!this.amdr.jumping && !this.amdr.ducking) {
-                // Duck.
+
+            if (this.amdr.getAction() != AMDR.status.JUMPING && !this.amdr.ducking) {
+                // Duck. FIXME Move to double action
               this.amdr.setDuck(true);
             }
           }
@@ -942,24 +954,18 @@
             Dusita.config.SHOW_COLLISION = !Dusita.config.SHOW_COLLISION;
           }
 
+
           if (this.isRunning() && isjumpKey) {
 
-            if (!this.amdr.jumping) {
-              let delta = Dusita.config.MIN_JUMP_PRESS + e.timeStamp - this.jumpStart;
-              this.jumpStart = 0;
-              this.amdr.startJump(this.currentSpeed, (
-                delta > Dusita.config.MAX_JUMP_PRESS
-                  ? Dusita.config.MAX_JUMP_PRESS
-                  : delta/* < Dusita.config.MIN_JUMP_PRESS
-                    ? Dusita.config.MIN_JUMP_PRESS
-                    : delta*/)
-                /*turn into meter*/
-              );
-              this.playSound(this.soundFx.BUTTON_PRESS);
+            for (let i = 0, a; a = this.actions[i]; i++) {
+              if (a.code == keyCode && !a.end) {
+                a.end = e.timeStamp;
+                a.duration = a.end - a.begin;
+                a.status = 1; // 0: Preparing, 1: Ready, 2: In progres, -1: Ended.
+              }
             }
-            this.amdr.endJump();
+
           } else if (Dusita.keycodes.DUCK[keyCode]) {
-            //this.amdr.speedDrop = false;
             this.amdr.setDuck(false);
           } else if (this.crashed) {
             // Check that enough time has elapsed before allowing jump key to restart.
@@ -975,8 +981,6 @@
             this.amdr.reset();
             this.play();
           }
-
-          this.willJump = false;
 
         },
 
@@ -1075,12 +1079,12 @@
 
         restart: function () {
           if (!this.raqId) {
+            this.actions = [];
             this.playCount++;
             this.runningTime = 0;
             this.playing = true;
             this.crashed = false;
             this.distanceRan = 0;
-            this.jumpStart = 0;
             this.setSpeed(this.config.SPEED);
             this.time = getTimeStamp();
             this.containerEl.classList.remove(Dusita.classes.CRASHED);
@@ -1847,13 +1851,8 @@
       // Current status.
       this.status = AMDR.status.WAITING;
 
-      this.jumping = false;
       this.ducking = false;
-      this.jumpVelocity = 0;
-      this.reachedMinHeight = false;
-      //this.speedDrop = false;
       this.jumpCount = 0;
-      this.jumpspotX = 0;
 
       this.dust = new Particles(canvas, this.xPos, this.yPos, AMDR.config.DUST_DURATION);
 
@@ -1866,17 +1865,14 @@
      * @enum {number}
      */
     AMDR.config = {
-      DROP_VELOCITY: -5,
       DUST_DURATION: 600,
       GRAVITY: 9.8,
       SCALE_FACTOR: 210,
       HEIGHT: 40,
       HEIGHT_DUCK: 25,
-      //INIITAL_JUMP_VELOCITY: -10,
       INTRO_DURATION: 1500,
       MAX_JUMP_HEIGHT: 30,
       MIN_JUMP_HEIGHT: 30,
-      SPEED_DROP_COEFFICIENT: 3,
       SPRITE_WIDTH: 262,
       START_X_POS: 50,
       WIDTH: 40,
@@ -1977,17 +1973,6 @@
         },
 
         /**
-         * Setter for the jump velocity.
-         * The approriate drop velocity is also set.
-         */
-         /*
-        setJumpVelocity: function (setting) {
-            this.config.INIITAL_JUMP_VELOCITY = -setting;
-            this.config.DROP_VELOCITY = -setting / 2;
-        },
-        */
-
-        /**
          * Set the animation status.
          * @param {!number} deltaTime
          * @param {AMDR.status} status Optional status to switch to.
@@ -2057,13 +2042,8 @@
 
           this.dust.update(deltaTime);
 
-          // Speed drop becomes duck if the down key is still being pressed.
-          /*
-          if (this.speedDrop && this.yPos == this.groundYPos) {
-              this.speedDrop = false;
-              this.setDuck(true);
-          }
-          */
+          return true;
+
         },
 
         /**
@@ -2155,108 +2135,72 @@
         },
 
         /**
-         * Initialise a jump.
-         * @param {number} speed
-         * @param {number} height in centimeter
+         * Start an action.
+         * @param {Object} action definition
          */
-        startJump: function (speed, height) {
-          if (!this.jumping) {
-            this.update(0, AMDR.status.JUMPING);
+        setAction: function (action) {
+          this.action = action;
+          this.action.status = 2;
 
-            this.jumpTop = height / 1000;
-            this.fallDuration = Math.sqrt(2000 * height / AMDR.config.GRAVITY);
-            this.jumpTimer = 0;
-            this.jumping = true;
+          switch(action.type) {
+            case AMDR.status.JUMPING:
+              {
+                // It seems more ergonomically natural to simply add the minimum than to clip the value.
+                action.duration += Dusita.config.MIN_JUMP_PRESS;
+                if (action.duration > Dusita.config.MAX_JUMP_PRESS) {
+                  action.duration = Dusita.config.MAX_JUMP_PRESS;
+                }
+                action.top = action.duration / 1000;
+                action.halftime = Math.sqrt(2000 * action.duration / AMDR.config.GRAVITY);
+                action.timer = 0;
 
-            //this.jumpVelocity = this.config.INIITAL_JUMP_VELOCITY - (speed / 10);
-            this.reachedMinHeight = false;
-            //this.speedDrop = false;
+                this.update(0, AMDR.status.JUMPING);
 
+              } break;
+            default:;
           }
         },
 
-        /**
-         * Jump is complete, falling down.
-         */
-        endJump: function () {
-          /*
-            if (this.reachedMinHeight &&
-                this.jumpVelocity < this.config.DROP_VELOCITY) {
-                this.jumpVelocity = this.config.DROP_VELOCITY;
-            }
-            */
+        getAction: function () {
+          if (this.action && this.action.status != -1) {
+            return this.action.type;
+          }
+          return AMDR.status.RUNNING;
         },
 
         /**
-         * Update frame for a jump.
+         * Update current action.
          * @param {number} deltaTime
-         * @param {number} speed
          */
-        updateJump: function (deltaTime, speed) {
+        updateAction: function (deltaTime) {
+          let a = this.action;
 
-          this.jumpTimer += deltaTime;
-          let t = this.fallDuration - this.jumpTimer;
-          let d = this.jumpTop * this.config.SCALE_FACTOR
-            - this.config.GRAVITY_FACTOR * t * t;
+          if (!a || a.status == -1) return false;
 
-          /* For falling animation */
-          if (this.jumpTimer > this.jumpDuration) {
-          } else {
-            this.endJump();
+          switch (a.type) {
+            case AMDR.status.JUMPING:
+              {
+                a.timer += deltaTime;
+                let t = a.halftime - a.timer;
+                let d = a.top * this.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * t * t;
+
+                this.yPos = this.groundYPos - d;
+
+                if (t < -a.halftime) {
+                  this.jumpCount++;
+                  a.status = -1;
+                  this.yPos = this.groundYPos;
+                  this.update(0, AMDR.status.RUNNING);
+                } else {
+                  this.update(deltaTime);
+                }
+
+              } break;
+            default:;
           }
 
-          this.yPos = this.groundYPos - d;
-
-          if (t < -this.fallDuration) {
-            this.reset();
-            this.jumpCount++;
-          }
-
-          this.update(deltaTime);
-
-          /*
-            var msPerFrame = AMDR.animFrames[this.status].msPerFrame;
-            var framesElapsed = deltaTime / msPerFrame;
-
-            // Speed drop makes AMDR fall faster.
-            if (this.speedDrop) {
-                this.yPos += Math.round(this.jumpVelocity *
-                    this.config.SPEED_DROP_COEFFICIENT * framesElapsed);
-            } else {
-                this.yPos += Math.round(this.jumpVelocity * framesElapsed);
-            }
-
-            this.jumpVelocity += AMDR.config.GRAVITY * framesElapsed;
-
-            // Minimum height has been reached.
-            if (this.yPos < this.minJumpHeight || this.speedDrop) {
-                this.reachedMinHeight = true;
-            }
-
-            // Reached max height
-            if (this.yPos < this.config.MAX_JUMP_HEIGHT || this.speedDrop) {
-                this.endJump();
-            }
-
-            // Back down at ground level. Jump completed.
-            if (this.yPos > this.groundYPos) {
-                this.reset();
-                this.jumpCount++;
-            }
-
-            this.update(deltaTime);
-            */
+          return true;
         },
-
-        /**
-         * Set the speed drop. Immediately cancels the current jump.
-         */
-         /*
-        setSpeedDrop: function () {
-            this.speedDrop = true;
-            this.jumpVelocity = 1;
-        },
-        */
 
         /**
          * @param {boolean} isDucking.
@@ -2276,12 +2220,8 @@
          */
         reset: function () {
           this.yPos = this.groundYPos;
-          this.jumpVelocity = 0;
-          this.jumping = false;
           this.ducking = false;
           this.update(0, AMDR.status.RUNNING);
-          this.midair = false;
-          //this.speedDrop = false;
           this.jumpCount = 0;
           this.dust.reset();
         }
