@@ -6,32 +6,32 @@
 (function () {
     'use strict';
     /**
-     * Natherine runner.
+     * Amandarine runner.
      * @param {string} outerContainerId Outer containing element id.
      * @param {Object} opt_config
      * @constructor
      * @export
      */
-    function Runner(outerContainerId, opt_config) {
+    function Dusita(outerContainerId, opt_config) {
       // Singleton
-      if (Runner.instance_) {
-        return Runner.instance_;
+      if (Dusita.instance_) {
+        return Dusita.instance_;
       }
-      Runner.instance_ = this;
+      Dusita.instance_ = this;
 
       this.outerContainerEl = document.querySelector(outerContainerId);
       this.containerEl = null;
       this.snackbarEl = null;
       this.detailsButton = this.outerContainerEl.querySelector('#details-button');
 
-      this.config = opt_config || Runner.config;
+      this.config = opt_config || Dusita.config;
 
-      this.dimensions = Runner.defaultDimensions;
+      this.dimensions = Dusita.defaultDimensions;
 
       this.canvas = null;
       this.canvasCtx = null;
 
-      this.nath = null;
+      this.amdr = null;
 
       this.distanceMeter = null;
       this.distanceRan = 0;
@@ -73,7 +73,7 @@
       }
     }
 
-    window['Runner'] = Runner;
+    window['Dusita'] = Dusita;
 
 
     /**
@@ -105,7 +105,7 @@
      * Default game configuration.
      * @enum {number}
      */
-    Runner.config = {
+    Dusita.config = {
       ACCELERATION: 0.001,
       BG_CLOUD_SPEED: 0.2,
       BOTTOM_PAD: 10,
@@ -145,7 +145,7 @@
      * Default dimensions.
      * @enum {string}
      */
-    Runner.defaultDimensions = {
+    Dusita.defaultDimensions = {
       WIDTH: DEFAULT_WIDTH,
       HEIGHT: 200
     };
@@ -155,7 +155,7 @@
      * CSS class names.
      * @enum {string}
      */
-    Runner.classes = {
+    Dusita.classes = {
       CANVAS: 'runner-canvas',
       CONTAINER: 'runner-container',
       CRASHED: 'crashed',
@@ -172,7 +172,7 @@
      * Sprite definition layout of the spritesheet.
      * @enum {Object}
      */
-    Runner.spriteDefinition = {
+    Dusita.spriteDefinition = {
       /*
       LDPI: {
       CACTUS_LARGE: { x: 332, y: 2 },
@@ -208,7 +208,7 @@
      * Sound FX. Reference to the ID of the audio tag on interstitial page.
      * @enum {string}
      */
-    Runner.sounds = {
+    Dusita.sounds = {
       BUTTON_PRESS: 'offline-sound-press',
       HIT: 'offline-sound-hit',
       SCORE: 'offline-sound-reached',
@@ -220,7 +220,7 @@
      * Key code mapping.
      * @enum {Object}
      */
-    Runner.keycodes = {
+    Dusita.keycodes = {
       JUMP: { '38': 1, '32': 1 },  // Up, spacebar
       DUCK: { '40': 1 },  // Down
       RESTART: { '13': 1 }  // Enter
@@ -228,10 +228,10 @@
 
 
     /**
-     * Runner event names.
+     * Dusita event names.
      * @enum {string}
      */
-    Runner.events = {
+    Dusita.events = {
       ANIM_END: 'webkitAnimationEnd',
       CLICK: 'click',
       KEYDOWN: 'keydown',
@@ -248,7 +248,7 @@
     };
 
 
-    Runner.prototype = {
+    Dusita.prototype = {
         /**
          * Whether the easter egg has been disabled. CrOS enterprise enrolled devices.
          * @return {boolean}
@@ -263,14 +263,14 @@
          */
         setupDisabledRunner: function () {
           this.containerEl = document.createElement('div');
-          this.containerEl.className = Runner.classes.SNACKBAR;
+          this.containerEl.className = Dusita.classes.SNACKBAR;
           this.containerEl.textContent = loadTimeData.getValue('disabledEasterEgg');
           this.outerContainerEl.appendChild(this.containerEl);
 
           // Show notification when the activation key is pressed.
-          document.addEventListener(Runner.events.KEYDOWN, function (e) {
-            if (Runner.keycodes.JUMP[e.keyCode]) {
-              this.containerEl.classList.add(Runner.classes.SNACKBAR_SHOW);
+          document.addEventListener(Dusita.events.KEYDOWN, function (e) {
+            if (Dusita.keycodes.JUMP[e.keyCode]) {
+              this.containerEl.classList.add(Dusita.classes.SNACKBAR_SHOW);
               document.querySelector('.icon').classList.add('icon-disabled');
             }
           }.bind(this));
@@ -289,11 +289,11 @@
               case 'GRAVITY':
               case 'MIN_JUMP_HEIGHT':
               case 'SPEED_DROP_COEFFICIENT':
-                this.nath.config[setting] = value;
+                this.amdr.config[setting] = value;
                 break;
               /*
               case 'INITIAL_JUMP_VELOCITY':
-              this.nath.setJumpVelocity(value);
+              this.amdr.setJumpVelocity(value);
               break;
               */
               case 'SPEED':
@@ -310,38 +310,38 @@
         loadImages: function () {
 
           if (IS_HIDPI) {
-            Runner.imageSprite = document.getElementById('offline-resources-2x');
-            Runner.imageSpriteNatRunning = document.getElementById('offline-resources-nat-running');
-            Runner.imageSpriteNatSliding = document.getElementById('offline-resources-nat-sliding');
-            Runner.imageSpriteNatIdling = document.getElementById('offline-resources-nat-idling');
-            Runner.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
-            Runner.imageSpriteNatCrashed = document.getElementById('offline-resources-nat-crash');
-            this.spriteDef = Runner.spriteDefinition.HDPI;
+            Dusita.imageSprite = document.getElementById('offline-resources-2x');
+            Dusita.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running');
+            Dusita.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding');
+            Dusita.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling');
+            Dusita.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
+            Dusita.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash');
+            this.spriteDef = Dusita.spriteDefinition.HDPI;
 
             Obstacle.types[0].mag = 2;
             Obstacle.types[1].mag = 2;
             Obstacle.types[2].mag = 2;
             Obstacle.types[3].mag = 1;
 
-            Obstacle.types[3].sprite = Runner.imageSpriteBicycle;
-            Nath.animFrames.WAITING.sprite = Runner.imageSpriteNatIdling;
-            Nath.animFrames.JUMPING.sprite = Runner.imageSpriteNatRunning;
-            Nath.animFrames.DUCKING.sprite = Runner.imageSpriteNatSliding;
-            Nath.animFrames.RUNNING.sprite = Runner.imageSpriteNatRunning;
-            Nath.animFrames.CRASHED.sprite = Runner.imageSpriteNatCrashed;
+            Obstacle.types[3].sprite = Dusita.imageSpriteBicycle;
+            AMDR.animFrames.WAITING.sprite = Dusita.imageSpriteAmdrIdling;
+            AMDR.animFrames.JUMPING.sprite = Dusita.imageSpriteAmdrRunning;
+            AMDR.animFrames.DUCKING.sprite = Dusita.imageSpriteAmdrSliding;
+            AMDR.animFrames.RUNNING.sprite = Dusita.imageSpriteAmdrRunning;
+            AMDR.animFrames.CRASHED.sprite = Dusita.imageSpriteAmdrCrashed;
 
 
           } else {
             //NYI
             console.error("NYI: 1x isn't supported ATM.");
             /*
-            Runner.imageSprite = document.getElementById('offline-resources-1x');
-            this.spriteDef = Runner.spriteDefinition.LDPI;
+            Dusita.imageSprite = document.getElementById('offline-resources-1x');
+            this.spriteDef = Dusita.spriteDefinition.LDPI;
             */
           }
 
           var loader = {
-            spriteList: [ Runner.imageSprite, Runner.imageSpriteNatRunning, Runner.imageSpriteNatIdling, Runner.imageSpriteNatCrashed, Runner.imageSpriteBicycle, ],
+            spriteList: [ Dusita.imageSprite, Dusita.imageSpriteAmdrRunning, Dusita.imageSpriteAmdrIdling, Dusita.imageSpriteAmdrCrashed, Dusita.imageSpriteBicycle, ],
             runner: this,
             load: function() {
 
@@ -349,7 +349,7 @@
 
               while (sprite = this.spriteList.shift()) {
                 if (!sprite.complete) {
-                  sprite.addEventListener(Runner.events.LOAD, this.load.bind(this));
+                  sprite.addEventListener(Dusita.events.LOAD, this.load.bind(this));
                   return;
                 }
                 console.debug("Sprites loaded.", sprite);
@@ -375,9 +375,9 @@
             var resourceTemplate =
             document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
 
-            for (var sound in Runner.sounds) {
+            for (var sound in Dusita.sounds) {
               var soundSrc =
-              resourceTemplate.getElementById(Runner.sounds[sound]).src;
+              resourceTemplate.getElementById(Dusita.sounds[sound]).src;
               soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
               var buffer = decodeBase64ToArrayBuffer(soundSrc);
 
@@ -442,19 +442,19 @@
          */
         init: function () {
           // Hide the static icon.
-          document.querySelector('.' + Runner.classes.ICON).style.visibility =
+          document.querySelector('.' + Dusita.classes.ICON).style.visibility =
           'hidden';
 
           this.adjustDimensions();
           this.setSpeed();
 
           this.containerEl = document.createElement('div');
-          this.containerEl.className = Runner.classes.CONTAINER;
+          this.containerEl.className = Dusita.classes.CONTAINER;
 //	      this.containerEl.style.borderRadius = "20px";
 
           // Player canvas container.
           this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
-            this.dimensions.HEIGHT, Runner.classes.PLAYER);
+            this.dimensions.HEIGHT, Dusita.classes.PLAYER);
 
             // This or we won't recieve
           this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
@@ -462,7 +462,7 @@
           this.canvasCtx = this.canvas.getContext('2d');
           this.canvasCtx.fillStyle = '#f7f7f7';
           this.canvasCtx.fill();
-          Runner.updateCanvasScaling(this.canvas);
+          Dusita.updateCanvasScaling(this.canvas);
           this.gradients = {};
 
           this.gradients.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
@@ -470,7 +470,7 @@
           this.gradients.grass.addColorStop(1, "#69a242");
 
           /* Will switch to gradient on starting */
-          this.gradients.sky2 = this.gradients.sky1 = Runner.config.SKY.START;
+          this.gradients.sky2 = this.gradients.sky1 = Dusita.config.SKY.START;
           this.adjustSkyGradient(1);
 
           // Horizon contains clouds, obstacles and the ground.
@@ -481,13 +481,13 @@
           this.distanceMeter = new DistanceMeter(this.canvas,
             this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
 
-          // Draw Natherine
-          this.nath = new Nath(this.canvas, this.spriteDef.NATHERINE);
+          // Draw Amandarine
+          this.amdr = new AMDR(this.canvas, this.spriteDef.NATHERINE);
 
           this.outerContainerEl.appendChild(this.containerEl);
 
           this.spacebarEl = document.createElement('div');
-          this.spacebarEl.className = Runner.classes.SPACEBAR;
+          this.spacebarEl.className = Dusita.classes.SPACEBAR;
           this.outerContainerEl.appendChild(this.spacebarEl);
           this.spacebarEl.style.width = '75px';
           this.spacebarEl.style.height = '40px';
@@ -505,7 +505,7 @@
           this.startListening();
           this.update();
 
-          window.addEventListener(Runner.events.RESIZE,
+          window.addEventListener(Dusita.events.RESIZE,
             this.debounceResize.bind(this));
         },
 
@@ -514,7 +514,7 @@
          */
         createTouchController: function () {
           this.touchController = document.createElement('div');
-          this.touchController.className = Runner.classes.TOUCH_CONTROLLER;
+          this.touchController.className = Dusita.classes.TOUCH_CONTROLLER;
           this.outerContainerEl.appendChild(this.touchController);
         },
 
@@ -546,12 +546,12 @@
             this.canvas.width = this.dimensions.WIDTH;
             this.canvas.height = this.dimensions.HEIGHT;
 
-            Runner.updateCanvasScaling(this.canvas);
+            Dusita.updateCanvasScaling(this.canvas);
 
             this.distanceMeter.calcXPos(this.dimensions.WIDTH);
             this.clearCanvas();
             this.horizon.update(0, this.currentSpeed, true);
-            this.nath.update(0);
+            this.amdr.update(0);
 
             // Outer container and distance meter.
             if (this.playing || this.crashed || this.paused) {
@@ -560,7 +560,7 @@
               this.distanceMeter.update(0, Math.ceil(this.distanceRan));
               this.stop();
             } else {
-              this.nath.draw(0, 0);
+              this.amdr.draw(0, 0);
             }
 
             // Game over panel.
@@ -578,11 +578,11 @@
         playIntro: function () {
           if (!this.activated && !this.crashed) {
             this.playingIntro = true;
-            this.nath.playingIntro = true;
+            this.amdr.playingIntro = true;
 
             // CSS animation definition.
             var keyframes = '@-webkit-keyframes intro { ' +
-            'from { border-radius: 20px; width:' + Nath.config.WIDTH + 'px }' +
+            'from { border-radius: 20px; width:' + AMDR.config.WIDTH + 'px }' +
             'to { border-radius: 10px; width: ' + this.dimensions.WIDTH + 'px }' +
             '}';
 
@@ -592,7 +592,7 @@
             sheet.innerHTML = keyframes;
             document.head.appendChild(sheet);
 
-            this.containerEl.addEventListener(Runner.events.ANIM_END,
+            this.containerEl.addEventListener(Dusita.events.ANIM_END,
               this.startGame.bind(this));
 
             this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
@@ -616,18 +616,18 @@
         startGame: function () {
           this.runningTime = 0;
           this.playingIntro = false;
-          this.nath.playingIntro = false;
+          this.amdr.playingIntro = false;
           this.containerEl.style.webkitAnimation = '';
           this.playCount++;
 
           // Handle tabbing off the page. Pause the current game.
-          document.addEventListener(Runner.events.VISIBILITY,
+          document.addEventListener(Dusita.events.VISIBILITY,
             this.onVisibilityChange.bind(this));
 
-          window.addEventListener(Runner.events.BLUR,
+          window.addEventListener(Dusita.events.BLUR,
             this.onVisibilityChange.bind(this));
 
-          window.addEventListener(Runner.events.FOCUS,
+          window.addEventListener(Dusita.events.FOCUS,
             this.onVisibilityChange.bind(this));
         },
 
@@ -651,29 +651,29 @@
 
           if (this.skyFadingStartTime) {
             let delta = now - this.skyFadingStartTime;
-            if (delta > Runner.config.SKY_SHADING_DURATION) {
+            if (delta > Dusita.config.SKY_SHADING_DURATION) {
               delete this.skyFadingStartTime;
               this.adjustSkyGradient(1);
             } else {
-              this.adjustSkyGradient(delta/Runner.config.SKY_SHADING_DURATION);
+              this.adjustSkyGradient(delta/Dusita.config.SKY_SHADING_DURATION);
             }
           }
 
           this.clearCanvas();
 
-          this.playHackSlide(!this.nath.ducking);
+          this.playHackSlide(!this.amdr.ducking);
 
           if (this.playing) {
 
-            if (this.nath.jumping) {
-              this.nath.updateJump(deltaTime);
+            if (this.amdr.jumping) {
+              this.amdr.updateJump(deltaTime);
             }
 
             this.runningTime += deltaTime;
             var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
 
             // First jump triggers the intro.
-            if (this.nath.jumpCount == 1 && !this.playingIntro) {
+            if (this.amdr.jumpCount == 1 && !this.playingIntro) {
               this.playIntro();
             }
 
@@ -691,7 +691,7 @@
             let collision = false;
 
             if (hasObstacles) {
-              collisionBoxes = checkForCollision(this.horizon.obstacles[0], this.nath, Runner.config.SHOW_COLLISION && this.canvasCtx);
+              collisionBoxes = checkForCollision(this.horizon.obstacles[0], this.amdr, Dusita.config.SHOW_COLLISION && this.canvasCtx);
               if (collisionBoxes) {
                 collision = true;
               }
@@ -739,18 +739,18 @@
           }
 
           if (this.playing || (!this.activated &&
-            this.nath.blinkCount < Runner.config.MAX_BLINK_COUNT)) {
+            this.amdr.blinkCount < Dusita.config.MAX_BLINK_COUNT)) {
 
               /* Draw dashes */
               //              if (this.jumpStart) {
-            if (this.willJump && this.nath.yPos == this.nath.groundYPos) {
+            if (this.willJump && this.amdr.yPos == this.amdr.groundYPos) {
               let now = getTimeStamp();
-              let delta = Runner.config.MIN_JUMP_PRESS + now - this.jumpStart;
-              if (delta > Runner.config.MAX_JUMP_PRESS) {
-                delta = Runner.config.MAX_JUMP_PRESS
+              let delta = Dusita.config.MIN_JUMP_PRESS + now - this.jumpStart;
+              if (delta > Dusita.config.MAX_JUMP_PRESS) {
+                delta = Dusita.config.MAX_JUMP_PRESS
               }
 
-              let fallDuration = Math.sqrt(2000 * delta / Nath.config.GRAVITY);
+              let fallDuration = Math.sqrt(2000 * delta / AMDR.config.GRAVITY);
 
               let jumpTop = delta / 1000;
 
@@ -758,12 +758,12 @@
               this.canvasCtx.beginPath();
               this.canvasCtx.strokeStyle = "#000000";
 
-              let x = this.nath.xPos;
-              let y = this.nath.yPos + 35;
+              let x = this.amdr.xPos;
+              let y = this.amdr.yPos + 35;
               var increment = this.currentSpeed * (FPS / 20) ;
 
               for (let t = -fallDuration + 50, i=1; t <= fallDuration + 50; t+= 50, i++) {
-                let d = jumpTop - (0.0000005 * Nath.config.GRAVITY * t * t);
+                let d = jumpTop - (0.0000005 * AMDR.config.GRAVITY * t * t);
                 let yy = y - d * 210;
                 if (i == 0) {
                   this.canvasCtx.moveTo(x + i*increment, yy);
@@ -791,7 +791,7 @@
               this.canvasCtx.restore();
             }
 
-            this.nath.update(deltaTime);
+            this.amdr.update(deltaTime);
             this.scheduleNextUpdate();
           }
         },
@@ -813,7 +813,7 @@
                 this.onKeyUp(e);
               break;
             }
-          }.bind(this))(e.type, Runner.events);
+          }.bind(this))(e.type, Dusita.events);
         },
 
         /**
@@ -821,18 +821,18 @@
          */
         startListening: function () {
           // Keys.
-          document.addEventListener(Runner.events.KEYDOWN, this);
-          document.addEventListener(Runner.events.KEYUP, this);
+          document.addEventListener(Dusita.events.KEYDOWN, this);
+          document.addEventListener(Dusita.events.KEYUP, this);
 
           if (IS_MOBILE) {
             // Mobile only touch devices.
-            this.touchController.addEventListener(Runner.events.TOUCHSTART, this);
-            this.touchController.addEventListener(Runner.events.TOUCHEND, this);
-            this.containerEl.addEventListener(Runner.events.TOUCHSTART, this);
+            this.touchController.addEventListener(Dusita.events.TOUCHSTART, this);
+            this.touchController.addEventListener(Dusita.events.TOUCHEND, this);
+            this.containerEl.addEventListener(Dusita.events.TOUCHSTART, this);
           } else {
             // Mouse.
-            document.addEventListener(Runner.events.MOUSEDOWN, this);
-            document.addEventListener(Runner.events.MOUSEUP, this);
+            document.addEventListener(Dusita.events.MOUSEDOWN, this);
+            document.addEventListener(Dusita.events.MOUSEUP, this);
           }
         },
 
@@ -840,16 +840,16 @@
          * Remove all listeners.
          */
         stopListening: function () {
-          document.removeEventListener(Runner.events.KEYDOWN, this);
-          document.removeEventListener(Runner.events.KEYUP, this);
+          document.removeEventListener(Dusita.events.KEYDOWN, this);
+          document.removeEventListener(Dusita.events.KEYUP, this);
 
           if (IS_MOBILE) {
-            this.touchController.removeEventListener(Runner.events.TOUCHSTART, this);
-            this.touchController.removeEventListener(Runner.events.TOUCHEND, this);
-            this.containerEl.removeEventListener(Runner.events.TOUCHSTART, this);
+            this.touchController.removeEventListener(Dusita.events.TOUCHSTART, this);
+            this.touchController.removeEventListener(Dusita.events.TOUCHEND, this);
+            this.containerEl.removeEventListener(Dusita.events.TOUCHSTART, this);
           } else {
-            document.removeEventListener(Runner.events.MOUSEDOWN, this);
-            document.removeEventListener(Runner.events.MOUSEUP, this);
+            document.removeEventListener(Dusita.events.MOUSEDOWN, this);
+            document.removeEventListener(Dusita.events.MOUSEUP, this);
           }
         },
 
@@ -884,8 +884,8 @@
           }
 
           if (e.target != this.detailsButton) {
-            if (!this.crashed && (Runner.keycodes.JUMP[e.keyCode] ||
-                e.type == Runner.events.TOUCHSTART)) {
+            if (!this.crashed && (Dusita.keycodes.JUMP[e.keyCode] ||
+                e.type == Dusita.events.TOUCHSTART)) {
 
               this.willJump = true;
 
@@ -893,7 +893,7 @@
                 this.loadSounds();
                 this.playing = true;
 
-                this.gradients.sky2 = Runner.config.SKY.DAY;
+                this.gradients.sky2 = Dusita.config.SKY.DAY;
                 this.skyFadingStartTime = getTimeStamp();
 
                 this.update();
@@ -903,27 +903,26 @@
               }
               // Start preparing the jump, the longer holding for the higher jump.
               // Player can start a new jump in the midair but will jump on release.
-              if (!this.nath.ducking && !e.repeat) {
+              if (!this.amdr.ducking && !e.repeat) {
                   this.jumpStart = e.timeStamp;
-//                  this.nath.startJump(this.currentSpeed);
+//                  this.amdr.startJump(this.currentSpeed);
               }
             }
 
-            if (this.crashed && e.type == Runner.events.TOUCHSTART &&
-                e.currentTarget == this.containerEl) {
+            if (this.crashed && e.type == Dusita.events.TOUCHSTART && e.currentTarget == this.containerEl) {
               this.restart();
             }
           }
 
-          if (this.playing && !this.crashed && Runner.keycodes.DUCK[e.keyCode]) {
-              e.preventDefault();
-            if (this.nath.jumping) {
+          if (this.playing && !this.crashed && Dusita.keycodes.DUCK[e.keyCode]) {
+            e.preventDefault();
+            if (this.amdr.jumping) {
                   // Speed drop, activated only when jump key is not pressed.
-                  //this.nath.setSpeedDrop();
+                  //this.amdr.setSpeedDrop();
                   //FIXME if ducking in the air, should duck ASA hitting the ground.
-            } else if (!this.nath.jumping && !this.nath.ducking) {
+            } else if (!this.amdr.jumping && !this.amdr.ducking) {
                 // Duck.
-              this.nath.setDuck(true);
+              this.amdr.setDuck(true);
             }
           }
         },
@@ -935,45 +934,45 @@
         onKeyUp: function (e) {
 
           var keyCode = String(e.keyCode);
-          var isjumpKey = Runner.keycodes.JUMP[keyCode] ||
-          e.type == Runner.events.TOUCHEND ||
-          e.type == Runner.events.MOUSEDOWN;
+          var isjumpKey = Dusita.keycodes.JUMP[keyCode] ||
+          e.type == Dusita.events.TOUCHEND ||
+          e.type == Dusita.events.MOUSEDOWN;
 
           if (keyCode == '67') {
-            Runner.config.SHOW_COLLISION = !Runner.config.SHOW_COLLISION;
+            Dusita.config.SHOW_COLLISION = !Dusita.config.SHOW_COLLISION;
           }
 
           if (this.isRunning() && isjumpKey) {
 
-            if (!this.nath.jumping) {
-              let delta = Runner.config.MIN_JUMP_PRESS + e.timeStamp - this.jumpStart;
+            if (!this.amdr.jumping) {
+              let delta = Dusita.config.MIN_JUMP_PRESS + e.timeStamp - this.jumpStart;
               this.jumpStart = 0;
-              this.nath.startJump(this.currentSpeed, (
-                delta > Runner.config.MAX_JUMP_PRESS
-                  ? Runner.config.MAX_JUMP_PRESS
-                  : delta/* < Runner.config.MIN_JUMP_PRESS
-                    ? Runner.config.MIN_JUMP_PRESS
+              this.amdr.startJump(this.currentSpeed, (
+                delta > Dusita.config.MAX_JUMP_PRESS
+                  ? Dusita.config.MAX_JUMP_PRESS
+                  : delta/* < Dusita.config.MIN_JUMP_PRESS
+                    ? Dusita.config.MIN_JUMP_PRESS
                     : delta*/)
                 /*turn into meter*/
               );
               this.playSound(this.soundFx.BUTTON_PRESS);
             }
-            this.nath.endJump();
-          } else if (Runner.keycodes.DUCK[keyCode]) {
-            //this.nath.speedDrop = false;
-            this.nath.setDuck(false);
+            this.amdr.endJump();
+          } else if (Dusita.keycodes.DUCK[keyCode]) {
+            //this.amdr.speedDrop = false;
+            this.amdr.setDuck(false);
           } else if (this.crashed) {
             // Check that enough time has elapsed before allowing jump key to restart.
             var deltaTime = getTimeStamp() - this.time;
 
-            if (Runner.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
+            if (Dusita.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
             (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
-              Runner.keycodes.JUMP[keyCode])) {
+              Dusita.keycodes.JUMP[keyCode])) {
                 this.restart();
               }
           } else if (this.paused && isjumpKey) {
             // Reset the jump state
-            this.nath.reset();
+            this.amdr.reset();
             this.play();
           }
 
@@ -989,7 +988,7 @@
          */
         isLeftClickOnCanvas: function (e) {
           return e.button != null && e.button < 2 &&
-            e.type == Runner.events.MOUSEUP && e.target == this.canvas;
+            e.type == Dusita.events.MOUSEUP && e.target == this.canvas;
         },
 
         /**
@@ -1015,7 +1014,7 @@
          * @param {point} crashPoint
          */
         gameOver: function (crashPoint) {
-          if (!Runner.config.SHOW_COLLISION) {
+          if (!Dusita.config.SHOW_COLLISION) {
             this.clearCanvas();
             this.horizon.update(0, 0, true);
           }
@@ -1028,14 +1027,14 @@
           this.distanceMeter.acheivement = false;
 
           //
-          this.canvasCtx.drawImage(Runner.imageSprite,
-            Runner.spriteDefinition.HDPI.CRASH.x,
-            Runner.spriteDefinition.HDPI.CRASH.y,
-            this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
-            crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
-            this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
+          this.canvasCtx.drawImage(Dusita.imageSprite,
+              Dusita.spriteDefinition.HDPI.CRASH.x,
+              Dusita.spriteDefinition.HDPI.CRASH.y,
+              this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
+              crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
+              this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
 
-          this.nath.update(100, Nath.status.CRASHED);
+          this.amdr.update(100, AMDR.status.CRASHED);
 
           // Game over panel.
           if (!this.gameOverPanel) {
@@ -1068,7 +1067,7 @@
           if (!this.crashed) {
             this.playing = true;
             this.paused = false;
-            this.nath.update(0, Nath.status.RUNNING);
+            this.amdr.update(0, AMDR.status.RUNNING);
             this.time = getTimeStamp();
             this.update();
           }
@@ -1084,11 +1083,11 @@
             this.jumpStart = 0;
             this.setSpeed(this.config.SPEED);
             this.time = getTimeStamp();
-            this.containerEl.classList.remove(Runner.classes.CRASHED);
+            this.containerEl.classList.remove(Dusita.classes.CRASHED);
             this.clearCanvas();
             this.distanceMeter.reset(this.highestScore);
             this.horizon.reset();
-            this.nath.reset();
+            this.amdr.reset();
             this.playSound(this.soundFx.BUTTON_PRESS);
             this.invert(true);
             this.update();
@@ -1099,11 +1098,10 @@
          * Pause the game if the tab is not in focus.
          */
         onVisibilityChange: function (e) {
-          if (document.hidden || document.webkitHidden || e.type == 'blur' ||
-          document.visibilityState != 'visible') {
+          if (document.hidden || document.webkitHidden || e.type == 'blur' || document.visibilityState != 'visible') {
             this.stop();
           } else if (!this.crashed) {
-            this.nath.reset();
+            this.amdr.reset();
             this.play();
           }
         },
@@ -1127,17 +1125,17 @@
          */
         invert: function (reset) {
           if (reset) {
-            document.body.classList.toggle(Runner.classes.INVERTED, false);
+            document.body.classList.toggle(Dusita.classes.INVERTED, false);
             this.invertTimer = 0;
             this.inverted = false;
           } else {
-            this.inverted = document.body.classList.toggle(Runner.classes.INVERTED,
+            this.inverted = document.body.classList.toggle(Dusita.classes.INVERTED,
               this.invertTrigger);
             }
 
             //FIXME setting sky2 should actually set sky1 to current ratio.
             // setSky()
-            this.setSky(this.inverted ? Runner.config.SKY.NIGHT : Runner.config.SKY.DAY);
+            this.setSky(this.inverted ? Dusita.config.SKY.NIGHT : Dusita.config.SKY.DAY);
         },
 
 
@@ -1175,7 +1173,7 @@
      * @param {number} opt_height
      * @return {boolean} Whether the canvas was scaled.
      */
-    Runner.updateCanvasScaling = function (canvas, opt_width, opt_height) {
+    Dusita.updateCanvasScaling = function (canvas, opt_width, opt_height) {
       var context = canvas.getContext('2d');
 
       // Query the various pixel ratios
@@ -1240,8 +1238,7 @@
      */
     function createCanvas(container, width, height, opt_classname) {
       var canvas = document.createElement('canvas');
-      canvas.className = opt_classname ? Runner.classes.CANVAS + ' ' +
-        opt_classname : Runner.classes.CANVAS;
+      canvas.className = opt_classname ? Dusita.classes.CANVAS + ' ' + opt_classname : Dusita.classes.CANVAS;
       canvas.width = width;
       canvas.height = height;
       container.appendChild(canvas);
@@ -1363,16 +1360,16 @@
           textSourceY += this.textImgPos.y;
 
           // Game over text from sprite.
-          this.canvasCtx.drawImage(Runner.imageSprite,
-            textSourceX, textSourceY, textSourceWidth, textSourceHeight,
-            textTargetX, textTargetY, textTargetWidth, textTargetHeight);
+          this.canvasCtx.drawImage(Dusita.imageSprite,
+              textSourceX, textSourceY, textSourceWidth, textSourceHeight,
+              textTargetX, textTargetY, textTargetWidth, textTargetHeight);
 
           // Restart button.
-          this.canvasCtx.drawImage(Runner.imageSprite,
-            this.restartImgPos.x, this.restartImgPos.y,
-            restartSourceWidth, restartSourceHeight,
-            restartTargetX, restartTargetY, dimensions.RESTART_WIDTH,
-            dimensions.RESTART_HEIGHT);
+          this.canvasCtx.drawImage(Dusita.imageSprite,
+              this.restartImgPos.x, this.restartImgPos.y,
+              restartSourceWidth, restartSourceHeight,
+              restartTargetX, restartTargetY, dimensions.RESTART_WIDTH,
+              dimensions.RESTART_HEIGHT);
         }
     };
 
@@ -1382,21 +1379,21 @@
     /**
      * Check for a collision.
      * @param {!Obstacle} obstacle
-     * @param {!Nath} nath Natherine object.
+     * @param {!AMDR} amdr Amandarine object.
      * @param {HTMLCanvasContext} opt_canvasCtx Optional canvas context for drawing
      *    collision boxes.
      * @return {Array<CollisionBox>}
      */
-    function checkForCollision(obstacle, nath, opt_canvasCtx) {
-      var obstacleBoxXPos = Runner.defaultDimensions.WIDTH + obstacle.xPos;
+    function checkForCollision(obstacle, amdr, opt_canvasCtx) {
+      var obstacleBoxXPos = Dusita.defaultDimensions.WIDTH + obstacle.xPos;
 
       // Adjustments are made to the bounding box as there is a 1 pixel white
-      // border around Natherine and obstacles.
-      var nathBox = new CollisionBox(
-        nath.xPos + 1,
-        nath.yPos + 1,
-        nath.config.WIDTH - 2,
-        nath.config.HEIGHT - 2);
+      // border around Amandarine and obstacles.
+      var amdrBox = new CollisionBox(
+        amdr.xPos + 1,
+        amdr.yPos + 1,
+        amdr.config.WIDTH - 2,
+        amdr.config.HEIGHT - 2);
 
       var obstacleBox = new CollisionBox(
         obstacle.xPos + 1,
@@ -1406,32 +1403,32 @@
 
       // Debug outer box
       if (opt_canvasCtx) {
-        drawCollisionBoxes(opt_canvasCtx, nathBox, obstacleBox);
+        drawCollisionBoxes(opt_canvasCtx, amdrBox, obstacleBox);
       }
 
       // Simple outer bounds check.
-      if (boxCompare(nathBox, obstacleBox)) {
+      if (boxCompare(amdrBox, obstacleBox)) {
         var collisionBoxes = obstacle.collisionBoxes;
-        var nathCollisionBoxes = nath.ducking ?
-        Nath.collisionBoxes.DUCKING : Nath.collisionBoxes.RUNNING;
+        var amdrCollisionBoxes = amdr.ducking ?
+        AMDR.collisionBoxes.DUCKING : AMDR.collisionBoxes.RUNNING;
 
         // Detailed axis aligned box check.
-        for (var t = 0; t < nathCollisionBoxes.length; t++) {
+        for (var t = 0; t < amdrCollisionBoxes.length; t++) {
           for (var i = 0; i < collisionBoxes.length; i++) {
             // Adjust the box to actual positions.
-            var adjNathBox =
-              createAdjustedCollisionBox(nathCollisionBoxes[t], nathBox);
+            var adjAmdrBox =
+              createAdjustedCollisionBox(amdrCollisionBoxes[t], amdrBox);
             var adjObstacleBox =
               createAdjustedCollisionBox(collisionBoxes[i], obstacleBox);
-            var crashed = boxCompare(adjNathBox, adjObstacleBox);
+            var crashed = boxCompare(adjAmdrBox, adjObstacleBox);
 
             // Draw boxes for debug.
             if (opt_canvasCtx) {
-              drawCollisionBoxes(opt_canvasCtx, adjNathBox, adjObstacleBox);
+              drawCollisionBoxes(opt_canvasCtx, adjAmdrBox, adjObstacleBox);
             }
 
             if (crashed) {
-              return [adjNathBox, adjObstacleBox];
+              return [adjAmdrBox, adjObstacleBox];
             }
           }
         }
@@ -1458,10 +1455,10 @@
     /**
      * Draw the collision boxes for debug.
      */
-    function drawCollisionBoxes(canvasCtx, nathBox, obstacleBox) {
+    function drawCollisionBoxes(canvasCtx, amdrBox, obstacleBox) {
       canvasCtx.save();
       canvasCtx.strokeStyle = '#f00';
-      canvasCtx.strokeRect(nathBox.x, nathBox.y, nathBox.width, nathBox.height);
+      canvasCtx.strokeRect(amdrBox.x, amdrBox.y, amdrBox.width, amdrBox.height);
 
       canvasCtx.strokeStyle = '#0f0';
       canvasCtx.strokeRect(obstacleBox.x, obstacleBox.y,
@@ -1472,23 +1469,23 @@
 
     /**
      * Compare two collision boxes for a collision.
-     * @param {CollisionBox} nathBox
+     * @param {CollisionBox} amdrBox
      * @param {CollisionBox} obstacleBox
      * @return {boolean} Whether the boxes intersected.
      */
-    function boxCompare(nathBox, obstacleBox) {
+    function boxCompare(amdrBox, obstacleBox) {
       var crashed = false;
-      var nathBoxX = nathBox.x;
-      var nathBoxY = nathBox.y;
+      var amdrBoxX = amdrBox.x;
+      var amdrBoxY = amdrBox.y;
 
       var obstacleBoxX = obstacleBox.x;
       var obstacleBoxY = obstacleBox.y;
 
       // Axis-Aligned Bounding Box method.
-      if (nathBox.x < obstacleBoxX + obstacleBox.width &&
-        nathBox.x + nathBox.width > obstacleBoxX &&
-        nathBox.y < obstacleBox.y + obstacleBox.height &&
-        nathBox.height + nathBox.y > obstacleBox.y) {
+      if (amdrBox.x < obstacleBoxX + obstacleBox.width &&
+        amdrBox.x + amdrBox.width > obstacleBoxX &&
+        amdrBox.y < obstacleBox.y + obstacleBox.height &&
+        amdrBox.height + amdrBox.y > obstacleBox.y) {
           crashed = true;
         }
 
@@ -1667,7 +1664,7 @@
                 sourceX += sourceWidth * this.currentFrame;
               }
 
-              this.canvasCtx.drawImage(this.typeConfig.sprite || Runner.imageSprite,
+              this.canvasCtx.drawImage(this.typeConfig.sprite || Dusita.imageSprite,
                 sourceX, this.spritePos.y,
                 sourceWidth * this.size, sourceHeight,
                 this.xPos, this.yPos,
@@ -1755,7 +1752,7 @@
         type: 'CACTUS_SMALL',
         width: 17,
         height: 35,
-        yPos: Runner.defaultDimensions.HEIGHT - 45,
+        yPos: Dusita.defaultDimensions.HEIGHT - 45,
         multipleSpeed: 4,
         minGap: 120,
         minSpeed: 0,
@@ -1769,7 +1766,7 @@
         type: 'CACTUS_LARGE',
         width: 25,
         height: 50,
-        yPos: Runner.defaultDimensions.HEIGHT - 60,
+        yPos: Dusita.defaultDimensions.HEIGHT - 60,
         multipleSpeed: 7,
         minGap: 120,
         minSpeed: 0,
@@ -1784,9 +1781,9 @@
         width: 46,
         height: 40,
         yPos: [
-          Runner.defaultDimensions.HEIGHT - 50,
-          Runner.defaultDimensions.HEIGHT - 75,
-          Runner.defaultDimensions.HEIGHT - 100
+          Dusita.defaultDimensions.HEIGHT - 50,
+          Dusita.defaultDimensions.HEIGHT - 75,
+          Dusita.defaultDimensions.HEIGHT - 100
         ], // Variable height.
         yPosMobile: [100, 50], // Variable height mobile.
         multipleSpeed: 999,
@@ -1806,7 +1803,7 @@
         type: 'BICYCLE',
         width: 52,
         height: 52,
-        yPos: Runner.defaultDimensions.HEIGHT - 62,
+        yPos: Dusita.defaultDimensions.HEIGHT - 62,
         multipleSpeed: 999,
         minSpeed: 0,
         minGap: 150,
@@ -1825,12 +1822,12 @@
 
     //******************************************************************************
     /**
-     * Natherine game character.
+     * Amandarine game character.
      * @param {HTMLCanvas} canvas
      * @param {Object} spritePos Positioning within image sprite.
      * @constructor
      */
-    function Nath(canvas, spritePos) {
+    function AMDR(canvas, spritePos) {
       this.canvas = canvas;
       this.canvasCtx = canvas.getContext('2d');
       this.spritePos = spritePos;
@@ -1845,10 +1842,10 @@
       this.animStartTime = 0;
       this.timer = 0;
       this.msPerFrame = 1000 / FPS;
-      this.config = Nath.config;
-      this.config.GRAVITY_FACTOR = 0.0000005 * Nath.config.GRAVITY * Nath.config.SCALE_FACTOR;
+      this.config = AMDR.config;
+      this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * AMDR.config.SCALE_FACTOR;
       // Current status.
-      this.status = Nath.status.WAITING;
+      this.status = AMDR.status.WAITING;
 
       this.jumping = false;
       this.ducking = false;
@@ -1858,17 +1855,17 @@
       this.jumpCount = 0;
       this.jumpspotX = 0;
 
-      this.dust = new Particles(canvas, this.xPos, this.yPos, Nath.config.DUST_DURATION);
+      this.dust = new Particles(canvas, this.xPos, this.yPos, AMDR.config.DUST_DURATION);
 
       this.init();
     };
 
 
     /**
-     * Natherine player config.
+     * Amandarine player config.
      * @enum {number}
      */
-    Nath.config = {
+    AMDR.config = {
       DROP_VELOCITY: -5,
       DUST_DURATION: 600,
       GRAVITY: 9.8,
@@ -1891,7 +1888,7 @@
      * Used in collision detection.
      * @type {Array<CollisionBox>}
      */
-    Nath.collisionBoxes = {
+    AMDR.collisionBoxes = {
       DUCKING: [
         new CollisionBox(11, 12, 15, 12),
         new CollisionBox(11, 25, 17, 12),
@@ -1916,7 +1913,7 @@
      * Animation states.
      * @enum {string}
      */
-    Nath.status = {
+    AMDR.status = {
       CRASHED: 'CRASHED',
       DUCKING: 'DUCKING',
       JUMPING: 'JUMPING',
@@ -1928,14 +1925,14 @@
      * Blinking coefficient.
      * @const
      */
-    Nath.BLINK_TIMING = 7000;
+    AMDR.BLINK_TIMING = 7000;
 
 
     /**
      * Animation config for different states.
      * @enum {Object}
      */
-    Nath.animFrames = {
+    AMDR.animFrames = {
       WAITING: {
         frames: [0, 20, 40, 60, 80, 100],
         msPerFrame: 1000 / 6
@@ -1960,23 +1957,23 @@
     };
 
 
-    Nath.prototype = {
+    AMDR.prototype = {
         /**
-         * Natherine player initaliser.
-         * Sets Natherine to blink at random intervals.
+         * Amandarine player initaliser.
+         * Sets Amandarine to blink at random intervals.
          */
         init: function () {
-          this.groundYPos = Runner.defaultDimensions.HEIGHT - this.config.HEIGHT -
-            Runner.config.BOTTOM_PAD;
+          this.groundYPos = Dusita.defaultDimensions.HEIGHT - this.config.HEIGHT -
+            Dusita.config.BOTTOM_PAD;
           this.yPos = this.groundYPos;
           this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT;
 
-          this.currentAnimFrames = Nath.animFrames.WAITING.frames;
-          this.currentSprite = Nath.animFrames.WAITING.sprite;
+          this.currentAnimFrames = AMDR.animFrames.WAITING.frames;
+          this.currentSprite = AMDR.animFrames.WAITING.sprite;
           this.currentFrame = 0;
 
           this.draw(0, 0);
-          this.update(0, Nath.status.WAITING);
+          this.update(0, AMDR.status.WAITING);
         },
 
         /**
@@ -1993,7 +1990,7 @@
         /**
          * Set the animation status.
          * @param {!number} deltaTime
-         * @param {Nath.status} status Optional status to switch to.
+         * @param {AMDR.status} status Optional status to switch to.
          */
         update: function (deltaTime, opt_status) {
           this.timer += deltaTime;
@@ -2002,15 +1999,15 @@
           if (opt_status) {
             this.status = opt_status;
             this.currentFrame = 0;
-            this.msPerFrame = Nath.animFrames[opt_status].msPerFrame;
-            this.currentAnimFrames = Nath.animFrames[opt_status].frames;
+            this.msPerFrame = AMDR.animFrames[opt_status].msPerFrame;
+            this.currentAnimFrames = AMDR.animFrames[opt_status].frames;
 
             /*
-            if (opt_status == Nath.status.WAITING) {
+            if (opt_status == AMDR.status.WAITING) {
             this.animStartTime = getTimeStamp();
             this.setBlinkDelay();
             */
-            if (opt_status != Nath.status.CRASHED && opt_status != Nath.status.WAITING && opt_status != Nath.status.DUCKING) {
+            if (opt_status != AMDR.status.CRASHED && opt_status != AMDR.status.WAITING && opt_status != AMDR.status.DUCKING) {
               if (this.xPos == 0) {
                 this.dust.x = -24;
               } else {
@@ -2019,17 +2016,17 @@
               this.dust.addPoint(0, 0, -40, -10 * Math.random());
             }
 
-            this.currentSprite = Nath.animFrames[opt_status].sprite;
+            this.currentSprite = AMDR.animFrames[opt_status].sprite;
           }
 
-          // Game intro animation, Natherine moves in from the left.
+          // Game intro animation, Amandarine moves in from the left.
           if (this.playingIntro && this.xPos < this.config.START_X_POS) {
             this.xPos += Math.round((this.config.START_X_POS /
               this.config.INTRO_DURATION) * deltaTime);
           }
 
 /*
-          if (this.status == Nath.status.WAITING) {
+          if (this.status == AMDR.status.WAITING) {
             //this.blink(getTimeStamp());
             this.draw(this.currentAnimFrames[this.currentFrame], 0);
           } else {
@@ -2038,7 +2035,7 @@
 */
 
           /* Don't draw crash state to observe the effective collision boxes */
-          if (!Runner.config.SHOW_COLLISION || opt_status != Nath.status.CRASHED ) {
+          if (!Dusita.config.SHOW_COLLISION || opt_status != AMDR.status.CRASHED ) {
             this.draw(this.currentAnimFrames[this.currentFrame], 0);
           }
 
@@ -2050,7 +2047,7 @@
             this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
             this.timer = 0;
 
-            if (this.status == Nath.status.DUCKING) {
+            if (this.status == AMDR.status.DUCKING) {
               this.dust.x = 0;
               this.dust.addPoint(-10, 0, -90, -15 * Math.random());
               this.dust.addPoint(5, 0, -75, -15 * Math.random());
@@ -2070,15 +2067,15 @@
         },
 
         /**
-         * Draw Natherine to a particular position.
+         * Draw Amandarine to a particular position.
          * @param {number} x
          * @param {number} y
          */
         draw: function (x, y) {
           var sourceX = x;
           var sourceY = y;
-          /* All Nat sprite sizes are equal for now.
-          var sourceWidth = this.ducking && this.status != Nath.status.CRASHED ?
+          /* All Amdr sprite sizes are equal for now.
+          var sourceWidth = this.ducking && this.status != AMDR.status.CRASHED ?
           this.config.WIDTH_DUCK : this.config.WIDTH;
           var sourceHeight = this.config.WIDTH;
           var sourceHeight = this.config.HEIGHT;
@@ -2108,18 +2105,18 @@
           }
 /*
             // Ducking.
-            if (this.ducking && this.status != Nath.status.CRASHED) {
-                this.canvasCtx.drawImage(Runner.imageSprite, sourceX, sourceY,
+            if (this.ducking && this.status != AMDR.status.CRASHED) {
+                this.canvasCtx.drawImage(Dusita.imageSprite, sourceX, sourceY,
                     sourceWidth, sourceHeight,
                     this.xPos, this.yPos,
                     this.config.WIDTH_DUCK, this.config.HEIGHT);
             } else {
-                // Crashed whilst ducking. Nath is standing up so needs adjustment.
-                if (this.ducking && this.status == Nath.status.CRASHED) {
+                // Crashed whilst ducking. AMDR is standing up so needs adjustment.
+                if (this.ducking && this.status == AMDR.status.CRASHED) {
                     this.xPos++;
                 }
                 // Standing / running
-                this.canvasCtx.drawImage(Runner.imageSprite, sourceX, sourceY,
+                this.canvasCtx.drawImage(Dusita.imageSprite, sourceX, sourceY,
                     sourceWidth, sourceHeight,
                     this.xPos, this.yPos,
                     this.config.WIDTH, this.config.HEIGHT);
@@ -2131,11 +2128,11 @@
          * Sets a random time for the blink to happen.
          */
         setBlinkDelay: function () {
-          this.blinkDelay =  + Math.ceil(Math.random() * Nath.BLINK_TIMING);
+          this.blinkDelay =  + Math.ceil(Math.random() * AMDR.BLINK_TIMING);
         },
 
         /**
-         * Make Natherine blink at random intervals.
+         * Make Amandarine blink at random intervals.
          * @param {number} time Current time in milliseconds.
          */
         blink: function (time) {
@@ -2164,10 +2161,10 @@
          */
         startJump: function (speed, height) {
           if (!this.jumping) {
-            this.update(0, Nath.status.JUMPING);
+            this.update(0, AMDR.status.JUMPING);
 
             this.jumpTop = height / 1000;
-            this.fallDuration = Math.sqrt(2000 * height / Nath.config.GRAVITY);
+            this.fallDuration = Math.sqrt(2000 * height / AMDR.config.GRAVITY);
             this.jumpTimer = 0;
             this.jumping = true;
 
@@ -2218,10 +2215,10 @@
           this.update(deltaTime);
 
           /*
-            var msPerFrame = Nath.animFrames[this.status].msPerFrame;
+            var msPerFrame = AMDR.animFrames[this.status].msPerFrame;
             var framesElapsed = deltaTime / msPerFrame;
 
-            // Speed drop makes Nath fall faster.
+            // Speed drop makes AMDR fall faster.
             if (this.speedDrop) {
                 this.yPos += Math.round(this.jumpVelocity *
                     this.config.SPEED_DROP_COEFFICIENT * framesElapsed);
@@ -2229,7 +2226,7 @@
                 this.yPos += Math.round(this.jumpVelocity * framesElapsed);
             }
 
-            this.jumpVelocity += Nath.config.GRAVITY * framesElapsed;
+            this.jumpVelocity += AMDR.config.GRAVITY * framesElapsed;
 
             // Minimum height has been reached.
             if (this.yPos < this.minJumpHeight || this.speedDrop) {
@@ -2265,24 +2262,24 @@
          * @param {boolean} isDucking.
          */
         setDuck: function (isDucking) {
-          if (isDucking && this.status != Nath.status.DUCKING) {
-            this.update(0, Nath.status.DUCKING);
+          if (isDucking && this.status != AMDR.status.DUCKING) {
+            this.update(0, AMDR.status.DUCKING);
             this.ducking = true;
-          } else if (this.status == Nath.status.DUCKING) {
-            this.update(0, Nath.status.RUNNING);
+          } else if (this.status == AMDR.status.DUCKING) {
+            this.update(0, AMDR.status.RUNNING);
             this.ducking = false;
           }
         },
 
         /**
-         * Reset Natherine to running at start of game.
+         * Reset Amandarine to running at start of game.
          */
         reset: function () {
           this.yPos = this.groundYPos;
           this.jumpVelocity = 0;
           this.jumping = false;
           this.ducking = false;
-          this.update(0, Nath.status.RUNNING);
+          this.update(0, AMDR.status.RUNNING);
           this.midair = false;
           //this.speedDrop = false;
           this.jumpCount = 0;
@@ -2303,7 +2300,7 @@
     function DistanceMeter(canvas, spritePos, canvasWidth) {
       this.canvas = canvas;
       this.canvasCtx = canvas.getContext('2d');
-      this.image = Runner.imageSprite;
+      this.image = Dusita.imageSprite;
       this.spritePos = spritePos;
       this.x = 0;
       this.y = 5;
@@ -2578,8 +2575,8 @@
           for(let i = 0, point; point = this.points[i]; i++) {
             let ratio = (this.age - point.age) / this.age;
             let x = this.x + point.x + 40 + point.w * ratio;
-            let y = this.y + point.y + Runner.defaultDimensions.HEIGHT-25 + point.h * ratio;
-            this.canvasCtx.drawImage(Runner.imageSprite,
+            let y = this.y + point.y + Dusita.defaultDimensions.HEIGHT-25 + point.h * ratio;
+            this.canvasCtx.drawImage(Dusita.imageSprite,
               776 + 22 * Math.floor(8 * ratio), 2,
               22, 22,
               x, y,
@@ -2645,7 +2642,7 @@
       MAX_CLOUD_GAP: 400,
       MAX_SKY_LEVEL: 30,
       MIN_CLOUD_GAP: 100,
-      MIN_SKY_LEVEL: Runner.defaultDimensions.HEIGHT - 79,
+      MIN_SKY_LEVEL: Dusita.defaultDimensions.HEIGHT - 79,
       WIDTH: 46
     };
 
@@ -2674,7 +2671,7 @@
             sourceHeight = sourceHeight * 2;
           }
 
-          this.canvasCtx.drawImage(Runner.imageSprite, this.spritePos.x,
+          this.canvasCtx.drawImage(Dusita.imageSprite, this.spritePos.x,
             this.spritePos.y,
             sourceWidth, sourceHeight,
             this.xPos, this.yPos,
@@ -2738,7 +2735,7 @@
       NUM_STARS: 10,
       STAR_SIZE: 9,
       STAR_SPEED: 0.3,
-      STAR_MAX_Y: Runner.defaultDimensions.HEIGHT - 50,
+      STAR_MAX_Y: Dusita.defaultDimensions.HEIGHT - 50,
       WIDTH: 20
     };
 
@@ -2802,8 +2799,8 @@
           var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
           var moonOutputWidth = moonSourceWidth;
           var starSize = NightMode.config.STAR_SIZE;
-          //var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
-          var starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
+          //var starSourceX = Dusita.spriteDefinition.LDPI.STAR.x;
+          var starSourceX = Dusita.spriteDefinition.HDPI.STAR.x;
 
           if (IS_HIDPI) {
             moonSourceWidth *= 2;
@@ -2811,14 +2808,14 @@
             moonSourceX = this.spritePos.x +
             (NightMode.phases[this.currentPhase] * 2);
             starSize *= 2;
-            //starSourceX = Runner.spriteDefinition.HDPI.STAR.x;
+            //starSourceX = Dusita.spriteDefinition.HDPI.STAR.x;
           }
 
           this.canvasCtx.save();
 
           // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
           this.canvasCtx.globalAlpha = this.opacity;
-          this.canvasCtx.drawImage(Runner.imageSprite, moonSourceX,
+          this.canvasCtx.drawImage(Dusita.imageSprite, moonSourceX,
             this.spritePos.y, moonSourceWidth, moonSourceHeight,
             Math.round(this.xPos), this.yPos,
             moonOutputWidth, NightMode.config.HEIGHT);
@@ -2829,7 +2826,7 @@
           if (this.drawStars) {
             for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
               this.canvasCtx.globalAlpha = this.opacity * this.stars[i].opacity;
-              this.canvasCtx.drawImage(Runner.imageSprite,
+              this.canvasCtx.drawImage(Dusita.imageSprite,
                 starSourceX, this.stars[i].sourceY, starSize, starSize,
                 Math.round(this.stars[i].x), this.stars[i].y,
                 NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
@@ -2856,10 +2853,10 @@
             }
 
             if (IS_HIDPI) {
-              this.stars[i].sourceY = Runner.spriteDefinition.HDPI.STAR.y +
+              this.stars[i].sourceY = Dusita.spriteDefinition.HDPI.STAR.y +
               NightMode.config.STAR_SIZE * 2 * getRandomNum(0, 3);
             }/* else {
-              this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
+              this.stars[i].sourceY = Dusita.spriteDefinition.LDPI.STAR.y +
               NightMode.config.STAR_SIZE * i;
             }*/
           }
@@ -2906,7 +2903,7 @@
     HorizonLine.dimensions = {
       WIDTH: 600,
       HEIGHT: 12,
-      YPOS: Runner.defaultDimensions.HEIGHT-23
+      YPOS: Dusita.defaultDimensions.HEIGHT-23
     };
 
 
@@ -2943,13 +2940,13 @@
          * Draw the horizon line.
          */
         draw: function () {
-          this.canvasCtx.drawImage(Runner.imageSprite, this.sourceXPos[0],
+          this.canvasCtx.drawImage(Dusita.imageSprite, this.sourceXPos[0],
             this.spritePos.y,
             this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
             this.xPos[0], this.yPos,
             this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
-          this.canvasCtx.drawImage(Runner.imageSprite, this.sourceXPos[1],
+          this.canvasCtx.drawImage(Dusita.imageSprite, this.sourceXPos[1],
             this.spritePos.y,
             this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
             this.xPos[1], this.yPos,
@@ -3201,7 +3198,7 @@
             this.obstacleHistory.unshift(obstacleType.type);
 
             if (this.obstacleHistory.length > 1) {
-              this.obstacleHistory.splice(Runner.config.MAX_OBSTACLE_DUPLICATION);
+              this.obstacleHistory.splice(Dusita.config.MAX_OBSTACLE_DUPLICATION);
             }
           }
         },
@@ -3218,7 +3215,7 @@
             duplicateCount = this.obstacleHistory[i] == nextObstacleType ?
               duplicateCount + 1 : 0;
           }
-          return duplicateCount >= Runner.config.MAX_OBSTACLE_DUPLICATION;
+          return duplicateCount >= Dusita.config.MAX_OBSTACLE_DUPLICATION;
         },
 
         /**
@@ -3262,7 +3259,7 @@
 
 
 function onDocumentLoad() {
-  new Runner('.interstitial-wrapper');
+  new Dusita('.interstitial-wrapper');
 }
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
