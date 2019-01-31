@@ -2732,7 +2732,7 @@
       FADE_SPEED: 0.035,
       HEIGHT: 40,
       MOON_SPEED: 0.25,
-      NUM_STARS: 10,
+      NUM_STARS: 7,
       STAR_SIZE: 9,
       STAR_SPEED: 0.3,
       STAR_MAX_Y: Dusita.defaultDimensions.HEIGHT - 50,
@@ -2953,34 +2953,32 @@
             this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
 
-          this.canvasCtx.save();
-
-          this.canvasCtx.lineWidth = 1;
-          this.canvasCtx.lineCap = 'square';
-          this.canvasCtx.globalCompositeOperation = 'overlay';
-          //this.canvasCtx.lineDashOffset = -this.xPos[0];
-
-
           //Draw striping lawn
           //TODO add superfluous switch
+
+          this.canvasCtx.save();
+          this.canvasCtx.lineWidth = 1;
+          this.canvasCtx.lineCap = 'butt';
+          this.canvasCtx.globalCompositeOperation = 'overlay';
           for ( let
             spinner = this.xPos[0] % 100,
-            scale = 1.02,
+            scale = 1.02, //Perspective
             step = 2,
             pwStep = Math.pow(scale, step),
             y = this.yPos + 12,
             i = -8,
+            alphaStep = 0.15 * step / (Dusita.defaultDimensions.HEIGHT - y),
             pw = Math.pow(scale,i),
             width = HorizonLine.dimensions.WIDTH;
 
-                y + i < Dusita.defaultDimensions.HEIGHT;
+                y + i < Dusita.defaultDimensions.HEIGHT + this.canvasCtx.lineWidth;
 
-                    i += 2, pw *= pwStep ) {
+                    i += step, pw *= pwStep ) {
             let width = HorizonLine.dimensions.WIDTH / pw;
 
             this.canvasCtx.setTransform(pw, 0, 0, 1, 0, 0);
-            this.canvasCtx.setLineDash([50,50]);
-            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+(0.035 * (i+8))+")";
+            this.canvasCtx.setLineDash([45,55]);
+            this.canvasCtx.strokeStyle = "rgba(255,255,0,"+(alphaStep * (i+8))+")";
             this.canvasCtx.beginPath();
             this.canvasCtx.moveTo(0, y + i);
             this.canvasCtx.lineTo(width, y + i);
@@ -2988,9 +2986,8 @@
             this.canvasCtx.stroke();
 
           }
-          //TODO Ban also draw upward by scaling down.
-
           this.canvasCtx.restore();
+
         },
 
         /**
