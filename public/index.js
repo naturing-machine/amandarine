@@ -2585,14 +2585,10 @@
         },
 
         update: function (aging) {
-          let updatedPoints = [];
-          for(let i = 0, point; point = this.points[i]; i++) {
+          this.points = this.points.filter( point => {
             point.age -= aging;
-            if (point.age > 0) {
-              updatedPoints.push(point);
-            }
-          }
-          this.points = updatedPoints;
+            return point.age > 0;
+          });
         },
 
         addPoint: function(x, y, w, h) {
