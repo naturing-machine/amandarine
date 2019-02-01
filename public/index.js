@@ -132,9 +132,9 @@
       RESOURCE_TEMPLATE_ID: 'audio-resources',
       SPEED: 6,
       SHOW_COLLISION: false,
-      SHOW_SEPIA: false,
+      SHOW_SEPIA: 0,
       SKY: {
-        DAY: [221*0.5,238*0.8,255,238*0.8,238*0.9,255],
+        DAY: [Math.round(221*0.8), Math.round(238*0.8), Math.round(255*0.9), 238, 238, 255],
         //NIGHT: [68,136,170,102,153,187],
         NIGHT: [68,136,170,84,183,187],
         START: [255,255,255,255,255,255]
@@ -751,8 +751,13 @@
           if (this.playing || (!this.activated &&
               this.amdr.blinkCount < Dusita.config.MAX_BLINK_COUNT)) {
 
-            if (this.actions.length && this.actions[0].type == AMDR.status.JUMPING && this.actions[0].status == 0) {
-              this.drawJumpingGuide(this.actions[0]);
+            if (this.actions.length && this.actions[0].type == AMDR.status.JUMPING) {
+              this.drawJumpingGuide(this.actions[0]/*, 0*/);
+              /*
+              if (this.actions.length > 1 && this.actions[1].type == AMDR.status.JUMPING) {
+                this.drawJumpingGuide(this.actions[1], this.actions[0].shift);
+              }
+              */
             }
 
             this.amdr.update(deltaTime);
@@ -760,47 +765,70 @@
           }
         },
 
-        drawJumpingGuide: function (a) {
-        /* Draw jumping guide */
+        /**
+         * Draw jumping guide.
+         * @param {Object} action object
+         */
+        drawJumpingGuide: function (a/*,shift*/ ) {
+          /* Draw jumping guide */
+          if (a.status == -1) return;
+
           let now = getTimeStamp();
-          let delta = Dusita.config.MIN_JUMP_PRESS + now - a.begin;
-          if (delta > Dusita.config.MAX_JUMP_PRESS) {
-            delta = Dusita.config.MAX_JUMP_PRESS
+          let duration = a.duration;
+
+          if (!duration) {
+            duration =  now - a.begin;
+            duration += Dusita.config.MIN_JUMP_PRESS;
+            if (duration > Dusita.config.MAX_JUMP_PRESS) {
+              duration = Dusita.config.MAX_JUMP_PRESS;
+            }
           }
 
-          let fallDuration = Math.sqrt(2000 * delta / AMDR.config.GRAVITY);
+          let fallDuration = Math.sqrt(2000 * duration / AMDR.config.GRAVITY);
 
-          let jumpTop = delta / 1000;
+          let jumpTop = duration / 1000;
 
           this.canvasCtx.save();
           this.canvasCtx.beginPath();
           this.canvasCtx.strokeStyle = "#000000";
 
-          let x = this.amdr.xPos;
-          let y = this.amdr.yPos + 35;
+          let x = this.amdr.xPos + 17/* + shift*/;
+          let y = this.amdr.groundYPos + 35;
           var increment = this.currentSpeed * (FPS / 20) ;
+          let dt = 0;
+          let fadeOut = 1;
+          if (a.status == 2) {
+            let last = now - a.end;
+            dt = increment * last / 50;
+            fadeOut = (fallDuration - last) / fallDuration;
+            if (fadeOut < 0) fadeOut = 0;
+          }
 
-          for (let t = -fallDuration + 50, i=1; t <= fallDuration + 50; t+= 50, i++) {
+          for (let t = -fallDuration, i = 0; t <= fallDuration + 50; t+= 50, i++) {
             let d = jumpTop - (0.0000005 * AMDR.config.GRAVITY * t * t);
             let yy = y - d * 210;
+
             if (i == 0) {
-              this.canvasCtx.moveTo(x + i*increment, yy);
+              this.canvasCtx.moveTo(x + i*increment - dt, yy);
             } else {
-              this.canvasCtx.lineTo(x + i*increment, yy);
+              //a.shift = i*increment - dt;
+              this.canvasCtx.lineTo(x + i*increment - dt, yy);
             }
           }
 
-          now = 16 - now%16;
-          let alpha = (fallDuration-230)/230;
+          now = 20 - (now/10)%20;
+          let alpha = fadeOut * (fallDuration-230)/230;
+          //if (shift) alpha = 1;
           if (alpha > 1) alpha = 1;
-          this.canvasCtx.setLineDash([4,12]);
 
-          this.canvasCtx.lineWidth = 2.0;
-          this.canvasCtx.lineDashOffset = now + 8;
+          this.canvasCtx.lineCap = 'round';
+          this.canvasCtx.setLineDash([0,20]);
+          this.canvasCtx.lineWidth = 3;
+
+          this.canvasCtx.lineDashOffset = now + 10;
           this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
           this.canvasCtx.stroke();
 
-          this.canvasCtx.lineWidth = 2.0;
           this.canvasCtx.lineDashOffset = now;
           this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
           this.canvasCtx.stroke();
@@ -955,12 +983,20 @@
           }
 
           if (keyCode == '83') {
-            Dusita.config.SHOW_SEPIA = !Dusita.config.SHOW_SEPIA;
-            if (Dusita.config.SHOW_SEPIA) {
-              this.canvasCtx.save();
-              this.canvasCtx.filter = 'sepia(1)';
-            } else {
-              this.canvasCtx.restore();
+            Dusita.config.SHOW_SEPIA = (Dusita.config.SHOW_SEPIA+1)%10;
+
+            this.canvasCtx.restore();
+            this.canvasCtx.save();
+            switch (Dusita.config.SHOW_SEPIA) {
+              case 0:
+                break;
+              case 1:
+                this.canvasCtx.filter = 'grayscale(1)';
+                break;
+              default:
+                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((Dusita.config.SHOW_SEPIA - 2) * 45)+'deg)';
+                break;
+                break;
             }
           }
 
@@ -2238,6 +2274,7 @@
           this.update(0, AMDR.status.RUNNING);
           this.jumpCount = 0;
           this.dust.reset();
+          this.action = null;
         }
     };
 
