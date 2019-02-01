@@ -132,8 +132,9 @@
       RESOURCE_TEMPLATE_ID: 'audio-resources',
       SPEED: 6,
       SHOW_COLLISION: false,
+      SHOW_SEPIA: false,
       SKY: {
-        DAY: [221,238,255,238,238,255],
+        DAY: [221*0.5,238*0.8,255,238*0.8,238*0.9,255],
         //NIGHT: [68,136,170,102,153,187],
         NIGHT: [68,136,170,84,183,187],
         START: [255,255,255,255,255,255]
@@ -459,10 +460,6 @@
           Dusita.updateCanvasScaling(this.canvas);
           this.gradients = {};
 
-          this.gradients.grass = this.canvasCtx.createLinearGradient(0, this.dimensions.HEIGHT-11, 0, this.dimensions.HEIGHT);
-          this.gradients.grass.addColorStop(0, "#B17A32");
-          this.gradients.grass.addColorStop(1, "#69a242");
-
           /* Will switch to gradient on starting */
           this.gradients.sky2 = this.gradients.sky1 = Dusita.config.SKY.START;
           this.adjustSkyGradient(1);
@@ -484,10 +481,10 @@
           this.spacebarEl.className = Dusita.classes.SPACEBAR;
           this.outerContainerEl.appendChild(this.spacebarEl);
           this.spacebarEl.style.width = '75px';
-          this.spacebarEl.style.height = '40px';
+          this.spacebarEl.style.height = '54px';
           this.spacebarEl.style.zIndex = '3';
           this.spacebarEl.style.backgroundImage = 'url(assets/spacebar.png)';
-          this.spacebarEl.style.top = this.containerEl.offsetTop + 120 +'px';
+          this.spacebarEl.style.top = this.containerEl.offsetTop + 106 +'px';
           this.spacebarEl.style.left = this.containerEl.offsetLeft + 30 +'px';
           this.spacebarEl.style.position = 'absolute';
           this.spacebarEl.style.animation = 'blinker 1s linear infinite';
@@ -628,16 +625,12 @@
         clearCanvas: function () {
           this.canvasCtx.fillStyle = this.skyGradient;
           this.canvasCtx.fillRect(0, 0, this.dimensions.WIDTH, this.dimensions.HEIGHT);
-
-          this.canvasCtx.fillStyle = this.gradients.grass;
-          this.canvasCtx.fillRect(0, this.dimensions.HEIGHT-11, this.dimensions.WIDTH, 11);
         },
 
         /**
          * Update the game frame and schedules the next one.
          */
         update: function () {
-
           // Filter ended action(s).
           this.actions = this.actions.filter(function(action){ return action.status != -1 });
           if (this.actions.length) {
@@ -666,8 +659,16 @@
             if (delta > Dusita.config.SKY_SHADING_DURATION) {
               delete this.skyFadingStartTime;
               this.adjustSkyGradient(1);
+              //this.sepia = 0;
+              this.canvasCtx.flter = '';
             } else {
               this.adjustSkyGradient(delta/Dusita.config.SKY_SHADING_DURATION);
+              /*
+              if (this.sepia > 0) {
+                this.canvasCtx.filter = 'sepia('+this.sepia+')';
+                this.sepia = 1 - delta/Dusita.config.SKY_SHADING_DURATION;
+              }
+              */
             }
           }
 
@@ -676,7 +677,6 @@
           this.playHackSlide(!this.amdr.ducking);
 
           if (this.playing) {
-
             this.amdr.updateAction(deltaTime);
 
             this.runningTime += deltaTime;
@@ -790,13 +790,13 @@
             }
           }
 
-          now = 8 - now%8;
-          let alpha = (fallDuration-200)/200;
+          now = 16 - now%16;
+          let alpha = (fallDuration-230)/230;
           if (alpha > 1) alpha = 1;
-          this.canvasCtx.setLineDash([2,6]);
+          this.canvasCtx.setLineDash([4,12]);
 
           this.canvasCtx.lineWidth = 2.0;
-          this.canvasCtx.lineDashOffset = now + 4;
+          this.canvasCtx.lineDashOffset = now + 8;
           this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
           this.canvasCtx.stroke();
 
@@ -904,7 +904,7 @@
                 this.actions.push({
                   begin: e.timeStamp,
                   type: AMDR.status.JUMPING,
-                  code: e.keyCode,
+                  code: String(e.keyCode),
                   status: 0
                 });
               }
@@ -954,6 +954,15 @@
             Dusita.config.SHOW_COLLISION = !Dusita.config.SHOW_COLLISION;
           }
 
+          if (keyCode == '83') {
+            Dusita.config.SHOW_SEPIA = !Dusita.config.SHOW_SEPIA;
+            if (Dusita.config.SHOW_SEPIA) {
+              this.canvasCtx.save();
+              this.canvasCtx.filter = 'sepia(1)';
+            } else {
+              this.canvasCtx.restore();
+            }
+          }
 
           if (this.isRunning() && isjumpKey) {
 
@@ -1019,6 +1028,10 @@
          */
         gameOver: function (crashPoint) {
           if (!Dusita.config.SHOW_COLLISION) {
+            /*
+            this.canvasCtx.filter = 'sepia(1)';
+            this.sepia = 1.0;
+            */
             this.clearCanvas();
             this.horizon.update(0, 0, true);
           }
@@ -1040,6 +1053,7 @@
 
           this.amdr.update(100, AMDR.status.CRASHED);
 
+          //this.canvasCtx.filter = 'sepia(0)';
           // Game over panel.
           if (!this.gameOverPanel) {
               this.gameOverPanel = new GameOverPanel(this.canvas,
@@ -2838,7 +2852,7 @@
      */
     HorizonLine.dimensions = {
       WIDTH: 600,
-      HEIGHT: 12,
+      HEIGHT: 23,
       YPOS: Dusita.defaultDimensions.HEIGHT-23
     };
 
@@ -2897,7 +2911,7 @@
           this.canvasCtx.lineCap = 'butt';
           this.canvasCtx.globalCompositeOperation = 'overlay';
           for ( let
-            spinner = this.xPos[0] % 100,
+            spinner = this.xPos[0] % 200,
             scale = 1.02, //Perspective
             step = 2,
             pwStep = Math.pow(scale, step),
@@ -2913,7 +2927,7 @@
             let width = HorizonLine.dimensions.WIDTH / pw;
 
             this.canvasCtx.setTransform(pw, 0, 0, 1, 0, 0);
-            this.canvasCtx.setLineDash([45,55]);
+            this.canvasCtx.setLineDash([45,55,35,65]);
             this.canvasCtx.strokeStyle = "rgba(255,255,0,"+(alphaStep * (i+8))+")";
             this.canvasCtx.beginPath();
             this.canvasCtx.moveTo(0, y + i);
