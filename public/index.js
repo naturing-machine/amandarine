@@ -130,6 +130,7 @@
       MIN_JUMP_HEIGHT: 35,
       MOBILE_SPEED_COEFFICIENT: 1.2,
       RESOURCE_TEMPLATE_ID: 'audio-resources',
+      SCALE_FACTOR: 210,
       SPEED: 6,
       SHOW_COLLISION: false,
       SHOW_SEPIA: 0,
@@ -752,12 +753,7 @@
               this.amdr.blinkCount < Dusita.config.MAX_BLINK_COUNT)) {
 
             if (this.actions.length && this.actions[0].type == AMDR.status.JUMPING) {
-              this.drawJumpingGuide(this.actions[0]/*, 0*/);
-              /*
-              if (this.actions.length > 1 && this.actions[1].type == AMDR.status.JUMPING) {
-                this.drawJumpingGuide(this.actions[1], this.actions[0].shift);
-              }
-              */
+              this.drawJumpingGuide(this.actions[0]);
             }
 
             this.amdr.update(deltaTime);
@@ -769,15 +765,15 @@
          * Draw jumping guide.
          * @param {Object} action object
          */
-        drawJumpingGuide: function (a/*,shift*/ ) {
+        drawJumpingGuide: function (action) {
           /* Draw jumping guide */
-          if (a.status == -1) return;
+          if (action.status == -1) return;
 
           let now = getTimeStamp();
-          let duration = a.duration;
+          let duration = action.duration;
 
           if (!duration) {
-            duration =  now - a.begin;
+            duration =  now - action.begin;
             duration += Dusita.config.MIN_JUMP_PRESS;
             if (duration > Dusita.config.MAX_JUMP_PRESS) {
               duration = Dusita.config.MAX_JUMP_PRESS;
@@ -792,43 +788,46 @@
           this.canvasCtx.beginPath();
           this.canvasCtx.strokeStyle = "#000000";
 
-          let x = this.amdr.xPos + 17/* + shift*/;
-          let y = this.amdr.groundYPos + 35;
-          var increment = this.currentSpeed * (FPS / 20) ;
-          let dt = 0;
+          let baseX = this.amdr.xPos + 12;
+          let baseY = this.amdr.groundYPos + 35;
+          let shiftLeft = 0;
           let fadeOut = 1;
-          if (a.status == 2) {
-            let last = now - a.end;
-            dt = increment * last / 50;
+          let DRAW_STEP = 50;
+          var increment = this.currentSpeed * 0.001 * FPS * DRAW_STEP;
+
+          if (action.status == 2) {
+            let last = now - action.end;
+            shiftLeft = increment * last / DRAW_STEP;
             fadeOut = (fallDuration - last) / fallDuration;
             if (fadeOut < 0) fadeOut = 0;
           }
 
-          for (let t = -fallDuration, i = 0; t <= fallDuration + 50; t+= 50, i++) {
-            let d = jumpTop - (0.0000005 * AMDR.config.GRAVITY * t * t);
-            let yy = y - d * 210;
+          let unit = fallDuration * 2 / DRAW_STEP;
+          let gravityFactor = 0.0000005 * AMDR.config.GRAVITY;
+          this.canvasCtx.moveTo(
+            baseX + unit*increment - shiftLeft,
+            baseY - (jumpTop - (gravityFactor * fallDuration * fallDuration)) * Dusita.config.SCALE_FACTOR
+          );
 
-            if (i == 0) {
-              this.canvasCtx.moveTo(x + i*increment - dt, yy);
-            } else {
-              //a.shift = i*increment - dt;
-              this.canvasCtx.lineTo(x + i*increment - dt, yy);
+          for (let timer = fallDuration; timer > - fallDuration - DRAW_STEP; timer-= DRAW_STEP, unit--) {
+            let drawY = baseY - (jumpTop - (gravityFactor * timer * timer)) * Dusita.config.SCALE_FACTOR;
+            let drawX = baseX + unit*increment - shiftLeft;
+
+            this.canvasCtx.lineTo(drawX, drawY);
+
+            if (drawX < this.amdr.xPos + 40) {
+              break;
             }
           }
 
-          now = 20 - (now/10)%20;
-          let alpha = fadeOut * (fallDuration-230)/230;
-          //if (shift) alpha = 1;
+          now = (now/10)%40;
+          let alpha = fadeOut * (fallDuration-230)/150;
           if (alpha > 1) alpha = 1;
 
           this.canvasCtx.lineCap = 'round';
           this.canvasCtx.setLineDash([0,20]);
-          this.canvasCtx.lineWidth = 3;
 
-          this.canvasCtx.lineDashOffset = now + 10;
-          this.canvasCtx.strokeStyle = "rgba(0,0,0,"+alpha.toFixed(1)+")";
-          this.canvasCtx.stroke();
-
+          this.canvasCtx.lineWidth = 5;
           this.canvasCtx.lineDashOffset = now;
           this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
           this.canvasCtx.stroke();
@@ -1002,11 +1001,11 @@
 
           if (this.isRunning() && isjumpKey) {
 
-            for (let i = 0, a; a = this.actions[i]; i++) {
-              if (a.code == keyCode && !a.end) {
-                a.end = e.timeStamp;
-                a.duration = a.end - a.begin;
-                a.status = 1; // 0: Preparing, 1: Ready, 2: In progres, -1: Ended.
+            for (let i = 0, action; action = this.actions[i]; i++) {
+              if (action.code == keyCode && !action.end) {
+                action.end = e.timeStamp;
+                action.duration = action.end - action.begin;
+                action.status = 1; // 0: Preparing, 1: Ready, 2: In progres, -1: Ended.
               }
             }
 
@@ -1897,7 +1896,7 @@
       this.timer = 0;
       this.msPerFrame = 1000 / FPS;
       this.config = AMDR.config;
-      this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * AMDR.config.SCALE_FACTOR;
+      this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * Dusita.config.SCALE_FACTOR;
       // Current status.
       this.status = AMDR.status.WAITING;
 
@@ -1917,7 +1916,6 @@
     AMDR.config = {
       DUST_DURATION: 600,
       GRAVITY: 9.8,
-      SCALE_FACTOR: 210,
       HEIGHT: 40,
       HEIGHT_DUCK: 25,
       INTRO_DURATION: 1500,
@@ -2223,22 +2221,21 @@
          * @param {number} deltaTime
          */
         updateAction: function (deltaTime) {
-          let a = this.action;
 
-          if (!a || a.status == -1) return false;
+          if (!this.action || this.action.status == -1) return false;
 
-          switch (a.type) {
+          switch (this.action.type) {
             case AMDR.status.JUMPING:
               {
-                a.timer += deltaTime;
-                let t = a.halftime - a.timer;
-                let d = a.top * this.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * t * t;
+                this.action.timer += deltaTime;
+                let timer = this.action.halftime - this.action.timer;
+                let dY = this.action.top * Dusita.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * timer * timer;
 
-                this.yPos = this.groundYPos - d;
+                this.yPos = this.groundYPos - dY;
 
-                if (t < -a.halftime) {
+                if (timer < -this.action.halftime) {
                   this.jumpCount++;
-                  a.status = -1;
+                  this.action.status = -1;
                   this.yPos = this.groundYPos;
                   this.update(0, AMDR.status.RUNNING);
                 } else {
