@@ -649,9 +649,12 @@
             let collision = false;
 
             if (hasObstacles) {
-              collisionBoxes = checkForCollision(this.horizon.obstacles[0], this.amdr, Dusita.config.SHOW_COLLISION && this.canvasCtx);
-              if (collisionBoxes) {
-                collision = true;
+              for (let i = 0, obstacle; obstacle = this.horizon.obstacles[i]; i++) {
+                collisionBoxes = checkForCollision(obstacle, this.amdr, Dusita.config.SHOW_COLLISION && this.canvasCtx);
+                if (collisionBoxes) {
+                  collision = true;
+                  break;
+                }
               }
             }
 
@@ -3087,18 +3090,12 @@
          */
         updateObstacles: function (deltaTime, currentSpeed) {
           // Obstacles, move to Horizon layer.
-          var updatedObstacles = this.obstacles.slice(0);
-
           for (var i = 0; i < this.obstacles.length; i++) {
             var obstacle = this.obstacles[i];
             obstacle.update(deltaTime, currentSpeed);
-
-            // Clean up existing obstacles.
-            if (obstacle.remove) {
-              updatedObstacles.shift();
-            }
           }
-          this.obstacles = updatedObstacles;
+
+          this.obstacles = this.obstacles.filter(obstacle => !obstacle.remove);
 
           if (this.obstacles.length > 0) {
             var lastObstacle = this.obstacles[this.obstacles.length - 1];
