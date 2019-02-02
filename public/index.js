@@ -21,8 +21,6 @@
 
       this.outerContainerEl = document.querySelector(outerContainerId);
       this.containerEl = null;
-      this.snackbarEl = null;
-      this.detailsButton = this.outerContainerEl.querySelector('#details-button');
 
       this.config = opt_config || Dusita.config;
 
@@ -68,11 +66,7 @@
       this.images = {};
       this.imagesLoaded = 0;
 
-      if (this.isDisabled()) {
-        this.setupDisabledRunner();
-      } else {
-        this.loadImages();
-      }
+      this.loadImages();
     }
 
     window['Dusita'] = Dusita;
@@ -251,53 +245,6 @@
 
 
     Dusita.prototype = {
-        /**
-         * Whether the easter egg has been disabled. CrOS enterprise enrolled devices.
-         * @return {boolean}
-         */
-        isDisabled: function () {
-          // return loadTimeData && loadTimeData.valueExists('disabledEasterEgg');
-          return false;
-        },
-
-        /**
-         * For disabled instances, set up a snackbar with the disabled message.
-         */
-        setupDisabledRunner: function () {
-          this.containerEl = document.createElement('div');
-          this.containerEl.className = Dusita.classes.SNACKBAR;
-          this.containerEl.textContent = loadTimeData.getValue('disabledEasterEgg');
-          this.outerContainerEl.appendChild(this.containerEl);
-
-          // Show notification when the activation key is pressed.
-          document.addEventListener(Dusita.events.KEYDOWN, function (e) {
-            if (Dusita.keycodes.JUMP[e.keyCode]) {
-              this.containerEl.classList.add(Dusita.classes.SNACKBAR_SHOW);
-              document.querySelector('.icon').classList.add('icon-disabled');
-            }
-          }.bind(this));
-        },
-
-        /**
-         * Setting individual settings for debugging.
-         * @param {string} setting
-         * @param {*} value
-         */
-        updateConfigSetting: function (setting, value) {
-          if (setting in this.config && value != undefined) {
-            this.config[setting] = value;
-
-            switch (setting) {
-              case 'GRAVITY':
-              case 'MIN_JUMP_HEIGHT':
-                this.amdr.config[setting] = value;
-                break;
-              case 'SPEED':
-                this.setSpeed(value);
-                break;
-            }
-          }
-        },
 
         /**
          * Cache the appropriate image sprite from the page and get the sprite sheet
@@ -813,11 +760,11 @@
             let drawY = baseY - (jumpTop - (gravityFactor * timer * timer)) * Dusita.config.SCALE_FACTOR;
             let drawX = baseX + unit*increment - shiftLeft;
 
-            this.canvasCtx.lineTo(drawX, drawY);
-
-            if (drawX < this.amdr.xPos + 40) {
+            if (drawX < this.amdr.xPos + 20 && drawY > baseY - 60 ) {
               break;
             }
+
+            this.canvasCtx.lineTo(drawX, drawY);
           }
 
           now = (now/10)%40;
@@ -827,7 +774,14 @@
           this.canvasCtx.lineCap = 'round';
           this.canvasCtx.setLineDash([0,20]);
 
-          this.canvasCtx.lineWidth = 5;
+          /*
+          this.canvasCtx.lineWidth = 1;
+          this.canvasCtx.lineDashOffset = now+5;
+          this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
+          this.canvasCtx.stroke();
+          */
+
+          this.canvasCtx.lineWidth = alpha*6;
           this.canvasCtx.lineDashOffset = now;
           this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
           this.canvasCtx.stroke();
@@ -912,6 +866,7 @@
          * @param {Event} e
          */
         onKeyDown: function (e) {
+
           if (this.spacebarEl) {
             this.spacebarEl.parentNode.removeChild(this.spacebarEl);
             delete this.spacebarEl;
@@ -922,38 +877,36 @@
             e.preventDefault();
           }
 
-          if (e.target != this.detailsButton) {
-            if (!this.crashed && (Dusita.keycodes.JUMP[e.keyCode] ||
-                e.type == Dusita.events.TOUCHSTART)) {
+          if (!this.crashed && (Dusita.keycodes.JUMP[e.keyCode] ||
+              e.type == Dusita.events.TOUCHSTART)) {
 
-              // Push a jump action to the queue.
-              if (!e.repeat && this.actions.length < 2) {
-                this.actions.push({
-                  begin: e.timeStamp,
-                  type: AMDR.status.JUMPING,
-                  code: String(e.keyCode),
-                  status: 0
-                });
-              }
-
-              // If not already, start the game.
-              if (!this.playing) {
-                this.loadSounds();
-                this.playing = true;
-
-                this.gradients.sky2 = Dusita.config.SKY.DAY;
-                this.skyFadingStartTime = getTimeStamp();
-
-                this.update();
-                if (window.errorPageController) {
-                  errorPageController.trackEasterEgg();
-                }
-              }
+            // Push a jump action to the queue.
+            if (!e.repeat && this.actions.length < 2) {
+              this.actions.push({
+                begin: e.timeStamp,
+                type: AMDR.status.JUMPING,
+                code: String(e.keyCode),
+                status: 0
+              });
             }
 
-            if (this.crashed && e.type == Dusita.events.TOUCHSTART && e.currentTarget == this.containerEl) {
-              this.restart();
+            // If not already, start the game.
+            if (!this.playing) {
+              this.loadSounds();
+              this.playing = true;
+
+              this.gradients.sky2 = Dusita.config.SKY.DAY;
+              this.skyFadingStartTime = getTimeStamp();
+
+              this.update();
+              if (window.errorPageController) {
+                errorPageController.trackEasterEgg();
+              }
             }
+          }
+
+          if (this.crashed && e.type == Dusita.events.TOUCHSTART && e.currentTarget == this.containerEl) {
+            this.restart();
           }
 
           if (this.playing && !this.crashed && Dusita.keycodes.DUCK[e.keyCode]) {
