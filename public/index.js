@@ -664,7 +664,7 @@
                 this.currentSpeed += this.config.ACCELERATION;
               }
             } else {
-              let box = boxIntersection(collisionBoxes[0],collisionBoxes[1]);
+              let box = collisionBoxes[0].intersection(collisionBoxes[1]);
               this.gameOver({x: box.x + box.width/2, y: box.y + box.height/2});
               //this.playHackSlide(true);
             }
@@ -1504,7 +1504,7 @@
       }
 
       // Simple outer bounds check.
-      if (boxCompare(amdrBox, obstacleBox)) {
+      if (amdrBox.intersects(obstacleBox)) {
         var collisionBoxes = obstacle.collisionBoxes;
         var amdrCollisionBoxes = amdr.getAction() == AMDR.status.SLIDING ?
         AMDR.collisionBoxes.SLIDING : AMDR.collisionBoxes.RUNNING;
@@ -1517,7 +1517,7 @@
               createAdjustedCollisionBox(amdrCollisionBoxes[t], amdrBox);
             var adjObstacleBox =
               createAdjustedCollisionBox(collisionBoxes[i], obstacleBox);
-            var crashed = boxCompare(adjAmdrBox, adjObstacleBox);
+            var crashed = adjAmdrBox.intersects(adjObstacleBox);
 
             // Draw boxes for debug.
             if (opt_canvasCtx) {
@@ -1570,7 +1570,9 @@
      * @param {CollisionBox} obstacleBox
      * @return {boolean} Whether the boxes intersected.
      */
-    function boxCompare(amdrBox, obstacleBox) {
+     /*
+    function boxCompare(aRect, bRect) {
+
       var crashed = false;
       var amdrBoxX = amdrBox.x;
       var amdrBoxY = amdrBox.y;
@@ -1588,6 +1590,7 @@
 
         return crashed;
     };
+
 
     function boxIntersection(aBox, bBox) {
 
@@ -1618,7 +1621,7 @@
       }
 
       return box;
-    }
+    }*/
 
 
     //******************************************************************************
@@ -1636,6 +1639,54 @@
       this.width = w;
       this.height = h;
     };
+
+        CollisionBox.prototype = {
+            maxX: function () {
+              return this.x + this.width;
+            },
+
+            maxY: function () {
+              return this.y + this.height;
+            },
+
+            intersects: function (aBox) {
+              return (this.maxX() <= aBox.x || aBox.maxX() <= this.x ||
+                this.maxY() <= aBox.y || aBox.maxY() <= this.y)
+                ? false
+                : true;
+            },
+
+            intersection: function (aBox) {
+
+              let ret = new CollisionBox(0, 0, 0, 0);
+
+              if (aBox.x <= this.x) {
+                ret.x = this.x;
+              } else {
+                ret.x = aBox.x;
+              }
+
+              if (aBox.y <= this.y) {
+                ret.y = this.y;
+              } else {
+                ret.y = aBox.y;
+              }
+
+              if (aBox.x + aBox.width >= this.x + this.width) {
+                ret.width = this.x + this.width - ret.x;
+              } else {
+                ret.width = aBox.x + aBox.width - ret.x;
+              }
+
+              if (aBox.y + aBox.height >= this.y + this.height) {
+                ret.height = this.y + this.height - ret.y;
+              } else {
+                ret.height = aBox.y + aBox.height - ret.y;
+              }
+
+              return ret;
+            },
+        }
 
 
     //******************************************************************************
