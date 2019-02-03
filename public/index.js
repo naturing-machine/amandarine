@@ -1141,13 +1141,27 @@
         /**
          * Play a sound.
          * @param {SoundBuffer} soundBuffer
+         * @param {number} volume
+         * @param {boolean} loop
          */
-        playSound: function (soundBuffer) {
+
+        playSound: function (soundBuffer, volume, loop) {
           if (soundBuffer) {
             var sourceNode = this.audioContext.createBufferSource();
             sourceNode.buffer = soundBuffer;
-            sourceNode.connect(this.audioContext.destination);
+
+            if (volume) {
+              var gainNode = this.audioContext.createGain();
+              gainNode.gain.value = volume;
+              gainNode.connect(this.audioContext.destination);
+              sourceNode.connect(gainNode);
+            } else {
+              sourceNode.connect(this.audioContext.destination);
+            }
+
+            if (loop) sourceNode.loop = true;
             sourceNode.start(0);
+            return sourceNode;
           }
         },
 
