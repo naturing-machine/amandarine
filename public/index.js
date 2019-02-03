@@ -118,8 +118,8 @@
       MAX_CLOUDS: 6,
       MAX_OBSTACLE_LENGTH: 3,
       MAX_OBSTACLE_DUPLICATION: 2,
-      MAX_JUMP_PRESS: 600,
-      MIN_JUMP_PRESS: 200,
+      MAX_ACTION_PRESS: 600,
+      MIN_ACTION_PRESS: 200,
       MAX_SPEED: 13,
       MIN_JUMP_HEIGHT: 35,
       MOBILE_SPEED_COEFFICIENT: 1.2,
@@ -584,6 +584,7 @@
          */
         update: function () {
           // Filter ended action(s).
+
           this.actions = this.actions.filter(function(action){ return action.status != -1 });
           if (this.actions.length) {
             let action = this.actions[0];
@@ -591,12 +592,6 @@
             if (action.status == 1) {
               //action.speed = this.currentSpeed;
               this.amdr.setAction(action);
-              switch (action.type) {
-                case AMDR.status.JUMPING:
-                  this.playSound(this.soundFx.BUTTON_PRESS);
-                  break;
-                default:;
-              }
             }
           }
 
@@ -626,7 +621,7 @@
 
           this.clearCanvas();
 
-          this.playHackSlide(!this.amdr.ducking);
+          //this.playHackSlide(!this.amdr.ducking);
 
           if (this.playing) {
             this.amdr.updateAction(deltaTime);
@@ -671,14 +666,14 @@
             } else {
               let box = boxIntersection(collisionBoxes[0],collisionBoxes[1]);
               this.gameOver({x: box.x + box.width/2, y: box.y + box.height/2});
-              this.playHackSlide(true);
+              //this.playHackSlide(true);
             }
 
             var playAchievementSound = this.distanceMeter.update(deltaTime,
               Math.ceil(this.distanceRan));
 
             if (playAchievementSound) {
-              this.playSound(this.soundFx.SCORE);
+              this.playSound(this.soundFx.SCORE,0.1);
             }
 
             if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
@@ -706,8 +701,19 @@
           if (this.playing || (!this.activated &&
               this.amdr.blinkCount < N7e.config.MAX_BLINK_COUNT)) {
 
-            if (this.actions.length && this.actions[0].type == AMDR.status.JUMPING) {
-              this.drawJumpingGuide(this.actions[0]);
+            if (this.actions.length && this.actions[0].status != -1) {
+              switch(this.actions[0].type) {
+                case AMDR.status.JUMPING:
+                  if(!this.actions[0].first) {
+                    this.drawJumpingGuide(this.actions[0]);
+                  }
+                  break;
+                case AMDR.status.SLIDING:
+                  this.drawSlidingGuide(this.actions[0]);
+                  break;
+                default:;
+              }
+
             }
 
             this.amdr.update(deltaTime);
@@ -716,16 +722,52 @@
         },
 
         /**
+         * Draw sliding guide.
+         * @param {Object} action object
+         */
+        drawSlidingGuide: function (action) {
+          let now = getTimeStamp();
+          let pressDuration = action.maxPressDuration;
+
+          if (action.status != 0) return;
+
+          if (!pressDuration) {
+            // status 1
+            pressDuration =  now - action.begin;
+//            pressDuration += N7e.config.MIN_ACTION_PRESS;
+            if (pressDuration > N7e.config.MAX_ACTION_PRESS) {
+              pressDuration = N7e.config.MAX_ACTION_PRESS;
+            }
+
+          }
+
+          let slideDuration = 2 * Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
+          var increment = this.currentSpeed * 0.001 * FPS * slideDuration;
+          let baseX = this.amdr.xPos + 12;
+          let baseY = this.amdr.groundYPos + 35;
+          /*
+          this.canvasCtx.beginPath();
+          this.canvasCtx.moveTo( baseX , baseY );
+          this.canvasCtx.lineTo( baseX + increment, baseY );
+          this.canvasCtx.stroke();
+          */
+          this.canvasCtx.save();
+          this.canvasCtx.globalCompositeOperation = 'screen';
+          this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
+              0, 0, 40, 40,
+              baseX + increment, baseY-35,
+              40, 40);
+          this.canvasCtx.restore();
+        },
+
+        /**
          * Draw jumping guide.
          * @param {Object} action object
          */
         drawJumpingGuide: function (action) {
           /* Draw jumping guide */
-          if (action.status == -1) return;
 
           let now = getTimeStamp();
-          let duration = action.duration;
-
           let pressDuration = action.maxPressDuration;
 
           if (!pressDuration) {
@@ -737,9 +779,9 @@
             }
           }
 
-          let fallDuration = Math.sqrt(2000 * duration / AMDR.config.GRAVITY);
+          let fallDuration = Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
 
-          let jumpTop = duration / 1000;
+          let jumpTop = pressDuration / 1000;
 
           this.canvasCtx.save();
           this.canvasCtx.beginPath();
@@ -778,7 +820,7 @@
           }
 
           now = (now/10)%40;
-          let alpha = fadeOut * (fallDuration-230)/150;
+          let alpha = fadeOut * (fallDuration-150)/200;
           if (alpha > 1) alpha = 1;
 
           this.canvasCtx.lineCap = 'round';
@@ -791,7 +833,7 @@
           this.canvasCtx.stroke();
           */
 
-          this.canvasCtx.lineWidth = alpha*6;
+          this.canvasCtx.lineWidth = alpha*5;
           this.canvasCtx.lineDashOffset = now;
           this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
           this.canvasCtx.stroke();
@@ -861,6 +903,11 @@
          * @param {Event} e
          */
         onKeyDown: function (e) {
+
+          // Reject repeating key events.
+          if (e.repeat) {
+            return;
+          }
 
           if (this.spacebarEl) {
             this.spacebarEl.parentNode.removeChild(this.spacebarEl);
@@ -971,10 +1018,13 @@
 
           if (this.isRunning() && isjumpKey) {
 
+            this.playing = true;
+
             for (let i = 0, action; action = this.actions[i]; i++) {
               if (action.code == keyCode && !action.end) {
                 action.end = e.timeStamp;
-                action.duration = action.end - action.begin;
+                action.pressDuration = action.end - action.begin;
+                if (action.pressDuration > N7e.config.MAX_ACTION_PRESS) action.pressDuration = N7e.config.MAX_ACTION_PRESS;
                 action.status = 1; // 0: Preparing, 1: Ready, 2: In progres, -1: Ended.
               }
             }
@@ -1050,7 +1100,8 @@
             this.horizon.update(0, 0, true);
           }
 
-          this.playSound(this.soundFx.HIT);
+          this.playSound(this.soundFx.HIT,0.7);
+          this.playSound(this.soundFx.SOUND_CRASH,0.05);
           vibrate(200);
 
           this.stop();
@@ -1455,8 +1506,8 @@
       // Simple outer bounds check.
       if (boxCompare(amdrBox, obstacleBox)) {
         var collisionBoxes = obstacle.collisionBoxes;
-        var amdrCollisionBoxes = amdr.ducking ?
-        AMDR.collisionBoxes.DUCKING : AMDR.collisionBoxes.RUNNING;
+        var amdrCollisionBoxes = amdr.getAction() == AMDR.status.SLIDING ?
+        AMDR.collisionBoxes.SLIDING : AMDR.collisionBoxes.RUNNING;
 
         // Detailed axis aligned box check.
         for (var t = 0; t < amdrCollisionBoxes.length; t++) {
@@ -1927,6 +1978,7 @@
     AMDR.config = {
       DUST_DURATION: 600,
       GRAVITY: 9.8,
+      FRICTION: 9.8,
       HEIGHT: 40,
       HEIGHT_DUCK: 25,
       INTRO_DURATION: 1500,
@@ -1944,7 +1996,7 @@
      * @type {Array<CollisionBox>}
      */
     AMDR.collisionBoxes = {
-      DUCKING: [
+      SLIDING: [
         new CollisionBox(11, 12, 15, 12),
         new CollisionBox(11, 25, 17, 12),
         new CollisionBox(28, 32, 5, 5)
@@ -1970,7 +2022,7 @@
      */
     AMDR.status = {
       CRASHED: 'CRASHED',
-      DUCKING: 'DUCKING',
+      SLIDING: 'SLIDING',
       JUMPING: 'JUMPING',
       RUNNING: 'RUNNING',
       WAITING: 'WAITING'
@@ -2004,7 +2056,7 @@
         frames: [80],
         msPerFrame: 1000 / 60
       },
-      DUCKING: {
+      SLIDING: {
         frames: [0, 20, 40, 20],
         //frames: [264, 323],
         msPerFrame: 1000 / 24
@@ -2051,7 +2103,7 @@
             this.animStartTime = getTimeStamp();
             this.setBlinkDelay();
             */
-            if (opt_status != AMDR.status.CRASHED && opt_status != AMDR.status.WAITING && opt_status != AMDR.status.DUCKING) {
+            if (opt_status != AMDR.status.CRASHED && opt_status != AMDR.status.WAITING && opt_status != AMDR.status.SLIDING) {
               if (this.xPos == 0) {
                 this.dust.x = -24;
               } else {
@@ -2091,7 +2143,7 @@
             this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
             this.timer = 0;
 
-            if (this.status == AMDR.status.DUCKING) {
+            if (this.status == AMDR.status.SLIDING) {
               this.dust.x = 0;
               this.dust.addPoint(-10, 0, -90, -15 * Math.random());
               this.dust.addPoint(5, 0, -75, -15 * Math.random());
@@ -2250,25 +2302,43 @@
 
           if (!this.action || this.action.status == -1) return false;
 
+          let n7e = N7e();
+
           switch (this.action.type) {
             case AMDR.status.JUMPING:
               {
                 this.action.timer += deltaTime;
-                let timer = this.action.halftime - this.action.timer;
-                let dY = this.action.top * Dusita.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * timer * timer;
+                let timer = this.action.halfTime - this.action.timer;
+                let dY = this.action.top * N7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * timer * timer;
 
                 this.yPos = this.groundYPos - dY;
 
-                if (timer < -this.action.halftime) {
+                if (timer < -this.action.halfTime) {
                   this.jumpCount++;
                   this.action.status = -1;
                   this.yPos = this.groundYPos;
                   this.update(0, AMDR.status.RUNNING);
+                  n7e.playSound(n7e.soundFx.SOUND_DROP,0.3 * this.action.pressDuration/N7e.config.MAX_ACTION_PRESS);
+                  break;
                 } else {
                   this.update(deltaTime);
                 }
 
-              } break;
+              }
+              break;
+            case AMDR.status.SLIDING:
+              {
+                this.action.timer += deltaTime;
+                let timer = this.action.fullTime - this.action.timer;
+
+                if (this.action.timer > this.action.fullTime) {
+                  this.action.status = -1;
+                  this.update(0, AMDR.status.RUNNING);
+                } else {
+                  this.update(deltaTime);
+                }
+              }
+              break;
             default:;
           }
 
@@ -2278,6 +2348,7 @@
         /**
          * @param {boolean} isDucking.
          */
+         /*
         setDuck: function (isDucking) {
           if (isDucking && this.status != AMDR.status.DUCKING) {
             this.update(0, AMDR.status.DUCKING);
@@ -2287,13 +2358,14 @@
             this.ducking = false;
           }
         },
+        */
 
         /**
          * Reset Amandarine to running at start of game.
          */
         reset: function () {
           this.yPos = this.groundYPos;
-          this.ducking = false;
+          //this.ducking = false;
           this.update(0, AMDR.status.RUNNING);
           this.jumpCount = 0;
           this.dust.reset();
