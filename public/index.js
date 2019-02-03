@@ -12,19 +12,19 @@
      * @constructor
      * @export
      */
-    function Dusita(outerContainerId, opt_config) {
+    function N7e(outerContainerId, opt_config) {
       // Singleton
-      if (Dusita.instance_) {
-        return Dusita.instance_;
+      if (N7e.instance_) {
+        return N7e.instance_;
       }
-      Dusita.instance_ = this;
+      N7e.instance_ = this;
 
       this.outerContainerEl = document.querySelector(outerContainerId);
       this.containerEl = null;
 
-      this.config = opt_config || Dusita.config;
+      this.config = opt_config || N7e.config;
 
-      this.dimensions = Dusita.defaultDimensions;
+      this.dimensions = N7e.defaultDimensions;
 
       this.canvas = null;
       this.canvasCtx = null;
@@ -69,7 +69,7 @@
       this.loadImages();
     }
 
-    window['Dusita'] = Dusita;
+    window['N7e'] = N7e;
 
 
     /**
@@ -101,7 +101,7 @@
      * Default game configuration.
      * @enum {number}
      */
-    Dusita.config = {
+    N7e.config = {
       ACCELERATION: 0.001,
       BG_CLOUD_SPEED: 0.2,
       BOTTOM_PAD: 10,
@@ -136,12 +136,13 @@
       }
     };
 
+    N7e.config.PRESS_SCALE = (N7e.config.MAX_ACTION_PRESS - N7e.config.MIN_ACTION_PRESS)/N7e.config.MAX_ACTION_PRESS;
 
     /**
      * Default dimensions.
      * @enum {string}
      */
-    Dusita.defaultDimensions = {
+    N7e.defaultDimensions = {
       WIDTH: DEFAULT_WIDTH,
       HEIGHT: 200
     };
@@ -151,7 +152,7 @@
      * CSS class names.
      * @enum {string}
      */
-    Dusita.classes = {
+    N7e.classes = {
       CANVAS: 'runner-canvas',
       CONTAINER: 'runner-container',
       CRASHED: 'crashed',
@@ -168,7 +169,7 @@
      * Sprite definition layout of the spritesheet.
      * @enum {Object}
      */
-    Dusita.spriteDefinition = {
+    N7e.spriteDefinition = {
       /*
       LDPI: {
       CACTUS_LARGE: { x: 332, y: 2 },
@@ -204,11 +205,14 @@
      * Sound FX. Reference to the ID of the audio tag on interstitial page.
      * @enum {string}
      */
-    Dusita.sounds = {
+    N7e.sounds = {
       BUTTON_PRESS: 'offline-sound-press',
       HIT: 'offline-sound-hit',
       SCORE: 'offline-sound-reached',
-      SOUND_SLIDE: 'offline-sound-slide'
+      SOUND_SLIDE: 'offline-sound-slide',
+      SOUND_DROP: 'offline-sound-drop',
+      SOUND_JUMP: 'offline-sound-piskup',
+      SOUND_CRASH: 'offline-sound-crash',
     };
 
 
@@ -216,7 +220,7 @@
      * Key code mapping.
      * @enum {Object}
      */
-    Dusita.keycodes = {
+    N7e.keycodes = {
       JUMP: { '38': 1, '32': 1 },  // Up, spacebar
       DUCK: { '40': 1 },  // Down
       RESTART: { '13': 1 }  // Enter
@@ -224,10 +228,10 @@
 
 
     /**
-     * Dusita event names.
+     * N7e event names.
      * @enum {string}
      */
-    Dusita.events = {
+    N7e.events = {
       ANIM_END: 'webkitAnimationEnd',
       CLICK: 'click',
       KEYDOWN: 'keydown',
@@ -244,7 +248,7 @@
     };
 
 
-    Dusita.prototype = {
+    N7e.prototype = {
 
         /**
          * Cache the appropriate image sprite from the page and get the sprite sheet
@@ -253,38 +257,38 @@
         loadImages: function () {
 
           if (IS_HIDPI) {
-            Dusita.imageSprite = document.getElementById('offline-resources-2x');
-            Dusita.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running');
-            Dusita.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding');
-            Dusita.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling');
-            Dusita.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
-            Dusita.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash');
-            this.spriteDef = Dusita.spriteDefinition.HDPI;
+            N7e.imageSprite = document.getElementById('offline-resources-2x');
+            N7e.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running');
+            N7e.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding');
+            N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling');
+            N7e.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
+            N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash');
+            this.spriteDef = N7e.spriteDefinition.HDPI;
 
             Obstacle.types[0].mag = 2;
             Obstacle.types[1].mag = 2;
             Obstacle.types[2].mag = 2;
             Obstacle.types[3].mag = 1;
 
-            Obstacle.types[3].sprite = Dusita.imageSpriteBicycle;
-            AMDR.animFrames.WAITING.sprite = Dusita.imageSpriteAmdrIdling;
-            AMDR.animFrames.JUMPING.sprite = Dusita.imageSpriteAmdrRunning;
-            AMDR.animFrames.DUCKING.sprite = Dusita.imageSpriteAmdrSliding;
-            AMDR.animFrames.RUNNING.sprite = Dusita.imageSpriteAmdrRunning;
-            AMDR.animFrames.CRASHED.sprite = Dusita.imageSpriteAmdrCrashed;
+            Obstacle.types[3].sprite = N7e.imageSpriteBicycle;
+            AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling;
+            AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrRunning;
+            AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding;
+            AMDR.animFrames.RUNNING.sprite = N7e.imageSpriteAmdrRunning;
+            AMDR.animFrames.CRASHED.sprite = N7e.imageSpriteAmdrCrashed;
 
 
           } else {
             //NYI
             console.error("NYI: 1x isn't supported ATM.");
             /*
-            Dusita.imageSprite = document.getElementById('offline-resources-1x');
-            this.spriteDef = Dusita.spriteDefinition.LDPI;
+            N7e.imageSprite = document.getElementById('offline-resources-1x');
+            this.spriteDef = N7e.spriteDefinition.LDPI;
             */
           }
 
           var loader = {
-            spriteList: [ Dusita.imageSprite, Dusita.imageSpriteAmdrRunning, Dusita.imageSpriteAmdrIdling, Dusita.imageSpriteAmdrCrashed, Dusita.imageSpriteBicycle, ],
+            spriteList: [ N7e.imageSprite, N7e.imageSpriteAmdrIdling, N7e.imageSpriteAmdrRunning, N7e.imageSpriteAmdrSliding, N7e.imageSpriteAmdrCrashed, N7e.imageSpriteBicycle, ],
             runner: this,
             load: function() {
 
@@ -292,7 +296,7 @@
 
               while (sprite = this.spriteList.shift()) {
                 if (!sprite.complete) {
-                  sprite.addEventListener(Dusita.events.LOAD, this.load.bind(this));
+                  sprite.addEventListener(N7e.events.LOAD, this.load.bind(this));
                   return;
                 }
                 console.debug("Sprites loaded.", sprite);
@@ -318,9 +322,9 @@
             var resourceTemplate =
             document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
 
-            for (var sound in Dusita.sounds) {
+            for (var sound in N7e.sounds) {
               var soundSrc =
-              resourceTemplate.getElementById(Dusita.sounds[sound]).src;
+              resourceTemplate.getElementById(N7e.sounds[sound]).src;
               soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
               var buffer = decodeBase64ToArrayBuffer(soundSrc);
 
@@ -385,19 +389,19 @@
          */
         init: function () {
           // Hide the static icon.
-          document.querySelector('.' + Dusita.classes.ICON).style.visibility =
+          document.querySelector('.' + N7e.classes.ICON).style.visibility =
           'hidden';
 
           this.adjustDimensions();
           this.setSpeed();
 
           this.containerEl = document.createElement('div');
-          this.containerEl.className = Dusita.classes.CONTAINER;
+          this.containerEl.className = N7e.classes.CONTAINER;
 //	      this.containerEl.style.borderRadius = "20px";
 
           // Player canvas container.
           this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
-            this.dimensions.HEIGHT, Dusita.classes.PLAYER);
+            this.dimensions.HEIGHT, N7e.classes.PLAYER);
 
             // This or we won't recieve
           this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
@@ -405,11 +409,11 @@
           this.canvasCtx = this.canvas.getContext('2d');
           this.canvasCtx.fillStyle = '#f7f7f7';
           this.canvasCtx.fill();
-          Dusita.updateCanvasScaling(this.canvas);
+          N7e.updateCanvasScaling(this.canvas);
           this.gradients = {};
 
           /* Will switch to gradient on starting */
-          this.gradients.sky2 = this.gradients.sky1 = Dusita.config.SKY.START;
+          this.gradients.sky2 = this.gradients.sky1 = N7e.config.SKY.START;
           this.adjustSkyGradient(1);
 
           // Horizon contains clouds, obstacles and the ground.
@@ -426,7 +430,7 @@
           this.outerContainerEl.appendChild(this.containerEl);
 
           this.spacebarEl = document.createElement('div');
-          this.spacebarEl.className = Dusita.classes.SPACEBAR;
+          this.spacebarEl.className = N7e.classes.SPACEBAR;
           this.outerContainerEl.appendChild(this.spacebarEl);
           this.spacebarEl.style.width = '75px';
           this.spacebarEl.style.height = '54px';
@@ -444,7 +448,7 @@
           this.startListening();
           this.update();
 
-          window.addEventListener(Dusita.events.RESIZE,
+          window.addEventListener(N7e.events.RESIZE,
             this.debounceResize.bind(this));
         },
 
@@ -453,7 +457,7 @@
          */
         createTouchController: function () {
           this.touchController = document.createElement('div');
-          this.touchController.className = Dusita.classes.TOUCH_CONTROLLER;
+          this.touchController.className = N7e.classes.TOUCH_CONTROLLER;
           this.outerContainerEl.appendChild(this.touchController);
         },
 
@@ -485,7 +489,7 @@
             this.canvas.width = this.dimensions.WIDTH;
             this.canvas.height = this.dimensions.HEIGHT;
 
-            Dusita.updateCanvasScaling(this.canvas);
+            N7e.updateCanvasScaling(this.canvas);
 
             this.distanceMeter.calcXPos(this.dimensions.WIDTH);
             this.clearCanvas();
@@ -531,7 +535,7 @@
             sheet.innerHTML = keyframes;
             document.head.appendChild(sheet);
 
-            this.containerEl.addEventListener(Dusita.events.ANIM_END,
+            this.containerEl.addEventListener(N7e.events.ANIM_END,
               this.startGame.bind(this));
 
             this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
@@ -560,13 +564,13 @@
           this.playCount++;
 
           // Handle tabbing off the page. Pause the current game.
-          document.addEventListener(Dusita.events.VISIBILITY,
+          document.addEventListener(N7e.events.VISIBILITY,
             this.onVisibilityChange.bind(this));
 
-          window.addEventListener(Dusita.events.BLUR,
+          window.addEventListener(N7e.events.BLUR,
             this.onVisibilityChange.bind(this));
 
-          window.addEventListener(Dusita.events.FOCUS,
+          window.addEventListener(N7e.events.FOCUS,
             this.onVisibilityChange.bind(this));
         },
 
@@ -604,17 +608,17 @@
 
           if (this.skyFadingStartTime) {
             let delta = now - this.skyFadingStartTime;
-            if (delta > Dusita.config.SKY_SHADING_DURATION) {
+            if (delta > N7e.config.SKY_SHADING_DURATION) {
               delete this.skyFadingStartTime;
               this.adjustSkyGradient(1);
               //this.sepia = 0;
               this.canvasCtx.flter = '';
             } else {
-              this.adjustSkyGradient(delta/Dusita.config.SKY_SHADING_DURATION);
+              this.adjustSkyGradient(delta/N7e.config.SKY_SHADING_DURATION);
               /*
               if (this.sepia > 0) {
                 this.canvasCtx.filter = 'sepia('+this.sepia+')';
-                this.sepia = 1 - delta/Dusita.config.SKY_SHADING_DURATION;
+                this.sepia = 1 - delta/N7e.config.SKY_SHADING_DURATION;
               }
               */
             }
@@ -650,7 +654,7 @@
 
             if (hasObstacles) {
               for (let i = 0, obstacle; obstacle = this.horizon.obstacles[i]; i++) {
-                collisionBoxes = checkForCollision(obstacle, this.amdr, Dusita.config.SHOW_COLLISION && this.canvasCtx);
+                collisionBoxes = checkForCollision(obstacle, this.amdr, N7e.config.SHOW_COLLISION && this.canvasCtx);
                 if (collisionBoxes) {
                   collision = true;
                   break;
@@ -700,7 +704,7 @@
           }
 
           if (this.playing || (!this.activated &&
-              this.amdr.blinkCount < Dusita.config.MAX_BLINK_COUNT)) {
+              this.amdr.blinkCount < N7e.config.MAX_BLINK_COUNT)) {
 
             if (this.actions.length && this.actions[0].type == AMDR.status.JUMPING) {
               this.drawJumpingGuide(this.actions[0]);
@@ -722,11 +726,14 @@
           let now = getTimeStamp();
           let duration = action.duration;
 
-          if (!duration) {
-            duration =  now - action.begin;
-            duration += Dusita.config.MIN_JUMP_PRESS;
-            if (duration > Dusita.config.MAX_JUMP_PRESS) {
-              duration = Dusita.config.MAX_JUMP_PRESS;
+          let pressDuration = action.maxPressDuration;
+
+          if (!pressDuration) {
+            // status 1
+            pressDuration =  now - action.begin;
+            pressDuration += N7e.config.MIN_ACTION_PRESS;
+            if (pressDuration > N7e.config.MAX_ACTION_PRESS) {
+              pressDuration = N7e.config.MAX_ACTION_PRESS;
             }
           }
 
@@ -756,11 +763,11 @@
           let gravityFactor = 0.0000005 * AMDR.config.GRAVITY;
           this.canvasCtx.moveTo(
             baseX + unit*increment - shiftLeft,
-            baseY - (jumpTop - (gravityFactor * fallDuration * fallDuration)) * Dusita.config.SCALE_FACTOR
+            baseY - (jumpTop - (gravityFactor * fallDuration * fallDuration)) * N7e.config.SCALE_FACTOR
           );
 
           for (let timer = fallDuration; timer > - fallDuration - DRAW_STEP; timer-= DRAW_STEP, unit--) {
-            let drawY = baseY - (jumpTop - (gravityFactor * timer * timer)) * Dusita.config.SCALE_FACTOR;
+            let drawY = baseY - (jumpTop - (gravityFactor * timer * timer)) * N7e.config.SCALE_FACTOR;
             let drawX = baseX + unit*increment - shiftLeft;
 
             if (drawX < this.amdr.xPos + 20 && drawY > baseY - 60 ) {
@@ -809,7 +816,7 @@
                 this.onKeyUp(e);
               break;
             }
-          }.bind(this))(e.type, Dusita.events);
+          }.bind(this))(e.type, N7e.events);
         },
 
         /**
@@ -817,18 +824,18 @@
          */
         startListening: function () {
           // Keys.
-          document.addEventListener(Dusita.events.KEYDOWN, this);
-          document.addEventListener(Dusita.events.KEYUP, this);
+          document.addEventListener(N7e.events.KEYDOWN, this);
+          document.addEventListener(N7e.events.KEYUP, this);
 
           if (IS_MOBILE) {
             // Mobile only touch devices.
-            this.touchController.addEventListener(Dusita.events.TOUCHSTART, this);
-            this.touchController.addEventListener(Dusita.events.TOUCHEND, this);
-            this.containerEl.addEventListener(Dusita.events.TOUCHSTART, this);
+            this.touchController.addEventListener(N7e.events.TOUCHSTART, this);
+            this.touchController.addEventListener(N7e.events.TOUCHEND, this);
+            this.containerEl.addEventListener(N7e.events.TOUCHSTART, this);
           } else {
             // Mouse.
-            document.addEventListener(Dusita.events.MOUSEDOWN, this);
-            document.addEventListener(Dusita.events.MOUSEUP, this);
+            document.addEventListener(N7e.events.MOUSEDOWN, this);
+            document.addEventListener(N7e.events.MOUSEUP, this);
           }
         },
 
@@ -836,31 +843,16 @@
          * Remove all listeners.
          */
         stopListening: function () {
-          document.removeEventListener(Dusita.events.KEYDOWN, this);
-          document.removeEventListener(Dusita.events.KEYUP, this);
+          document.removeEventListener(N7e.events.KEYDOWN, this);
+          document.removeEventListener(N7e.events.KEYUP, this);
 
           if (IS_MOBILE) {
-            this.touchController.removeEventListener(Dusita.events.TOUCHSTART, this);
-            this.touchController.removeEventListener(Dusita.events.TOUCHEND, this);
-            this.containerEl.removeEventListener(Dusita.events.TOUCHSTART, this);
+            this.touchController.removeEventListener(N7e.events.TOUCHSTART, this);
+            this.touchController.removeEventListener(N7e.events.TOUCHEND, this);
+            this.containerEl.removeEventListener(N7e.events.TOUCHSTART, this);
           } else {
-            document.removeEventListener(Dusita.events.MOUSEDOWN, this);
-            document.removeEventListener(Dusita.events.MOUSEUP, this);
-          }
-        },
-
-        playHackSlide: function (stop) {
-          if (stop) {
-            if (this.hackSlideSoundNode) {
-              this.hackSlideSoundNode.stop(0);
-              delete this.hackSlideSoundNode;
-            }
-          } else if (this.soundFx.SOUND_SLIDE && !this.hackSlideSoundNode) {
-            this.hackSlideSoundNode = this.audioContext.createBufferSource();
-            this.hackSlideSoundNode.buffer = this.soundFx.SOUND_SLIDE;
-            this.hackSlideSoundNode.connect(this.audioContext.destination);
-            this.hackSlideSoundNode.loop = true;
-            this.hackSlideSoundNode.start(0);
+            document.removeEventListener(N7e.events.MOUSEDOWN, this);
+            document.removeEventListener(N7e.events.MOUSEUP, this);
           }
         },
 
@@ -880,46 +872,68 @@
             e.preventDefault();
           }
 
-          if (!this.crashed && (Dusita.keycodes.JUMP[e.keyCode] ||
-              e.type == Dusita.events.TOUCHSTART)) {
+          let action;
 
-            // Push a jump action to the queue.
-            if (!e.repeat && this.actions.length < 2) {
-              this.actions.push({
-                begin: e.timeStamp,
-                type: AMDR.status.JUMPING,
-                code: String(e.keyCode),
-                status: 0
-              });
-            }
+          if (!this.crashed && (N7e.keycodes.JUMP[e.keyCode] ||
+              e.type == N7e.events.TOUCHSTART)) {
 
-            // If not already, start the game.
+            action = {
+              begin: e.timeStamp,
+              type: AMDR.status.JUMPING,
+              code: String(e.keyCode),
+              status: 0
+            };
+
             if (!this.playing) {
+              action.first = true;
               this.loadSounds();
-              this.playing = true;
-
-              this.gradients.sky2 = Dusita.config.SKY.DAY;
+              this.gradients.sky2 = N7e.config.SKY.DAY;
               this.skyFadingStartTime = getTimeStamp();
-
               this.update();
-              if (window.errorPageController) {
-                errorPageController.trackEasterEgg();
-              }
             }
           }
 
-          if (this.crashed && e.type == Dusita.events.TOUCHSTART && e.currentTarget == this.containerEl) {
+          if (this.crashed && e.type == N7e.events.TOUCHSTART && e.currentTarget == this.containerEl) {
             this.restart();
           }
 
-          if (this.playing && !this.crashed && Dusita.keycodes.DUCK[e.keyCode]) {
-            e.preventDefault();
+          if (this.playing && !this.crashed && N7e.keycodes.DUCK[e.keyCode]) {
+            e.preventDefault(); //Test if this is needed.
 
+            action = {
+              begin: e.timeStamp,
+              type: AMDR.status.SLIDING,
+              code: String(e.keyCode),
+              status: 0
+            };
+
+            /*
             if (this.amdr.getAction() != AMDR.status.JUMPING && !this.amdr.ducking) {
-                // Duck. FIXME Move to double action
               this.amdr.setDuck(true);
             }
+            */
           }
+
+          QUEUE_ACTION: if (action) {
+            for (let i = 0, action0; action0 = this.actions[i]; i++) {
+              // First preparing action will be discarded.
+              if (action0.status == 0) {
+
+                // The prior state for the keycode wasn't yet handled so
+                // the event is actually a repeat, discard it.
+                if (action0.code == action.code) {
+                  return;
+                }
+
+                action0.status = -1;
+                this.actions.splice(i + 1, 0, action);
+                break QUEUE_ACTION;
+              }
+            }
+
+            this.actions.push(action);
+          }
+
         },
 
         /**
@@ -929,27 +943,27 @@
         onKeyUp: function (e) {
 
           var keyCode = String(e.keyCode);
-          var isjumpKey = Dusita.keycodes.JUMP[keyCode] ||
-          e.type == Dusita.events.TOUCHEND ||
-          e.type == Dusita.events.MOUSEDOWN;
+          var isjumpKey = N7e.keycodes.JUMP[keyCode] ||
+          e.type == N7e.events.TOUCHEND ||
+          e.type == N7e.events.MOUSEDOWN;
 
           if (keyCode == '67') {
-            Dusita.config.SHOW_COLLISION = !Dusita.config.SHOW_COLLISION;
+            N7e.config.SHOW_COLLISION = !N7e.config.SHOW_COLLISION;
           }
 
           if (keyCode == '83') {
-            Dusita.config.SHOW_SEPIA = (Dusita.config.SHOW_SEPIA+1)%10;
+            N7e.config.SHOW_SEPIA = (N7e.config.SHOW_SEPIA+1)%10;
 
             this.canvasCtx.restore();
             this.canvasCtx.save();
-            switch (Dusita.config.SHOW_SEPIA) {
+            switch (N7e.config.SHOW_SEPIA) {
               case 0:
                 break;
               case 1:
                 this.canvasCtx.filter = 'grayscale(1)';
                 break;
               default:
-                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((Dusita.config.SHOW_SEPIA - 2) * 45)+'deg)';
+                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((N7e.config.SHOW_SEPIA - 2) * 45)+'deg)';
                 break;
                 break;
             }
@@ -965,15 +979,24 @@
               }
             }
 
-          } else if (Dusita.keycodes.DUCK[keyCode]) {
-            this.amdr.setDuck(false);
+          } else if (N7e.keycodes.DUCK[keyCode]) {
+
+            for (let i = 0, action; action = this.actions[i]; i++) {
+              if (action.code == keyCode && action.status == 0) {
+                action.end = e.timeStamp;
+                action.pressDuration = action.end - action.begin;
+                if (action.pressDuration > N7e.config.MAX_ACTION_PRESS) action.pressDuration = N7e.config.MAX_ACTION_PRESS;
+                action.status = 1;
+              }
+            }
+            //this.amdr.setDuck(false);
           } else if (this.crashed) {
             // Check that enough time has elapsed before allowing jump key to restart.
             var deltaTime = getTimeStamp() - this.time;
 
-            if (Dusita.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
+            if (N7e.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
             (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
-              Dusita.keycodes.JUMP[keyCode])) {
+              N7e.keycodes.JUMP[keyCode])) {
                 this.restart();
               }
           } else if (this.paused && isjumpKey) {
@@ -992,7 +1015,7 @@
          */
         isLeftClickOnCanvas: function (e) {
           return e.button != null && e.button < 2 &&
-            e.type == Dusita.events.MOUSEUP && e.target == this.canvas;
+            e.type == N7e.events.MOUSEUP && e.target == this.canvas;
         },
 
         /**
@@ -1018,7 +1041,7 @@
          * @param {point} crashPoint
          */
         gameOver: function (crashPoint) {
-          if (!Dusita.config.SHOW_COLLISION) {
+          if (!N7e.config.SHOW_COLLISION) {
             /*
             this.canvasCtx.filter = 'sepia(1)';
             this.sepia = 1.0;
@@ -1035,9 +1058,9 @@
           this.distanceMeter.acheivement = false;
 
           //
-          this.canvasCtx.drawImage(Dusita.imageSprite,
-              Dusita.spriteDefinition.HDPI.CRASH.x,
-              Dusita.spriteDefinition.HDPI.CRASH.y,
+          this.canvasCtx.drawImage(N7e.imageSprite,
+              N7e.spriteDefinition.HDPI.CRASH.x,
+              N7e.spriteDefinition.HDPI.CRASH.y,
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
               crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
@@ -1092,12 +1115,12 @@
             this.distanceRan = 0;
             this.setSpeed(this.config.SPEED);
             this.time = getTimeStamp();
-            this.containerEl.classList.remove(Dusita.classes.CRASHED);
+            this.containerEl.classList.remove(N7e.classes.CRASHED);
             this.clearCanvas();
             this.distanceMeter.reset(this.highestScore);
             this.horizon.reset();
             this.amdr.reset();
-            this.playSound(this.soundFx.BUTTON_PRESS);
+            //this.playSound(this.soundFx.SCORE,0.2);
             this.invert(true);
             this.update();
           }
@@ -1134,17 +1157,17 @@
          */
         invert: function (reset) {
           if (reset) {
-            document.body.classList.toggle(Dusita.classes.INVERTED, false);
+            document.body.classList.toggle(N7e.classes.INVERTED, false);
             this.invertTimer = 0;
             this.inverted = false;
           } else {
-            this.inverted = document.body.classList.toggle(Dusita.classes.INVERTED,
+            this.inverted = document.body.classList.toggle(N7e.classes.INVERTED,
               this.invertTrigger);
             }
 
             //FIXME setting sky2 should actually set sky1 to current ratio.
             // setSky()
-            this.setSky(this.inverted ? Dusita.config.SKY.NIGHT : Dusita.config.SKY.DAY);
+            this.setSky(this.inverted ? N7e.config.SKY.NIGHT : N7e.config.SKY.DAY);
         },
 
 
@@ -1182,7 +1205,7 @@
      * @param {number} opt_height
      * @return {boolean} Whether the canvas was scaled.
      */
-    Dusita.updateCanvasScaling = function (canvas, opt_width, opt_height) {
+    N7e.updateCanvasScaling = function (canvas, opt_width, opt_height) {
       var context = canvas.getContext('2d');
 
       // Query the various pixel ratios
@@ -1247,7 +1270,7 @@
      */
     function createCanvas(container, width, height, opt_classname) {
       var canvas = document.createElement('canvas');
-      canvas.className = opt_classname ? Dusita.classes.CANVAS + ' ' + opt_classname : Dusita.classes.CANVAS;
+      canvas.className = opt_classname ? N7e.classes.CANVAS + ' ' + opt_classname : N7e.classes.CANVAS;
       canvas.width = width;
       canvas.height = height;
       container.appendChild(canvas);
@@ -1369,12 +1392,12 @@
           textSourceY += this.textImgPos.y;
 
           // Game over text from sprite.
-          this.canvasCtx.drawImage(Dusita.imageSprite,
+          this.canvasCtx.drawImage(N7e.imageSprite,
               textSourceX, textSourceY, textSourceWidth, textSourceHeight,
               textTargetX, textTargetY, textTargetWidth, textTargetHeight);
 
           // Restart button.
-          this.canvasCtx.drawImage(Dusita.imageSprite,
+          this.canvasCtx.drawImage(N7e.imageSprite,
               this.restartImgPos.x, this.restartImgPos.y,
               restartSourceWidth, restartSourceHeight,
               restartTargetX, restartTargetY, dimensions.RESTART_WIDTH,
@@ -1394,7 +1417,7 @@
      * @return {Array<CollisionBox>}
      */
     function checkForCollision(obstacle, amdr, opt_canvasCtx) {
-      var obstacleBoxXPos = Dusita.defaultDimensions.WIDTH + obstacle.xPos;
+      var obstacleBoxXPos = N7e.defaultDimensions.WIDTH + obstacle.xPos;
 
       // Adjustments are made to the bounding box as there is a 1 pixel white
       // border around Amandarine and obstacles.
@@ -1673,7 +1696,25 @@
                 sourceX += sourceWidth * this.currentFrame;
               }
 
-              this.canvasCtx.drawImage(this.typeConfig.sprite || Dusita.imageSprite,
+              /*
+              if (this.typeConfig.type == 'RED_DUCK' && this.speedOffset < 0) {
+                this.canvasCtx.save();
+                this.canvasCtx.filter = 'hue-rotate(20deg)';
+                this.canvasCtx.drawImage(this.typeConfig.sprite || N7e.imageSprite,
+                  sourceX, this.spritePos.y,
+                  sourceWidth * this.size, sourceHeight,
+                  this.xPos, this.yPos,
+                  this.typeConfig.width * this.size, this.typeConfig.height);
+                this.canvasCtx.restore();
+              } else {
+                this.canvasCtx.drawImage(this.typeConfig.sprite || N7e.imageSprite,
+                  sourceX, this.spritePos.y,
+                  sourceWidth * this.size, sourceHeight,
+                  this.xPos, this.yPos,
+                  this.typeConfig.width * this.size, this.typeConfig.height);
+              }
+              */
+              this.canvasCtx.drawImage(this.typeConfig.sprite || N7e.imageSprite,
                 sourceX, this.spritePos.y,
                 sourceWidth * this.size, sourceHeight,
                 this.xPos, this.yPos,
@@ -1761,7 +1802,7 @@
         type: 'CACTUS_SMALL',
         width: 17,
         height: 35,
-        yPos: Dusita.defaultDimensions.HEIGHT - 45,
+        yPos: N7e.defaultDimensions.HEIGHT - 45,
         multipleSpeed: 4,
         minGap: 120,
         minSpeed: 0,
@@ -1775,7 +1816,7 @@
         type: 'CACTUS_LARGE',
         width: 25,
         height: 50,
-        yPos: Dusita.defaultDimensions.HEIGHT - 60,
+        yPos: N7e.defaultDimensions.HEIGHT - 60,
         multipleSpeed: 7,
         minGap: 120,
         minSpeed: 0,
@@ -1790,9 +1831,9 @@
         width: 46,
         height: 40,
         yPos: [
-          Dusita.defaultDimensions.HEIGHT - 50,
-          Dusita.defaultDimensions.HEIGHT - 75,
-          Dusita.defaultDimensions.HEIGHT - 100
+          N7e.defaultDimensions.HEIGHT - 50,
+          N7e.defaultDimensions.HEIGHT - 75,
+          N7e.defaultDimensions.HEIGHT - 100
         ], // Variable height.
         yPosMobile: [100, 50], // Variable height mobile.
         multipleSpeed: 999,
@@ -1812,7 +1853,7 @@
         type: 'BICYCLE',
         width: 52,
         height: 52,
-        yPos: Dusita.defaultDimensions.HEIGHT - 62,
+        yPos: N7e.defaultDimensions.HEIGHT - 62,
         multipleSpeed: 999,
         minSpeed: 0,
         minGap: 150,
@@ -1852,11 +1893,11 @@
       this.timer = 0;
       this.msPerFrame = 1000 / FPS;
       this.config = AMDR.config;
-      this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * Dusita.config.SCALE_FACTOR;
+      this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * N7e.config.SCALE_FACTOR;
       // Current status.
       this.status = AMDR.status.WAITING;
 
-      this.ducking = false;
+      //this.ducking = false;
       this.jumpCount = 0;
 
       this.dust = new Particles(canvas, this.xPos, this.yPos, AMDR.config.DUST_DURATION);
@@ -1963,8 +2004,8 @@
          * Sets Amandarine to blink at random intervals.
          */
         init: function () {
-          this.groundYPos = Dusita.defaultDimensions.HEIGHT - this.config.HEIGHT -
-            Dusita.config.BOTTOM_PAD;
+          this.groundYPos = N7e.defaultDimensions.HEIGHT - this.config.HEIGHT -
+            N7e.config.BOTTOM_PAD;
           this.yPos = this.groundYPos;
           this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT;
 
@@ -2024,7 +2065,7 @@
 */
 
           /* Don't draw crash state to observe the effective collision boxes */
-          if (!Dusita.config.SHOW_COLLISION || opt_status != AMDR.status.CRASHED ) {
+          if (!N7e.config.SHOW_COLLISION || opt_status != AMDR.status.CRASHED ) {
             this.draw(this.currentAnimFrames[this.currentFrame], 0);
           }
 
@@ -2090,7 +2131,7 @@
 /*
             // Ducking.
             if (this.ducking && this.status != AMDR.status.CRASHED) {
-                this.canvasCtx.drawImage(Dusita.imageSprite, sourceX, sourceY,
+                this.canvasCtx.drawImage(N7e.imageSprite, sourceX, sourceY,
                     sourceWidth, sourceHeight,
                     this.xPos, this.yPos,
                     this.config.WIDTH_DUCK, this.config.HEIGHT);
@@ -2100,7 +2141,7 @@
                     this.xPos++;
                 }
                 // Standing / running
-                this.canvasCtx.drawImage(Dusita.imageSprite, sourceX, sourceY,
+                this.canvasCtx.drawImage(N7e.imageSprite, sourceX, sourceY,
                     sourceWidth, sourceHeight,
                     this.xPos, this.yPos,
                     this.config.WIDTH, this.config.HEIGHT);
@@ -2143,26 +2184,41 @@
          * @param {Object} action definition
          */
         setAction: function (action) {
-          this.action = action;
-          this.action.status = 2;
+          let n7e = N7e();
 
           switch(action.type) {
             case AMDR.status.JUMPING:
               {
+                action.maxPressDuration = action.pressDuration * N7e.config.PRESS_SCALE + N7e.config.MIN_ACTION_PRESS;
                 // It seems more ergonomically natural to simply add the minimum than to clip the value.
-                action.duration += Dusita.config.MIN_JUMP_PRESS;
-                if (action.duration > Dusita.config.MAX_JUMP_PRESS) {
-                  action.duration = Dusita.config.MAX_JUMP_PRESS;
-                }
-                action.top = action.duration / 1000;
-                action.halftime = Math.sqrt(2000 * action.duration / AMDR.config.GRAVITY);
+                action.top = action.maxPressDuration / 1000;
+                action.halfTime = Math.sqrt(2000 * action.maxPressDuration / AMDR.config.GRAVITY);
                 action.timer = 0;
 
-                this.update(0, AMDR.status.JUMPING);
+                //this.playSound(this.soundFx.SOUND_JUMP,0.2);
+                n7e.playSound(n7e.soundFx.SOUND_DROP,0.2 * action.pressDuration/N7e.config.MAX_ACTION_PRESS);
+                //this.playSound(this.soundFx.BUTTON_PRESS,0.5);
 
               } break;
-            default:;
+            case AMDR.status.SLIDING:
+              {
+                action.maxPressDuration = action.pressDuration * N7e.config.PRESS_SCALE + N7e.config.MIN_ACTION_PRESS;
+                // Sliding act pretty much like jumping, just going one way forward.
+                //action.pressDuration += N7e.config.MIN_ACTION_PRESS;
+                action.top = action.maxPressDuration / 1000;
+                action.fullTime = 2 * Math.sqrt(2000 * action.maxPressDuration / AMDR.config.FRICTION);
+                action.timer = 0;
+
+                n7e.playSound(n7e.soundFx.SOUND_SLIDE,0.3);
+              } break;
+            default:
+              return;
           }
+
+          action.status = 2;
+          action.beginProgress = getTimeStamp();
+          this.action = action;
+          this.update(0, action.type);
         },
 
         getAction: function () {
@@ -2244,7 +2300,7 @@
     function DistanceMeter(canvas, spritePos, canvasWidth) {
       this.canvas = canvas;
       this.canvasCtx = canvas.getContext('2d');
-      this.image = Dusita.imageSprite;
+      this.image = N7e.imageSprite;
       this.spritePos = spritePos;
       this.x = 0;
       this.y = 5;
@@ -2519,8 +2575,8 @@
           for(let i = 0, point; point = this.points[i]; i++) {
             let ratio = (this.age - point.age) / this.age;
             let x = this.x + point.x + 40 + point.w * ratio;
-            let y = this.y + point.y + Dusita.defaultDimensions.HEIGHT-25 + point.h * ratio;
-            this.canvasCtx.drawImage(Dusita.imageSprite,
+            let y = this.y + point.y + N7e.defaultDimensions.HEIGHT-25 + point.h * ratio;
+            this.canvasCtx.drawImage(N7e.imageSprite,
               776 + 22 * Math.floor(8 * ratio), 2,
               22, 22,
               x, y,
@@ -2582,7 +2638,7 @@
       MAX_CLOUD_GAP: 400,
       MAX_SKY_LEVEL: 30,
       MIN_CLOUD_GAP: 100,
-      MIN_SKY_LEVEL: Dusita.defaultDimensions.HEIGHT - 79,
+      MIN_SKY_LEVEL: N7e.defaultDimensions.HEIGHT - 79,
       WIDTH: 46
     };
 
@@ -2611,7 +2667,7 @@
             sourceHeight = sourceHeight * 2;
           }
 
-          this.canvasCtx.drawImage(Dusita.imageSprite, this.spritePos.x,
+          this.canvasCtx.drawImage(N7e.imageSprite, this.spritePos.x,
             this.spritePos.y,
             sourceWidth, sourceHeight,
             this.xPos, this.yPos,
@@ -2675,7 +2731,7 @@
       NUM_STARS: 7,
       STAR_SIZE: 9,
       STAR_SPEED: 0.3,
-      STAR_MAX_Y: Dusita.defaultDimensions.HEIGHT - 50,
+      STAR_MAX_Y: N7e.defaultDimensions.HEIGHT - 50,
       WIDTH: 20
     };
 
@@ -2739,8 +2795,8 @@
           var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
           var moonOutputWidth = moonSourceWidth;
           var starSize = NightMode.config.STAR_SIZE;
-          //var starSourceX = Dusita.spriteDefinition.LDPI.STAR.x;
-          var starSourceX = Dusita.spriteDefinition.HDPI.STAR.x;
+          //var starSourceX = N7e.spriteDefinition.LDPI.STAR.x;
+          var starSourceX = N7e.spriteDefinition.HDPI.STAR.x;
 
           if (IS_HIDPI) {
             moonSourceWidth *= 2;
@@ -2748,14 +2804,14 @@
             moonSourceX = this.spritePos.x +
             (NightMode.phases[this.currentPhase] * 2);
             starSize *= 2;
-            //starSourceX = Dusita.spriteDefinition.HDPI.STAR.x;
+            //starSourceX = N7e.spriteDefinition.HDPI.STAR.x;
           }
 
           this.canvasCtx.save();
 
           // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
           this.canvasCtx.globalAlpha = this.opacity;
-          this.canvasCtx.drawImage(Dusita.imageSprite, moonSourceX,
+          this.canvasCtx.drawImage(N7e.imageSprite, moonSourceX,
             this.spritePos.y, moonSourceWidth, moonSourceHeight,
             Math.round(this.xPos), this.yPos,
             moonOutputWidth, NightMode.config.HEIGHT);
@@ -2766,7 +2822,7 @@
           if (this.drawStars) {
             for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
               this.canvasCtx.globalAlpha = this.opacity * this.stars[i].opacity;
-              this.canvasCtx.drawImage(Dusita.imageSprite,
+              this.canvasCtx.drawImage(N7e.imageSprite,
                 starSourceX, this.stars[i].sourceY, starSize, starSize,
                 Math.round(this.stars[i].x), this.stars[i].y,
                 NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
@@ -2793,10 +2849,10 @@
             }
 
             if (IS_HIDPI) {
-              this.stars[i].sourceY = Dusita.spriteDefinition.HDPI.STAR.y +
+              this.stars[i].sourceY = N7e.spriteDefinition.HDPI.STAR.y +
               NightMode.config.STAR_SIZE * 2 * getRandomNum(0, 3);
             }/* else {
-              this.stars[i].sourceY = Dusita.spriteDefinition.LDPI.STAR.y +
+              this.stars[i].sourceY = N7e.spriteDefinition.LDPI.STAR.y +
               NightMode.config.STAR_SIZE * i;
             }*/
           }
@@ -2843,7 +2899,7 @@
     HorizonLine.dimensions = {
       WIDTH: 600,
       HEIGHT: 23,
-      YPOS: Dusita.defaultDimensions.HEIGHT-23
+      YPOS: N7e.defaultDimensions.HEIGHT-23
     };
 
 
@@ -2880,13 +2936,13 @@
          * Draw the horizon line.
          */
         draw: function () {
-          this.canvasCtx.drawImage(Dusita.imageSprite, this.sourceXPos[0],
+          this.canvasCtx.drawImage(N7e.imageSprite, this.sourceXPos[0],
             this.spritePos.y,
             this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
             this.xPos[0], this.yPos,
             this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
-          this.canvasCtx.drawImage(Dusita.imageSprite, this.sourceXPos[1],
+          this.canvasCtx.drawImage(N7e.imageSprite, this.sourceXPos[1],
             this.spritePos.y,
             this.sourceDimensions.WIDTH, this.sourceDimensions.HEIGHT,
             this.xPos[1], this.yPos,
@@ -2907,11 +2963,11 @@
             pwStep = Math.pow(scale, step),
             y = this.yPos + 12,
             i = -8,
-            alphaStep = 0.15 * step / (Dusita.defaultDimensions.HEIGHT - y),
+            alphaStep = 0.15 * step / (N7e.defaultDimensions.HEIGHT - y),
             pw = Math.pow(scale,i),
             width = HorizonLine.dimensions.WIDTH;
 
-                y + i < Dusita.defaultDimensions.HEIGHT + this.canvasCtx.lineWidth;
+                y + i < N7e.defaultDimensions.HEIGHT + this.canvasCtx.lineWidth;
 
                     i += step, pw *= pwStep ) {
             let width = HorizonLine.dimensions.WIDTH / pw;
@@ -3140,7 +3196,7 @@
             this.obstacleHistory.unshift(obstacleType.type);
 
             if (this.obstacleHistory.length > 1) {
-              this.obstacleHistory.splice(Dusita.config.MAX_OBSTACLE_DUPLICATION);
+              this.obstacleHistory.splice(N7e.config.MAX_OBSTACLE_DUPLICATION);
             }
           }
         },
@@ -3157,7 +3213,7 @@
             duplicateCount = this.obstacleHistory[i] == nextObstacleType ?
               duplicateCount + 1 : 0;
           }
-          return duplicateCount >= Dusita.config.MAX_OBSTACLE_DUPLICATION;
+          return duplicateCount >= N7e.config.MAX_OBSTACLE_DUPLICATION;
         },
 
         /**
@@ -3201,7 +3257,7 @@
 
 
 function onDocumentLoad() {
-  new Dusita('.interstitial-wrapper');
+  new N7e('.interstitial-wrapper');
 }
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
