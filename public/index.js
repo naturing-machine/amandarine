@@ -67,7 +67,8 @@
       this.imagesLoaded = 0;
 
       this.loadImages();
-      this.loadMusic();
+      this.config.PLAY_MUSIC = true;
+      this.loadMusic('offline-intro-music');
     }
 
     window['N7e'] = N7e;
@@ -315,15 +316,17 @@
 
         },
 
-        loadMusic: function() {
+        loadMusic: function(music) {
           if (!IS_IOS) {
 
             if (this.titleMusicData && N7e.config.PLAY_MUSIC) {
               if (!this.titleMusicNode) {
                 this.titleMusicNode = this.playSound(this.titleMusicData, 0.3);
                 this.titleMusicNode.onended = () => {
+                  /*
                   this.titleMusicNode = null;
-                  this.loadGamePlayMusic();
+                  this.loadMusic();
+                  */
                 };
               }
               return;
@@ -336,7 +339,7 @@
             var resourceTemplate =
             document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
 
-            let soundSrc = resourceTemplate.getElementById('offline-intro-music').src;
+            let soundSrc = resourceTemplate.getElementById(music).src;
 
             let request = new XMLHttpRequest();
             request.open('GET', soundSrc, true);
@@ -996,7 +999,15 @@
               this.skyFadingStartTime = getTimeStamp();
               this.update();
               N7e.config.PLAY_MUSIC = true;
-              this.loadMusic();
+
+              if (this.titleMusicNode) {
+
+                this.titleMusicNode.fade();
+                this.titleMusicNode = null;
+                this.titleMusicData = null;
+              }
+
+              this.loadMusic('offline-play-music');
             }
           }
 
@@ -1067,7 +1078,7 @@
               }
             } else {
               N7e.config.PLAY_MUSIC = true;
-              this.loadMusic();
+              this.loadMusic('offline-play-music');
             }
           }
 
@@ -1231,6 +1242,10 @@
           // Reset the time clock.
           this.time = getTimeStamp();
 
+          if (this.titleMusicNode) {
+            this.titleMusicNode.fade();
+            this.titleMusicNode = null;
+          }
         },
 
         stop: function () {
@@ -1268,6 +1283,7 @@
             this.playSound(this.soundFx.SOUND_SCORE,0.2);
             this.invert(true);
             this.update();
+            this.loadMusic('offline-play-music');
           }
         },
 
@@ -1333,7 +1349,26 @@
             if (loop) sourceNode.loop = true;
 
             sourceNode.start(this.audioContext.currentTime + delay);
-            return sourceNode;
+            return {
+              node: sourceNode,
+              gainNode: dest,
+              stop: function() {
+                this.node.stop();
+              },
+              fadeCount: 10,
+              fade: function() {
+                if (this.gainNode.gain.value > 0) {
+                  this.gainNode.gain.value -= 0.02;
+                  if (this.gainNode.gain.value < 0) {
+                    this.node.stop();
+                    return;
+                  }
+
+                  setTimeout(() => { this.fade(); }, 50);
+                  }
+
+              },
+            };
           }
         },
 
