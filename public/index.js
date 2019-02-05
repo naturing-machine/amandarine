@@ -67,6 +67,7 @@
       this.imagesLoaded = 0;
 
       this.loadImages();
+      this.loadMusic();
     }
 
     window['N7e'] = N7e;
@@ -129,7 +130,7 @@
       SHOW_COLLISION: false,
       SHOW_SEPIA: 0,
       SKY: {
-        DAY: [Math.round(221*0.8), Math.round(238*0.8), Math.round(255*0.9), 238, 238, 255],
+        DAY: [Math.floor(221*0.8), Math.floor(238*0.8), Math.floor(255*0.9), 238, 238, 255],
         //NIGHT: [68,136,170,102,153,187],
         NIGHT: [68,136,170,84,183,187],
         START: [255,255,255,255,255,255]
@@ -207,12 +208,14 @@
      */
     N7e.sounds = {
       BUTTON_PRESS: 'offline-sound-press',
-      HIT: 'offline-sound-hit',
-      SCORE: 'offline-sound-reached',
+      SOUND_HIT: 'offline-sound-hit',
+      SOUND_SCORE: 'offline-sound-reached',
       SOUND_SLIDE: 'offline-sound-slide',
       SOUND_DROP: 'offline-sound-drop',
       SOUND_JUMP: 'offline-sound-piskup',
       SOUND_CRASH: 'offline-sound-crash',
+      SOUND_OGGG: 'offline-sound-oggg',
+      SOUND_QUACK: 'offline-sound-quack',
     };
 
 
@@ -312,12 +315,54 @@
 
         },
 
+        loadMusic: function() {
+          if (!IS_IOS) {
+
+            if (this.titleMusicData && N7e.config.PLAY_MUSIC) {
+              if (!this.titleMusicNode) {
+                this.titleMusicNode = this.playSound(this.titleMusicData, 0.3);
+                this.titleMusicNode.onended = () => {
+                  this.titleMusicNode = null;
+                  this.loadGamePlayMusic();
+                };
+              }
+              return;
+            }
+
+            if (!this.audioContext) {
+              this.audioContext = new AudioContext();
+            }
+
+            var resourceTemplate =
+            document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
+
+            let soundSrc = resourceTemplate.getElementById('offline-intro-music').src;
+
+            let request = new XMLHttpRequest();
+            request.open('GET', soundSrc, true);
+            request.responseType = 'arraybuffer';
+            request.onload = () => {
+              let buffer = request.response;
+              this.audioContext.decodeAudioData(buffer, audioData => {
+                this.titleMusicData = audioData;
+                if (N7e.config.PLAY_MUSIC && !this.titleMusicNode) {
+                  this.titleMusicNode = this.playSound(audioData, 0.3);
+                  this.loadMusic();
+                }
+              });
+            }
+            request.send();
+          }
+        },
+
         /**
          * Load and decode base 64 encoded sounds.
          */
         loadSounds: function () {
           if (!IS_IOS) {
-            this.audioContext = new AudioContext();
+            if (!this.audioContext) {
+              this.audioContext = new AudioContext();
+            }
 
             var resourceTemplate =
             document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
@@ -332,6 +377,7 @@
               this.audioContext.decodeAudioData(buffer, function (index, audioData) {
                 this.soundFx[index] = audioData;
               }.bind(this, sound));
+
             }
           }
         },
@@ -644,28 +690,25 @@
             }
 
             // Check for collisions.
-            let collisionBoxes;
-            let collision = false;
+            let obstacle;
 
             if (hasObstacles) {
-              for (let i = 0, obstacle; obstacle = this.horizon.obstacles[i]; i++) {
-                collisionBoxes = checkForCollision(obstacle, this.amdr, N7e.config.SHOW_COLLISION && this.canvasCtx);
-                if (collisionBoxes) {
-                  collision = true;
+              for (let i = 0; obstacle = this.horizon.obstacles[i]; i++) {
+                obstacle.crash = checkForCollision(obstacle, this.amdr, N7e.config.SHOW_COLLISION && this.canvasCtx);
+                if (obstacle.crash) {
                   break;
                 }
               }
             }
 
-            if (!collision) {
+            if (!obstacle) {
               this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
 
               if (this.currentSpeed < this.config.MAX_SPEED) {
                 this.currentSpeed += this.config.ACCELERATION;
               }
             } else {
-              let box = collisionBoxes[0].intersection(collisionBoxes[1]);
-              this.gameOver({x: box.x + box.width/2, y: box.y + box.height/2});
+              this.gameOver(obstacle);
               //this.playHackSlide(true);
             }
 
@@ -673,7 +716,7 @@
               Math.ceil(this.distanceRan));
 
             if (playAchievementSound) {
-              this.playSound(this.soundFx.SCORE,0.1);
+              this.playSound(this.soundFx.SOUND_SCORE,0.1);
             }
 
             if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
@@ -931,12 +974,21 @@
               status: 0
             };
 
+            /* TODO Definitions
+            status 0: Gathering info.
+            status 1: Done gatherng.
+            status 2: Triggered.
+            status -1: Discarded. (Animation has ended)
+            */
+
             if (!this.playing) {
               action.first = true;
               this.loadSounds();
               this.gradients.sky2 = N7e.config.SKY.DAY;
               this.skyFadingStartTime = getTimeStamp();
               this.update();
+              N7e.config.PLAY_MUSIC = true;
+              this.loadMusic();
             }
           }
 
@@ -998,22 +1050,44 @@
             N7e.config.SHOW_COLLISION = !N7e.config.SHOW_COLLISION;
           }
 
+          if (keyCode == '77') {
+            if (N7e.config.PLAY_MUSIC) {
+              N7e.config.PLAY_MUSIC = false;
+              if (this.titleMusicNode) {
+                this.titleMusicNode.stop();
+                this.titleMusicNode = null;
+              }
+            } else {
+              N7e.config.PLAY_MUSIC = true;
+              this.loadMusic();
+            }
+          }
+
           if (keyCode == '83') {
             N7e.config.SHOW_SEPIA = (N7e.config.SHOW_SEPIA+1)%10;
 
             this.canvasCtx.restore();
             this.canvasCtx.save();
             switch (N7e.config.SHOW_SEPIA) {
-              case 0:
+              case 0: // Grass
                 break;
-              case 1:
+              case 1: // Low
+                break;
+              case 2: // Stripes
+                break;
+              case 3:
                 this.canvasCtx.filter = 'grayscale(1)';
                 break;
               default:
-                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((N7e.config.SHOW_SEPIA - 2) * 45)+'deg)';
+                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((N7e.config.SHOW_SEPIA - 4) * 60)+'deg)';
                 break;
                 break;
             }
+
+            this.adjustSkyGradient(1);
+            this.clearCanvas();
+            this.horizon.horizonLine.draw();
+            this.amdr.update(0);
           }
 
           if (this.isRunning() && isjumpKey) {
@@ -1088,9 +1162,25 @@
 
         /**
          * Game over state.
-         * @param {point} crashPoint
+         * @param {Obstacle} obstacle
          */
-        gameOver: function (crashPoint) {
+        gameOver: function (obstacle) {
+          let crashPoint = obstacle.crash[0].intersection(obstacle.crash[1]).center();
+          this.playSound(this.soundFx.SOUND_OGGG,0.3);
+          switch(obstacle.typeConfig.type) {
+            case "RED_DUCK":
+              this.playSound(this.soundFx.SOUND_QUACK, 0.2, false, 0.2);
+              break;
+            case  "BICYCLE":
+              this.playSound(this.soundFx.SOUND_CRASH, 0.5);
+              break;
+            default:
+              this.playSound(this.soundFx.SOUND_HIT, 1.0, false, 0.2);
+
+//              this.playSound(this.soundFx.HIT, 1.0, false, 10);
+          }
+          vibrate(200);
+
           if (!N7e.config.SHOW_COLLISION) {
             /*
             this.canvasCtx.filter = 'sepia(1)';
@@ -1100,9 +1190,6 @@
             this.horizon.update(0, 0, true);
           }
 
-          this.playSound(this.soundFx.HIT,0.7);
-          this.playSound(this.soundFx.SOUND_CRASH,0.05);
-          vibrate(200);
 
           this.stop();
           this.crashed = true;
@@ -1118,15 +1205,14 @@
 
           this.amdr.update(100, AMDR.status.CRASHED);
 
-          //this.canvasCtx.filter = 'sepia(0)';
           // Game over panel.
           if (!this.gameOverPanel) {
               this.gameOverPanel = new GameOverPanel(this.canvas,
                   this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
                   this.dimensions);
-          } else {
-              this.gameOverPanel.draw();
           }
+
+          this.gameOverPanel.draw();
 
           // Update the high score.
           if (this.distanceRan > this.highestScore) {
@@ -1171,7 +1257,7 @@
             this.distanceMeter.reset(this.highestScore);
             this.horizon.reset();
             this.amdr.reset();
-            //this.playSound(this.soundFx.SCORE,0.2);
+            this.playSound(this.soundFx.SOUND_SCORE,0.2);
             this.invert(true);
             this.update();
           }
@@ -1194,24 +1280,51 @@
          * @param {SoundBuffer} soundBuffer
          * @param {number} volume
          * @param {boolean} loop
+         * @param {number} delay
          */
 
-        playSound: function (soundBuffer, volume, loop) {
+        playSound: function (soundBuffer, volume, loop, delay) {
           if (soundBuffer) {
-            var sourceNode = this.audioContext.createBufferSource();
+
+            delay = delay || 0;
+            let duration = Math.ceil(soundBuffer.duration + delay);
+            let dest = this.audioContext.destination;
+            var sourceNode;
+
+            // FIXME Better reallocate on-load via configurations.
+            /*
+            if (delay) {
+              let newBuffer = this.audioContext.createBuffer(2, soundBuffer.sampleRate * 2 * duration, soundBuffer.sampleRate);
+              newBuffer.copyToChannel(soundBuffer.getChannelData(0), 0);
+              newBuffer.copyToChannel(soundBuffer.getChannelData(soundBuffer.numberOfChannels == 2? 1:0), 1);
+              soundBuffer = newBuffer;
+            }
+            */
+
+            sourceNode = this.audioContext.createBufferSource();
             sourceNode.buffer = soundBuffer;
 
             if (volume) {
-              var gainNode = this.audioContext.createGain();
-              gainNode.gain.value = volume;
-              gainNode.connect(this.audioContext.destination);
-              sourceNode.connect(gainNode);
-            } else {
-              sourceNode.connect(this.audioContext.destination);
+              let vnode = this.audioContext.createGain();
+              vnode.gain.value = volume;
+              vnode.connect(dest);
+              dest = vnode;
             }
 
+            /*
+            if (delay) {
+              let dnode = this.audioContext.createDelay(duration);
+              dnode.delayTime.value = delay;
+              dnode.connect(dest);
+              dest = dnode;
+            }
+            */
+
+            sourceNode.connect(dest);
+
             if (loop) sourceNode.loop = true;
-            sourceNode.start(0);
+
+            sourceNode.start(this.audioContext.currentTime + delay);
             return sourceNode;
           }
         },
@@ -1647,6 +1760,10 @@
 
             maxY: function () {
               return this.y + this.height;
+            },
+
+            center: function () {
+              return {x: this.x + this.width/2, y: this.y + this.height/2};
             },
 
             intersects: function (aBox) {
@@ -2312,9 +2429,8 @@
                 action.halfTime = Math.sqrt(2000 * action.maxPressDuration / AMDR.config.GRAVITY);
                 action.timer = 0;
 
-                //this.playSound(this.soundFx.SOUND_JUMP,0.2);
-                n7e.playSound(n7e.soundFx.SOUND_DROP,0.2 * action.pressDuration/N7e.config.MAX_ACTION_PRESS);
-                //this.playSound(this.soundFx.BUTTON_PRESS,0.5);
+                n7e.playSound(n7e.soundFx.SOUND_JUMP,0.4);
+                n7e.playSound(n7e.soundFx.SOUND_DROP,0.4 * action.pressDuration/N7e.config.MAX_ACTION_PRESS);
 
               } break;
             case AMDR.status.SLIDING:
@@ -2322,11 +2438,11 @@
                 action.maxPressDuration = action.pressDuration * N7e.config.PRESS_SCALE + N7e.config.MIN_ACTION_PRESS;
                 // Sliding act pretty much like jumping, just going one way forward.
                 //action.pressDuration += N7e.config.MIN_ACTION_PRESS;
-                action.top = action.maxPressDuration / 1000;
-                action.fullTime = 2 * Math.sqrt(2000 * action.maxPressDuration / AMDR.config.FRICTION);
-                action.timer = 0;
 
-                n7e.playSound(n7e.soundFx.SOUND_SLIDE,0.3);
+                action.timer = 0;
+                action.fullTime = action.maxPressDuration;
+
+                n7e.playSound(n7e.soundFx.SOUND_SLIDE,0.6);
               } break;
             default:
               return;
@@ -2369,7 +2485,7 @@
                   this.action.status = -1;
                   this.yPos = this.groundYPos;
                   this.update(0, AMDR.status.RUNNING);
-                  n7e.playSound(n7e.soundFx.SOUND_DROP,0.3 * this.action.pressDuration/N7e.config.MAX_ACTION_PRESS);
+                  n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * this.action.pressDuration/N7e.config.MAX_ACTION_PRESS);
                   break;
                 } else {
                   this.update(deltaTime);
