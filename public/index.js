@@ -120,13 +120,15 @@
       MAX_CLOUDS: 6,
       MAX_OBSTACLE_LENGTH: 3,
       MAX_OBSTACLE_DUPLICATION: 2,
-      MAX_ACTION_PRESS: 600,
+      MAX_ACTION_PRESS: 700,
       MIN_ACTION_PRESS: 200,
+      MIN_ACTION_PRESS_FACTOR: 5, // For increasing minimum press when moving faster.
       MAX_SPEED: 13,
       MIN_JUMP_HEIGHT: 35,
       MOBILE_SPEED_COEFFICIENT: 1.2,
       RESOURCE_TEMPLATE_ID: 'audio-resources',
       SCALE_FACTOR: 210,
+      SLIDE_FACTOR: 1,
       SPEED: 6,
       SHOW_COLLISION: false,
       SHOW_SEPIA: 0,
@@ -138,7 +140,10 @@
       }
     };
 
-    N7e.config.PRESS_SCALE = (N7e.config.MAX_ACTION_PRESS - N7e.config.MIN_ACTION_PRESS)/N7e.config.MAX_ACTION_PRESS;
+    function shapeSpeedDuration(speed, duration) {
+      let minPress = N7e.config.MIN_ACTION_PRESS + N7e.config.MIN_ACTION_PRESS_FACTOR*speed;
+      return duration * (N7e.config.MAX_ACTION_PRESS - minPress)/N7e.config.MAX_ACTION_PRESS + minPress;
+    }
 
     /**
      * Default dimensions.
@@ -264,6 +269,7 @@
             N7e.imageSprite = document.getElementById('offline-resources-2x');
             N7e.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running');
             N7e.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding');
+            N7e.imageSpriteAmdrJumping = document.getElementById('offline-resources-nat-jumping');
             N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling');
             N7e.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
             N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash');
@@ -276,7 +282,7 @@
 
             Obstacle.types[3].sprite = N7e.imageSpriteBicycle;
             AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling;
-            AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrRunning;
+            AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrJumping;
             AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding;
             AMDR.animFrames.RUNNING.sprite = N7e.imageSpriteAmdrRunning;
             AMDR.animFrames.CRASHED.sprite = N7e.imageSpriteAmdrCrashed;
@@ -551,7 +557,7 @@
             this.distanceMeter.calcXPos(this.dimensions.WIDTH);
             this.clearCanvas();
             this.horizon.update(0, this.currentSpeed, true);
-            this.amdr.update(0);
+            this.amdr.update(this.currentSpeed, 0);
 
             // Outer container and distance meter.
             if (this.playing || this.crashed || this.paused) {
@@ -617,6 +623,7 @@
           this.runningTime = 0;
           this.playingIntro = false;
           this.amdr.playingIntro = false;
+          this.amdr.config.START_X_POS = this.amdr.xPos; //Hack FIXME
           this.containerEl.style.webkitAnimation = '';
           this.playCount++;
 
@@ -647,8 +654,7 @@
             let action = this.actions[0];
             // The action is ready to be triggered.
             if (action.status == 1) {
-              //action.speed = this.currentSpeed;
-              this.amdr.setAction(action);
+              this.amdr.assignAction(action, this.currentSpeed);
             }
           }
 
@@ -681,7 +687,7 @@
           //this.playHackSlide(!this.amdr.ducking);
 
           if (this.playing) {
-            this.amdr.updateAction(deltaTime);
+            this.amdr.updateAction(deltaTime, this.currentSpeed);
 
             this.runningTime += deltaTime;
             var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
@@ -748,6 +754,8 @@
                 }
               }
             }
+
+
           } else {
             this.horizon.update(0, this.currentSpeed, true);
           }
@@ -759,18 +767,29 @@
               switch(this.actions[0].type) {
                 case AMDR.status.JUMPING:
                   if(!this.actions[0].first) {
-                    this.drawJumpingGuide(this.actions[0]);
+                    this.drawJumpingGuide(this.actions[0], now);
                   }
                   break;
                 case AMDR.status.SLIDING:
-                  this.drawSlidingGuide(this.actions[0]);
+                  this.drawSlidingGuide(this.actions[0], now);
                   break;
                 default:;
               }
 
             }
 
-            this.amdr.update(deltaTime);
+            // Hack
+              /*
+            if (this.playing && !this.amdr.playingIntro) {
+              if ( this.amdr.xPos > this.amdr.config.START_X_POS) {
+                this.amdr.xPos -= Math.floor(0.5 * this.currentSpeed * (FPS/1000) *deltaTime);
+              } else {
+                this.amdr.xPos = this.amdr.config.START_X_POS;
+              }
+            }
+              */
+
+            this.amdr.update(this.currentSpeed, deltaTime);
             this.scheduleNextUpdate();
           }
         },
@@ -778,59 +797,59 @@
         /**
          * Draw sliding guide.
          * @param {Object} action object
+         * @param {number} now
          */
-        drawSlidingGuide: function (action) {
-          let now = getTimeStamp();
-          let pressDuration = action.maxPressDuration;
-
+        drawSlidingGuide: function (action, now) {
           if (action.status != 0) return;
 
-          if (!pressDuration) {
-            // status 1
-            pressDuration =  now - action.begin;
-//            pressDuration += N7e.config.MIN_ACTION_PRESS;
-            if (pressDuration > N7e.config.MAX_ACTION_PRESS) {
-              pressDuration = N7e.config.MAX_ACTION_PRESS;
+          let slideDuration;
+          let alpha = 1;
+          if (!action.maxPressDuration) {
+            // status 0
+            slideDuration = now - action.begin;
+            if (slideDuration > N7e.config.MAX_ACTION_PRESS) {
+              slideDuration = N7e.config.MAX_ACTION_PRESS;
             }
-
+            alpha = slideDuration/N7e.config.MAX_ACTION_PRESS;
+            slideDuration = N7e.config.SLIDE_FACTOR * shapeSpeedDuration(this.currentSpeed, slideDuration);
+          } else {
+            slideDuration = action.maxPressDuration;
           }
 
-          let slideDuration = 2 * Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
+//          let slideDuration = 2 * Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
           var increment = this.currentSpeed * 0.001 * FPS * slideDuration;
-          let baseX = this.amdr.xPos + 12;
-          let baseY = this.amdr.groundYPos + 35;
-          /*
-          this.canvasCtx.beginPath();
-          this.canvasCtx.moveTo( baseX , baseY );
-          this.canvasCtx.lineTo( baseX + increment, baseY );
-          this.canvasCtx.stroke();
-          */
+
+          let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 4;
+
           this.canvasCtx.save();
-          this.canvasCtx.globalCompositeOperation = 'screen';
+          this.canvasCtx.globalAlpha = 0.50 * alpha;
+          this.canvasCtx.filter = 'grayscale(1)';
+          this.canvasCtx.globalCompositeOperation = 'multiply';
           this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
-              0, 0, 40, 40,
-              baseX + increment, baseY-35,
-              40, 40);
+              AMDR.animFrames.SLIDING.frames[frame]*2, 0, 40, 40,
+              this.amdr.xPos + increment, this.amdr.yPos,
+              this.amdr.config.WIDTH, this.amdr.config.HEIGHT);
           this.canvasCtx.restore();
         },
 
         /**
          * Draw jumping guide.
          * @param {Object} action object
+         * @param {number} now
          */
-        drawJumpingGuide: function (action) {
+        drawJumpingGuide: function (action, now) {
           /* Draw jumping guide */
 
-          let now = getTimeStamp();
           let pressDuration = action.maxPressDuration;
 
           if (!pressDuration) {
-            // status 1
-            pressDuration =  now - action.begin;
-            pressDuration += N7e.config.MIN_ACTION_PRESS;
+            // status 0
+            pressDuration = now - action.begin;
             if (pressDuration > N7e.config.MAX_ACTION_PRESS) {
               pressDuration = N7e.config.MAX_ACTION_PRESS;
             }
+
+            pressDuration = shapeSpeedDuration(this.currentSpeed, pressDuration);
           }
 
           let fallDuration = Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
@@ -981,7 +1000,7 @@
             action = {
               begin: e.timeStamp,
               type: AMDR.status.JUMPING,
-              code: String(e.keyCode),
+              code: String(e.keyCode), //FIXME avoid testing with code but action type
               status: 0
             };
 
@@ -1014,7 +1033,7 @@
             this.restart();
           }
 
-          if (this.playing && !this.crashed && N7e.keycodes.DUCK[e.keyCode]) {
+          if (this.playing && !this.crashed && N7e.keycodes.SLIDE[e.keyCode]) {
             e.preventDefault(); //Test if this is needed.
 
             action = {
@@ -1105,7 +1124,7 @@
             this.adjustSkyGradient(1);
             this.clearCanvas();
             this.horizon.horizonLine.draw();
-            this.amdr.update(0);
+            this.amdr.update(this.currentSpeed, 0);
           }
 
           if (this.isRunning() && isjumpKey) {
@@ -1121,7 +1140,7 @@
               }
             }
 
-          } else if (N7e.keycodes.DUCK[keyCode]) {
+          } else if (N7e.keycodes.SLIDE[keyCode]) {
 
             for (let i = 0, action; action = this.actions[i]; i++) {
               if (action.code == keyCode && action.status == 0) {
@@ -1221,7 +1240,7 @@
               crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
 
-          this.amdr.update(100, AMDR.status.CRASHED);
+          this.amdr.update(this.currentSpeed, 100, AMDR.status.CRASHED);
 
           // Game over panel.
           if (!this.gameOverPanel) {
@@ -1258,7 +1277,7 @@
           if (!this.crashed) {
             this.playing = true;
             this.paused = false;
-            this.amdr.update(0, AMDR.status.RUNNING);
+            this.amdr.update(this.currentSpeed, 0, AMDR.status.RUNNING);
             this.time = getTimeStamp();
             this.update();
           }
@@ -2263,8 +2282,8 @@
         msPerFrame: 1000
       },
       JUMPING: {
-        frames: [80],
-        msPerFrame: 1000 / 60
+        frames: [0,20,40],
+        msPerFrame: 1000 / 2.5
       },
       SLIDING: {
         frames: [0, 20, 40, 20],
@@ -2290,7 +2309,7 @@
           this.currentFrame = 0;
 
           this.draw(0, 0);
-          this.update(0, AMDR.status.WAITING);
+          this.update(0, 0, AMDR.status.WAITING);
         },
 
         /**
@@ -2298,7 +2317,7 @@
          * @param {!number} deltaTime
          * @param {AMDR.status} status Optional status to switch to.
          */
-        update: function (deltaTime, opt_status) {
+        update: function (speed, deltaTime, opt_status) {
           this.timer += deltaTime;
 
           // Update the status.
@@ -2314,11 +2333,14 @@
             this.setBlinkDelay();
             */
             if (N7e.config.SHOW_SEPIA != 1 && opt_status != AMDR.status.CRASHED && opt_status != AMDR.status.WAITING && opt_status != AMDR.status.SLIDING) {
+              /*
               if (this.xPos == 0) {
                 this.dust.x = -24;
               } else {
                 this.dust.x = 0;
               }
+              */
+              this.dust.x = this.xPos - 24;
 
               this.dust.addPoint(0, 0, -40, -10 * Math.random());
             }
@@ -2349,16 +2371,19 @@
 
           // Update the frame position.
           if (this.timer >= this.msPerFrame) {
-            this.currentFrame = this.currentFrame ==
-
-            this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
-            this.timer = 0;
 
             if (N7e.config.SHOW_SEPIA != 1 && this.status == AMDR.status.SLIDING) {
-              this.dust.x = 0;
-              this.dust.addPoint(-10, 0, -90, -15 * Math.random());
-              this.dust.addPoint(5, 0, -75, -15 * Math.random());
+              //if (getRandomNum(0,1) == 0) {
+                this.dust.x = this.xPos - 24;
+                let sp = speed / 6;
+                this.dust.addPoint(-10, 0, sp * -90, sp * -15 * Math.random());
+                this.dust.addPoint(5, 0, sp * -75, sp * -15 * Math.random());
+              //}
             }
+
+            this.currentFrame = this.currentFrame ==
+              this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
+            this.timer = 0;
 
           }
           if (N7e.config.SHOW_SEPIA != 1) this.dust.update(deltaTime);
@@ -2397,8 +2422,7 @@
 
           //FIXME
           if (this.currentSprite) {
-            this.canvasCtx.drawImage(this.currentSprite, sourceX, sourceY,
-              40, 40,
+            this.canvasCtx.drawImage(this.currentSprite, sourceX, sourceY, 40, 40,
               this.xPos, this.yPos,
               this.config.WIDTH, this.config.HEIGHT);
 
@@ -2458,14 +2482,15 @@
         /**
          * Start an action.
          * @param {Object} action definition
+         * @param {Object} action definition
          */
-        setAction: function (action) {
+        assignAction: function (action, speed) {
           let n7e = N7e();
 
           switch(action.type) {
             case AMDR.status.JUMPING:
               {
-                action.maxPressDuration = action.pressDuration * N7e.config.PRESS_SCALE + N7e.config.MIN_ACTION_PRESS;
+                action.maxPressDuration = shapeSpeedDuration(speed, action.pressDuration);
                 // It seems more ergonomically natural to simply add the minimum than to clip the value.
                 action.top = action.maxPressDuration / 1000;
                 action.halfTime = Math.sqrt(2000 * action.maxPressDuration / AMDR.config.GRAVITY);
@@ -2477,13 +2502,13 @@
               } break;
             case AMDR.status.SLIDING:
               {
-                action.maxPressDuration = action.pressDuration * N7e.config.PRESS_SCALE + N7e.config.MIN_ACTION_PRESS;
+                action.maxPressDuration = N7e.config.SLIDE_FACTOR * shapeSpeedDuration(speed, action.pressDuration);
                 // Sliding act pretty much like jumping, just going one way forward.
-                //action.pressDuration += N7e.config.MIN_ACTION_PRESS;
+                //action.pressDuration += N7e.config.MIN_ACTION_PRESS_FACTOR;
 
                 action.timer = 0;
-                action.fullTime = action.maxPressDuration;
-
+                action.distance = Math.floor(speed * (FPS / 1000) * action.maxPressDuration);
+                action.fullDistance = action.distance;
                 n7e.playSound(n7e.soundFx.SOUND_SLIDE,0.6);
               } break;
             default:
@@ -2493,7 +2518,7 @@
           action.status = 2;
           action.beginProgress = getTimeStamp();
           this.action = action;
-          this.update(0, action.type);
+          this.update(speed, 0, action.type);
         },
 
         getAction: function () {
@@ -2506,17 +2531,18 @@
         /**
          * Update current action.
          * @param {number} deltaTime
+         * @param {number} speed
          */
-        updateAction: function (deltaTime) {
+        updateAction: function (deltaTime, speed) {
 
           if (!this.action || this.action.status == -1) return false;
 
           let n7e = N7e();
 
+          this.action.timer += deltaTime;
           switch (this.action.type) {
             case AMDR.status.JUMPING:
               {
-                this.action.timer += deltaTime;
                 let timer = this.action.halfTime - this.action.timer;
                 let dY = this.action.top * N7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * timer * timer;
 
@@ -2526,29 +2552,42 @@
                   this.jumpCount++;
                   this.action.status = -1;
                   this.yPos = this.groundYPos;
-                  this.update(0, AMDR.status.RUNNING);
+                  this.update(speed, 0, AMDR.status.RUNNING);
                   n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * this.action.pressDuration/N7e.config.MAX_ACTION_PRESS);
                   break;
                 } else {
-                  this.update(deltaTime);
+                  this.update(speed, deltaTime);
                 }
 
               }
               break;
             case AMDR.status.SLIDING:
               {
-                this.action.timer += deltaTime;
-                let timer = this.action.fullTime - this.action.timer;
+                var increment = Math.floor(speed * (FPS / 1000) * deltaTime);
 
-                if (this.action.timer > this.action.fullTime) {
-                  this.action.status = -1;
-                  this.update(0, AMDR.status.RUNNING);
+                this.action.distance -= increment;
+
+                //Sliding animation
+                let ft1 = this.action.maxPressDuration * 0.9;
+                let ft2 = this.action.maxPressDuration - ft1;
+                if (this.action.timer < ft1){
+                  this.xPos = this.config.START_X_POS + this.action.distance * this.action.timer/ft1;
                 } else {
-                  this.update(deltaTime);
+                  this.xPos = this.config.START_X_POS + this.action.distance * (this.action.maxPressDuration - this.action.timer)/ft2;
+                }
+
+ //               if (this.action.distance < 0) {
+                if (this.action.timer > this.action.maxPressDuration) {
+                  this.action.status = -1;
+                  this.xPos = this.config.START_X_POS;
+                  this.update(speed, 0, AMDR.status.RUNNING);
+                } else {
+                  this.update(speed, deltaTime);
                 }
               }
               break;
             default:;
+              this.update(speed, deltaTime);
           }
 
           return true;
@@ -2574,8 +2613,9 @@
          */
         reset: function () {
           this.yPos = this.groundYPos;
+          this.xPos = this.config.START_X_POS;
           //this.ducking = false;
-          this.update(0, AMDR.status.RUNNING);
+          this.update(0, 0, AMDR.status.RUNNING);
           this.jumpCount = 0;
           this.dust.reset();
           this.action = null;
@@ -3242,6 +3282,7 @@
             this.xPos[1], this.yPos,
             this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
+          if (N7e.config.SHOW_SEPIA == 1) return;
 
           //Draw striping lawn
           //TODO add superfluous switch
