@@ -998,7 +998,6 @@
               this.gradients.sky2 = N7e.config.SKY.DAY;
               this.skyFadingStartTime = getTimeStamp();
               this.update();
-              N7e.config.PLAY_MUSIC = true;
 
               if (this.titleMusicNode) {
 
