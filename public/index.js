@@ -231,7 +231,7 @@
      */
     N7e.keycodes = {
       JUMP: { '38': 1, '32': 1 },  // Up, spacebar
-      DUCK: { '40': 1 },  // Down
+      SLIDE: { '39': 1, '40': 1 },  // Right, Down
       RESTART: { '13': 1 }  // Enter
     };
 
@@ -3305,47 +3305,68 @@
                 y + i < N7e.defaultDimensions.HEIGHT + this.canvasCtx.lineWidth;
 
                     i += step, pw *= pwStep ) {
+
             let width = HorizonLine.dimensions.WIDTH / pw;
-
-            this.canvasCtx.setTransform(pw, 0, 0, 1, 0, 0);
-
             let grassH;
 
+            this.canvasCtx.save();
+            this.canvasCtx.scale(pw, 1);
+//            this.canvasCtx.transform(pw,0,0,1,0,0);
+
+            // Draw grasses
             if (N7e.config.SHOW_SEPIA == 0) {
               if (!this.grassMap) {
                 this.grassMap = [];
-                for(let i = 0; i<10; i++) {
+                this.grassMapOffset = [];
+                for(let g = 0; g<10; g++) {
                   let l = [];
-                  let sum = 0;
+                  let sum = 100;
                   let n;
-                  while (sum < 100) {
-                    n = getRandomNum(1,4);
-                    sum += n;
-                    if (sum > 100) n -= (sum - 100);
+                  this.grassMapOffset.push(getRandomNum(0,8));
+                  let gr = false;
+                  do {
+                    n = gr ? getRandomNum(1,3) : getRandomNum(1,2);
+                    gr = !gr;
+                    if (sum < n) {
+                      n = sum;
+                    }
+                    sum -= n;
                     l.push(n);
+                  } while (sum > 0);
 
-                    n = getRandomNum(3,6);
-                    sum += n;
-                    if (sum > 100) n -= (sum - 100);
+                  sum = 100;
+                  do {
+                    n = gr ? getRandomNum(1,3) : getRandomNum(0,1);
+                    gr = !gr;
+                    if (sum < n) {
+                      n = sum;
+                    }
+                    sum -= n;
                     l.push(n);
-                  }
+                  } while (sum > 0);
+
+                  if (l.length%2 != 0) l.push(0);
+
                   this.grassMap.push(l);
                 }
               }
+
               grassH = 2+Math.floor((i+8)/4);
 
               this.canvasCtx.lineWidth = grassH;
               grassH /= 2;
 
-              this.canvasCtx.setLineDash(this.grassMap[(i+8)%10]);
+              let line = (i+8)%10;
+              this.canvasCtx.setLineDash(this.grassMap[line]);
               this.canvasCtx.strokeStyle = "rgba(32,128,0,"+(alphaStep * (i+8))+")";
               this.canvasCtx.beginPath();
               this.canvasCtx.moveTo(0, y + i - grassH);
               this.canvasCtx.lineTo(width, y + i - grassH);
-              this.canvasCtx.lineDashOffset = -spinner - width/2;
+              //this.canvasCtx.quadraticCurveTo( width/2, y + i*1.5, width, y + i - grassH);
+              this.canvasCtx.lineDashOffset = -spinner - width/2 + this.grassMapOffset[line];
               this.canvasCtx.stroke();
 
-            } else if (N7e.config.SHOW_SEPIA != 1) {
+            } else { // Draw stripes
 
               this.canvasCtx.globalCompositeOperation = 'multiply';
   //            this.canvasCtx.setLineDash([45,55,35,65]);
@@ -3359,6 +3380,7 @@
               this.canvasCtx.stroke();
             }
 
+            this.canvasCtx.restore();
           }
           this.canvasCtx.restore();
 
