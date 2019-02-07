@@ -439,8 +439,6 @@
          */
         adjustSkyGradient: function(ratio) {
 
-          let gradient;
-
           if (N7e.config.SHOW_SEPIA == 1) {
             ratio = Math.floor(ratio*10)/10;
           } else {
@@ -448,18 +446,18 @@
           }
 
           if (ratio == 0) {
-            gradient = this.gradients.sky1;
+            this.gradients.current = this.gradients.sky1;
           } else if (ratio == 1) {
-            this.gradients.sky1 = gradient = this.gradients.sky2;
+            this.gradients.sky1 = this.gradients.current = this.gradients.sky2;
           } else {
-            gradient = [];
+            this.gradients.current = [];
             for(let i = 0; i < 6; i++) {
-              gradient.push(Math.floor(this.gradients.sky1[i] + (this.gradients.sky2[i] - this.gradients.sky1[i]) * ratio));
+              this.gradients.current.push(Math.floor(this.gradients.sky1[i] + (this.gradients.sky2[i] - this.gradients.sky1[i]) * ratio));
             }
           }
 
-          let rgb0x1 = ((1 << 24) + (gradient[0] << 16) + (gradient[1] << 8) + gradient[2]).toString(16).slice(1);
-          let rgb0x2 = ((1 << 24) + (gradient[3] << 16) + (gradient[4] << 8) + gradient[5]).toString(16).slice(1);
+          let rgb0x1 = ((1 << 24) + (this.gradients.current[0] << 16) + (this.gradients.current[1] << 8) + this.gradients.current[2]).toString(16).slice(1);
+          let rgb0x2 = ((1 << 24) + (this.gradients.current[3] << 16) + (this.gradients.current[4] << 8) + this.gradients.current[5]).toString(16).slice(1);
 
           if (N7e.config.SHOW_SEPIA == 1) {
             this.skyGradient = "#" + rgb0x1;
@@ -3037,7 +3035,7 @@
           this.canvasCtx.drawImage(N7e.imageSprite, this.spritePos.x,
             this.spritePos.y,
             sourceWidth, sourceHeight,
-            this.xPos, this.yPos,
+            Math.ceil(this.xPos), this.yPos,
             Cloud.config.WIDTH, Cloud.config.HEIGHTS[this.type]);
 
           this.canvasCtx.restore();
@@ -3049,7 +3047,7 @@
          */
         update: function (speed) {
           if (!this.remove) {
-            this.xPos -= Math.ceil(speed);
+            this.xPos -= speed;
             this.draw();
 
             // Mark as removeable if no longer in the canvas.
@@ -3065,6 +3063,72 @@
          */
         isVisible: function () {
           return this.xPos + Cloud.config.WIDTH > 0;
+        }
+    };
+
+    // TODO mix with cloud so it can be multi-depth
+    function Mountain(containerWidth,depth) {
+      this.xPos = containerWidth;
+      this.yPos = HorizonLine.dimensions.YPOS + 5;
+      this.remove = false;
+      this.depth = depth;
+      this.mountainGap = getRandomNum(200, 500);
+
+      this.init();
+    };
+
+
+    Mountain.prototype = {
+
+        init: function () {
+          this.height = getRandomNum(N7e.defaultDimensions.HEIGHT/6, N7e.defaultDimensions.HEIGHT/2);
+          if (this.depth == 0) this.height * 0.7;
+
+          this.width = this.height * (1 + Math.random() * 4);
+          if (this.width > 200) this.width = 200;
+          //this.draw();
+        },
+
+        /**
+         * Draw the mountain.
+         */
+        draw: function (canvasCtx) {
+            let x = this.xPos;
+            let y = this.yPos;
+            canvasCtx.moveTo(x, y);
+            /*
+            canvasCtx.lineTo(x + this.width/2, y-this.height);
+            canvasCtx.lineTo(x + this.width, y);
+            */
+            canvasCtx.bezierCurveTo(
+              x + this.width/2, y-this.height,
+              x + this.width/2, y-this.height,
+            x + this.width, y);
+            canvasCtx.closePath();
+        },
+
+        /**
+         * Update the mountain position.
+         * @param {number} speed
+         */
+        update: function (canvasCtx, speed) {
+          if (!this.remove) {
+            this.xPos -= speed;
+            this.draw(canvasCtx);
+
+            // Mark as removeable if no longer in the canvas.
+            if (!this.isVisible()) {
+              this.remove = true;
+            }
+          }
+        },
+
+        /**
+         * Check if the mountain is visible on the stage.
+         * @return {boolean}
+         */
+        isVisible: function () {
+          return this.xPos + this.width > 0;
         }
     };
 
@@ -3492,6 +3556,9 @@
       this.clouds = [];
       this.cloudSpeed = this.config.BG_CLOUD_SPEED;
 
+      this.mountains = [];
+      this.mountainSpeed = 6;
+
       // Horizon
       this.horizonLine = null;
       this.init();
@@ -3503,7 +3570,7 @@
      * @enum {number}
      */
     Horizon.config = {
-      BG_CLOUD_SPEED: 0.2,
+      BG_CLOUD_SPEED: 7,
       BUMPY_THRESHOLD: .3,
       CLOUD_FREQUENCY: .5,
       HORIZON_HEIGHT: 16,
@@ -3532,9 +3599,10 @@
          */
         update: function (deltaTime, currentSpeed, updateObstacles, showNightMode) {
           this.runningTime += deltaTime;
-          this.horizonLine.update(deltaTime, currentSpeed);
           this.nightMode.update(showNightMode);
+          this.updateMountains(deltaTime, currentSpeed, showNightMode);
           this.updateClouds(deltaTime, currentSpeed);
+          this.horizonLine.update(deltaTime, currentSpeed);
 
           if (updateObstacles) {
             this.updateObstacles(deltaTime, currentSpeed);
@@ -3570,6 +3638,39 @@
             });
           } else {
             this.addCloud();
+          }
+        },
+
+        updateMountains: function (deltaTime, speed, showNightMode) {
+          var mountainSpeed = this.mountainSpeed / 1000 * deltaTime * speed;
+          var numMountains = this.mountains.length;
+          let n7e = N7e();
+
+          if (numMountains) {
+            for (let j = 0; j < 2; j++) {
+              this.canvasCtx.fillStyle = '#' + (j == 0 ? n7e.gradients.rgb0x2 : n7e.gradients.rgb0x1);
+              this.canvasCtx.beginPath();
+              for (let i = numMountains - 1; i >= 0; i--) {
+                if (this.mountains[i].depth == j) {
+                  this.mountains[i].update(this.canvasCtx, mountainSpeed * j ? 1.1 : 1);
+                }
+              }
+              this.canvasCtx.fill();
+            }
+
+            var lastMountain = this.mountains[numMountains - 1];
+
+            if (numMountains < 10 &&
+                (this.dimensions.WIDTH - lastMountain.xPos) > lastMountain.mountainGap &&
+                this.mountainFrequency > Math.random()) {
+              this.addMountain();
+            }
+
+            this.mountains = this.mountains.filter(function (obj) {
+              return !obj.remove;
+            });
+          } else {
+            this.addMountain();
           }
         },
 
@@ -3685,7 +3786,17 @@
 
           this.clouds.push(new Cloud(this.canvas, this.spritePos.CLOUD,
             this.dimensions.WIDTH, type));
-        }
+        },
+
+        addMountain: function () {
+          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(0,1000), 0));
+          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(100,900), 0));
+          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(200,800), 0));
+          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(0,1000), 0));
+          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(100,900), 1));
+          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(200,800), 1));
+          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(300,700), 1));
+        },
     };
 })();
 
