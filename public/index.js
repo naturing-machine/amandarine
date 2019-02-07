@@ -1,7 +1,15 @@
+/* .............................................. B_Y */
+/* .... ####| . BBBB\ . BB| SSSSSSSS| DDDDDDDD| . 0|G */
+/* ... ##/##| . BB|BB\  BB| SS| . SS/ DD| ....... R|R */
+/* .. ##/ ##| . BB| BB\ BB| ..  SS/ . DDDDDDD| .. A|0 */
+/* . #########| BB|  BB\BB| .. SS| .. DD| ....... N|0 */
+/* ...... ##| . BB| . BBBB| .. SS| .. DDDDDDDD| . G|V */
+/* .............................................. E|E */
+
 // Copyright (c) 2014 The Chromium Authors. All rights reserved.
-// Copyright (c) 2019 The Orange Groove. All rights reserved.
+// Copyright (c) 2019 0range Gr00ve Sorority. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// found in the LICENSE file AND if possible, in the Public Domain.
 
 (function () {
     'use strict';
@@ -1078,34 +1086,33 @@
          */
         onKeyUp: function (e) {
 
+          let n7e = N7e();
+
           var keyCode = String(e.keyCode);
           var isjumpKey = N7e.keycodes.JUMP[keyCode] ||
           e.type == N7e.events.TOUCHEND ||
           e.type == N7e.events.MOUSEDOWN;
 
           if (keyCode == '67') {
-            N7e.config.SHOW_COLLISION = !N7e.config.SHOW_COLLISION;
+            n7e.config.SHOW_COLLISION = !n7e.config.SHOW_COLLISION;
           }
 
           if (keyCode == '77') {
-            if (N7e.config.PLAY_MUSIC) {
-              N7e.config.PLAY_MUSIC = false;
-              if (this.titleMusicNode) {
-                this.titleMusicNode.stop();
-                this.titleMusicNode = null;
-              }
+            if (n7e.config.PLAY_MUSIC) {
+              n7e.musics.stop();
+              n7e.config.PLAY_MUSIC = false;
             } else {
-              N7e.config.PLAY_MUSIC = true;
-              this.loadMusic('offline-play-music');
+              n7e.config.PLAY_MUSIC = true;
+              n7e.loadMusic('offline-play-music', n7e.config.PLAY_MUSIC);
             }
           }
 
           if (keyCode == '83') {
-            N7e.config.SHOW_SEPIA = (N7e.config.SHOW_SEPIA+1)%10;
+            n7e.config.SHOW_SEPIA = (n7e.config.SHOW_SEPIA+1)%10;
 
             this.canvasCtx.restore();
             this.canvasCtx.save();
-            switch (N7e.config.SHOW_SEPIA) {
+            switch (n7e.config.SHOW_SEPIA) {
               case 0: // Grass
                 break;
               case 1: // Low
@@ -1116,7 +1123,7 @@
                 this.canvasCtx.filter = 'grayscale(1)';
                 break;
               default:
-                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((N7e.config.SHOW_SEPIA - 4) * 60)+'deg)';
+                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.SHOW_SEPIA - 4) * 60)+'deg)';
                 break;
                 break;
             }
@@ -1135,7 +1142,7 @@
               if (action.code == keyCode && !action.end) {
                 action.end = e.timeStamp;
                 action.pressDuration = action.end - action.begin;
-                if (action.pressDuration > N7e.config.MAX_ACTION_PRESS) action.pressDuration = N7e.config.MAX_ACTION_PRESS;
+                if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
                 action.status = 1; // 0: Preparing, 1: Ready, 2: In progres, -1: Ended.
               }
             }
@@ -1146,7 +1153,7 @@
               if (action.code == keyCode && action.status == 0) {
                 action.end = e.timeStamp;
                 action.pressDuration = action.end - action.begin;
-                if (action.pressDuration > N7e.config.MAX_ACTION_PRESS) action.pressDuration = N7e.config.MAX_ACTION_PRESS;
+                if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
                 action.status = 1;
               }
             }
@@ -1218,7 +1225,7 @@
           }
           vibrate(200);
 
-          if (!N7e.config.SHOW_COLLISION) {
+          if (!N7e().config.SHOW_COLLISION) {
             /*
             this.canvasCtx.filter = 'sepia(1)';
             this.sepia = 1.0;
@@ -1406,7 +1413,7 @@
 
             //FIXME setting sky2 should actually set sky1 to current ratio.
             // setSky()
-            this.setSky(this.inverted ? N7e.config.SKY.NIGHT : N7e.config.SKY.DAY);
+            this.setSky(this.inverted ? N7e().config.SKY.NIGHT : N7e().config.SKY.DAY);
         },
 
 
@@ -2187,7 +2194,7 @@
       this.timer = 0;
       this.msPerFrame = 1000 / FPS;
       this.config = AMDR.config;
-      this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * N7e.config.SCALE_FACTOR;
+      this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * N7e().config.SCALE_FACTOR;
       // Current status.
       this.status = AMDR.status.WAITING;
 
@@ -2300,7 +2307,7 @@
          */
         init: function () {
           this.groundYPos = N7e.defaultDimensions.HEIGHT - this.config.HEIGHT -
-            N7e.config.BOTTOM_PAD;
+            N7e().config.BOTTOM_PAD;
           this.yPos = this.groundYPos;
           this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT;
 
@@ -2319,6 +2326,7 @@
          */
         update: function (speed, deltaTime, opt_status) {
           this.timer += deltaTime;
+          let n7e = N7e();
 
           // Update the status.
           if (opt_status) {
@@ -2332,7 +2340,7 @@
             this.animStartTime = getTimeStamp();
             this.setBlinkDelay();
             */
-            if (N7e.config.SHOW_SEPIA != 1 && opt_status != AMDR.status.CRASHED && opt_status != AMDR.status.WAITING && opt_status != AMDR.status.SLIDING) {
+            if (n7e.config.SHOW_SEPIA != 1 && opt_status != AMDR.status.CRASHED && opt_status != AMDR.status.WAITING && opt_status != AMDR.status.SLIDING) {
               /*
               if (this.xPos == 0) {
                 this.dust.x = -24;
@@ -2364,7 +2372,7 @@
 */
 
           /* Don't draw crash state to observe the effective collision boxes */
-          if (!N7e.config.SHOW_COLLISION || opt_status != AMDR.status.CRASHED ) {
+          if (!n7e.config.SHOW_COLLISION || opt_status != AMDR.status.CRASHED ) {
             this.draw(this.currentAnimFrames[this.currentFrame], 0);
           }
 
@@ -2372,7 +2380,7 @@
           // Update the frame position.
           if (this.timer >= this.msPerFrame) {
 
-            if (N7e.config.SHOW_SEPIA != 1 && this.status == AMDR.status.SLIDING) {
+            if (n7e.config.SHOW_SEPIA != 1 && this.status == AMDR.status.SLIDING) {
               //if (getRandomNum(0,1) == 0) {
                 this.dust.x = this.xPos - 24;
                 let sp = speed / 6;
@@ -2386,7 +2394,7 @@
             this.timer = 0;
 
           }
-          if (N7e.config.SHOW_SEPIA != 1) this.dust.update(deltaTime);
+          if (n7e.config.SHOW_SEPIA != 1) this.dust.update(deltaTime);
 
           return true;
 
@@ -2486,7 +2494,6 @@
          */
         assignAction: function (action, speed) {
           let n7e = N7e();
-
           switch(action.type) {
             case AMDR.status.JUMPING:
               {
@@ -2497,18 +2504,34 @@
                 action.timer = 0;
 
                 n7e.playSound(n7e.soundFx.SOUND_JUMP,0.4);
-                n7e.playSound(n7e.soundFx.SOUND_DROP,0.4 * action.pressDuration/N7e.config.MAX_ACTION_PRESS);
+                n7e.playSound(n7e.soundFx.SOUND_DROP,0.4 * action.pressDuration/n7e.config.MAX_ACTION_PRESS);
 
               } break;
             case AMDR.status.SLIDING:
               {
-                action.maxPressDuration = N7e.config.SLIDE_FACTOR * shapeSpeedDuration(speed, action.pressDuration);
+                action.maxPressDuration = n7e.config.SLIDE_FACTOR * shapeSpeedDuration(speed, action.pressDuration);
                 // Sliding act pretty much like jumping, just going one way forward.
                 //action.pressDuration += N7e.config.MIN_ACTION_PRESS_FACTOR;
 
                 action.timer = 0;
-                action.distance = Math.floor(speed * (FPS / 1000) * action.maxPressDuration);
-                action.fullDistance = action.distance;
+                action.fullDistance = speed * 0.001 * FPS * action.maxPressDuration;
+                action.distance = 0;
+                action.fullTime = action.fullDistance / (speed * FPS);
+
+                action.friction = 2 * action.fullDistance / (action.fullTime * action.fullTime);
+
+                /*
+                action.averageSpeed = 0.5 * action.friction * action.fullTime;
+                console.log(action.fullTime * action.friction, action.averageSpeed);
+                */
+
+                /*
+                action.friction = (2 * speed * speed) / (action.fullDistance * 0.001);
+                console.log(action.fullDistance.toFixed(3), action.friction);
+
+                100 * 1000 / 60 = * delta
+                */
+
                 n7e.playSound(n7e.soundFx.SOUND_SLIDE,0.6);
               } break;
             default:
@@ -2537,8 +2560,6 @@
 
           if (!this.action || this.action.status == -1) return false;
 
-          let n7e = N7e();
-
           this.action.timer += deltaTime;
           switch (this.action.type) {
             case AMDR.status.JUMPING:
@@ -2549,11 +2570,12 @@
                 this.yPos = this.groundYPos - dY;
 
                 if (timer < -this.action.halfTime) {
+                  let n7e = N7e();
                   this.jumpCount++;
                   this.action.status = -1;
                   this.yPos = this.groundYPos;
                   this.update(speed, 0, AMDR.status.RUNNING);
-                  n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * this.action.pressDuration/N7e.config.MAX_ACTION_PRESS);
+                  n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * this.action.pressDuration/n7e.config.MAX_ACTION_PRESS);
                   break;
                 } else {
                   this.update(speed, deltaTime);
@@ -3123,13 +3145,14 @@
         },
 
         draw: function () {
+          let n7e = N7e();
           var moonSourceWidth = this.currentPhase == 3 ? NightMode.config.WIDTH * 2 :
           NightMode.config.WIDTH;
           var moonSourceHeight = NightMode.config.HEIGHT;
           var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
           var moonOutputWidth = moonSourceWidth;
           var starSize = NightMode.config.STAR_SIZE;
-          //var starSourceX = N7e.spriteDefinition.LDPI.STAR.x;
+          //var starSourceX = n7e.spriteDefinition.LDPI.STAR.x;
           var starSourceX = N7e.spriteDefinition.HDPI.STAR.x;
 
           if (IS_HIDPI) {
@@ -3138,7 +3161,7 @@
             moonSourceX = this.spritePos.x +
             (NightMode.phases[this.currentPhase] * 2);
             starSize *= 2;
-            //starSourceX = N7e.spriteDefinition.HDPI.STAR.x;
+            //starSourceX = n7e.spriteDefinition.HDPI.STAR.x;
           }
 
           this.canvasCtx.save();
@@ -3168,6 +3191,7 @@
 
         // Do star placement.
         placeStars: function () {
+          let n7e = N7e();
           var segmentSize = Math.round(this.containerWidth /
             NightMode.config.NUM_STARS);
 
