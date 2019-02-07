@@ -825,10 +825,15 @@
         drawSlidingGuide: function (action, now) {
 
           let slideDuration;
-          let alpha = 1;
+          let alpha;
           let baseX = this.amdr.xPos;
 
-          if (!action.maxPressDuration) {
+          if (action.maxPressDuration) {
+            slideDuration = action.maxPressDuration;
+            baseX = this.amdr.config.START_X_POS - action.distance;
+            alpha = (action.fullDistance - action.distance)/action.fullDistance;
+            alpha *= alpha;
+          } else {
             // status 0
             slideDuration = now - action.begin;
             if (slideDuration > N7e.config.MAX_ACTION_PRESS) {
@@ -836,14 +841,8 @@
             }
             alpha = slideDuration/N7e.config.MAX_ACTION_PRESS;
             slideDuration = N7e.config.SLIDE_FACTOR * shapeSpeedDuration(this.currentSpeed, slideDuration);
-          } else {
-            slideDuration = action.maxPressDuration;
-            baseX = this.amdr.config.START_X_POS - action.distance;
-            alpha *= (action.fullDistance - action.distance)/action.fullDistance;
-            alpha *= alpha;
           }
 
-//          let slideDuration = 2 * Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
           var distance = this.currentSpeed * 0.001 * FPS * slideDuration;
 
           let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 4;
@@ -3658,7 +3657,10 @@
                   this.mountains[i].update(this.canvasCtx, mountainSpeed * j ? 1.1 : 1);
                 }
               }
+              this.canvasCtx.save();
+              this.canvasCtx.filter = 'hue-rotate(-25deg)';
               this.canvasCtx.fill();
+              this.canvasCtx.restore();
             }
 
             var lastMountain = this.mountains[numMountains - 1];
