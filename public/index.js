@@ -76,7 +76,8 @@
 
       this.loadImages();
       this.config.PLAY_MUSIC = true;
-      this.loadMusic('offline-intro-music');
+      this.loadMusic('offline-intro-music', this.config.PLAY_MUSIC);
+      this.loadMusic('offline-play-music', false);
     }
 
     window['N7e'] = N7e;
@@ -330,45 +331,61 @@
 
         },
 
-        loadMusic: function(music) {
+        loadMusic: function(name, autoplay) {
           if (!IS_IOS) {
+            let n7e = N7e();
 
-            if (this.titleMusicData && N7e.config.PLAY_MUSIC) {
-              if (!this.titleMusicNode) {
-                this.titleMusicNode = this.playSound(this.titleMusicData, 0.3);
-                this.titleMusicNode.onended = () => {
-                  /*
-                  this.titleMusicNode = null;
-                  this.loadMusic();
-                  */
-                };
+            if (!n7e.musics) {
+              n7e.musics = {
+                songs: {},
+                stop: function() {
+                  for (let name in this.songs) {
+                    if (this.songs[name].audio) {
+                      this.songs[name].autoplay = false;
+                      this.songs[name].audio.fade();
+                      this.songs[name].audio = null;
+                    }
+                  }
+                },
+              };
+            }
+
+            let song = n7e.musics.songs[name];
+            if (!song) {
+              song = n7e.musics.songs[name] = {}
+            }
+
+            song.autoplay = autoplay;
+
+            if (song.data) {
+
+              if (!song.audio && song.autoplay) {
+                n7e.musics.stop();
+                song.audio = this.playSound(song.data, 0.3);
               }
-              return;
-            }
 
-            if (!this.audioContext) {
-              this.audioContext = new AudioContext();
-            }
-
-            var resourceTemplate =
-            document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
-
-            let soundSrc = resourceTemplate.getElementById(music).src;
-
-            let request = new XMLHttpRequest();
-            request.open('GET', soundSrc, true);
-            request.responseType = 'arraybuffer';
-            request.onload = () => {
-              let buffer = request.response;
-              this.audioContext.decodeAudioData(buffer, audioData => {
-                this.titleMusicData = audioData;
-                if (N7e.config.PLAY_MUSIC && !this.titleMusicNode) {
-                  this.titleMusicNode = this.playSound(audioData, 0.3);
-                  this.loadMusic();
+            } else {
+              var resourceTemplate = document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
+              let request = new XMLHttpRequest();
+              request.open('GET', resourceTemplate.getElementById(name).src, true);
+              request.responseType = 'arraybuffer';
+              request.onload = () => {
+                song.progress = 1;
+                if (!this.audioContext) {
+                  this.audioContext = new AudioContext();
                 }
-              });
+                this.audioContext.decodeAudioData(request.response, audioData => {
+                  song.data = audioData;
+                  this.loadMusic(name, song.autoplay);
+                });
+              }
+              request.onprogress = (e) => {
+                song.progress = e.loaded/e.total;
+              }
+              request.send();
+
             }
-            request.send();
+
           }
         },
 
@@ -1020,20 +1037,16 @@
             */
 
             if (!this.playing) {
+              let n7e = N7e();
+
               action.first = true;
               this.loadSounds();
               this.gradients.sky2 = N7e.config.SKY.DAY;
               this.skyFadingStartTime = getTimeStamp();
               this.update();
 
-              if (this.titleMusicNode) {
-
-                this.titleMusicNode.fade();
-                this.titleMusicNode = null;
-                this.titleMusicData = null;
-              }
-
-              this.loadMusic('offline-play-music');
+              n7e.musics.stop();
+              n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
             }
           }
 
@@ -1267,10 +1280,7 @@
           // Reset the time clock.
           this.time = getTimeStamp();
 
-          if (this.titleMusicNode) {
-            this.titleMusicNode.fade();
-            this.titleMusicNode = null;
-          }
+          N7e().musics.stop();
         },
 
         stop: function () {
@@ -1308,7 +1318,7 @@
             this.playSound(this.soundFx.SOUND_SCORE,0.2);
             this.invert(true);
             this.update();
-            this.loadMusic('offline-play-music');
+            this.loadMusic('offline-play-music', N7e().config.PLAY_MUSIC);
           }
         },
 
