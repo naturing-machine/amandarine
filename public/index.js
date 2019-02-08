@@ -3622,7 +3622,7 @@
         update: function (deltaTime, currentSpeed, updateObstacles, showNightMode) {
           this.runningTime += deltaTime;
           this.nightMode.update(showNightMode);
-          this.updateMountains(deltaTime, currentSpeed, showNightMode);
+          this.updateMountains(deltaTime, currentSpeed);
           this.updateClouds(deltaTime, currentSpeed);
           this.horizonLine.update(deltaTime, currentSpeed);
 
@@ -3674,7 +3674,7 @@
               this.canvasCtx.beginPath();
               for (let i = numMountains - 1; i >= 0; i--) {
                 if (this.mountains[i].depth == j) {
-                  this.mountains[i].update(this.canvasCtx, mountainSpeed * j ? 1.1 : 1);
+                  this.mountains[i].update(this.canvasCtx, mountainSpeed * (j ? 1.1 : 1));
                 }
               }
               this.canvasCtx.save();
@@ -3688,14 +3688,14 @@
             if (numMountains < 10 &&
                 (this.dimensions.WIDTH - lastMountain.xPos) > lastMountain.mountainGap &&
                 this.mountainFrequency > Math.random()) {
-              this.addMountain();
+              this.addMountains();
             }
 
             this.mountains = this.mountains.filter(function (obj) {
               return !obj.remove;
             });
           } else {
-            this.addMountain();
+            this.addMountains();
           }
         },
 
@@ -3816,14 +3816,36 @@
             this.dimensions.WIDTH, type));
         },
 
-        addMountain: function () {
-          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(0,1000), 0));
-          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(100,900), 0));
-          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(200,800), 0));
-          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(0,1000), 0));
-          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(100,900), 1));
-          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(200,800), 1));
-          this.mountains.push(new Mountain(this.dimensions.WIDTH + getRandomNum(300,700), 1));
+        addMountain: function(distance, level) {
+          let mountain = new Mountain(distance, level);
+          this.mountains.push(mountain);
+
+          let adjust = true;
+          let mountains = this.mountains;
+          while (adjust) {
+            adjust = false;
+            let untested = [];
+
+            mountains.forEach(mnt => {
+              if (mountain.xPos > mnt.xPos && mountain.xPos + mountain.width < mnt.xPos + mnt.width) {
+                mountain.xPos = mnt.xPos + mnt.width - mountain.width/2 + getRandomNum(0,100);
+                adjust = true;
+              } else {
+                untested.push(mnt);
+              }
+            });
+            mountains = untested;
+          }
+        },
+
+        addMountains: function () {
+          this.addMountain(this.dimensions.WIDTH + getRandomNum(0,1000), 0);
+          this.addMountain(this.dimensions.WIDTH + getRandomNum(100,900), 0);
+          this.addMountain(this.dimensions.WIDTH + getRandomNum(200,800), 0);
+          this.addMountain(this.dimensions.WIDTH + getRandomNum(0,1000), 0);
+          this.addMountain(this.dimensions.WIDTH + getRandomNum(100,900), 1);
+          this.addMountain(this.dimensions.WIDTH + getRandomNum(200,800), 1);
+          this.addMountain(this.dimensions.WIDTH + getRandomNum(300,700), 1);
         },
     };
 })();
