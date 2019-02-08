@@ -593,11 +593,6 @@
               this.amdr.draw(0, 0);
             }
 
-            // Game over panel.
-            if (this.crashed && this.gameOverPanel) {
-              this.gameOverPanel.updateDimensions(this.dimensions.WIDTH);
-              this.gameOverPanel.draw();
-            }
           }
         },
 
@@ -733,9 +728,31 @@
               this.horizon.update(0, this.currentSpeed, hasObstacles);
             } else {
               deltaTime = !this.activated ? 0 : deltaTime;
-              this.horizon.update(deltaTime, this.currentSpeed, hasObstacles,
-                this.inverted);
+
+              // Game over panel.
+              if (this.crashed && this.gameOverPanel) {
+                this.gameOverPanel.updateDimensions(this.dimensions.WIDTH);
+                this.gameOverPanel.draw();
+              }
+
+              if (this.crashed && this.gameOverPanel) {
+                let alpha = (3000-this.amdr.action.timer)/3000;
+                if (alpha < 0) alpha = 0;
+                this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
+                this.gameOverPanel.draw();
+              } else {
+                this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, 1);
+              }
+
             }
+
+            /*
+            if (this.crashed) {
+              this.amdr.update(this.currentSpeed, deltaTime);
+              this.scheduleNextUpdate();
+              return;
+            }
+            */
 
             // Check for collisions.
             let obstacle;
@@ -755,16 +772,30 @@
               if (this.currentSpeed < this.config.MAX_SPEED) {
                 this.currentSpeed += this.config.ACCELERATION;
               }
-            } else {
+            } else if (!this.crashed) {
+              this.amdr.assignAction({
+                type: AMDR.status.CRASHED,
+                status: 1,
+                //crashPoint: obstacle.crash[0].intersection(obstacle.crash[1]).center(),
+              }, this.currentSpeed);
+              /*
+                let crashPoint = this.action.crashPoint;
+                this.canvasCtx.drawImage(N7e.imageSprite,
+                    N7e.spriteDefinition.HDPI.CRASH.x,
+                    N7e.spriteDefinition.HDPI.CRASH.y,
+                    n7e.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
+                    crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
+                    this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
+                    */
               this.gameOver(obstacle);
-              //this.playHackSlide(true);
             }
 
-            var playAchievementSound = this.distanceMeter.update(deltaTime,
+            var playAchievementSound;
+             playAchievementSound = this.distanceMeter.update(deltaTime,
               Math.ceil(this.distanceRan));
 
             if (playAchievementSound) {
-              this.playSound(this.soundFx.SOUND_SCORE,0.1);
+              this.playSound(this.soundFx.SOUND_SCORE,0.2);
             }
 
             if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
@@ -792,7 +823,7 @@
           if (this.playing || (!this.activated &&
               this.amdr.blinkCount < N7e.config.MAX_BLINK_COUNT)) {
 
-            if (this.actions.length && this.actions[0].status != -1) {
+            if (!this.crashed && this.actions.length && this.actions[0].status != -1) {
               switch(this.actions[0].type) {
                 case AMDR.status.JUMPING:
                   if(!this.actions[0].first) {
@@ -1165,7 +1196,7 @@
             this.amdr.update(this.currentSpeed, 0);
           }
 
-          if (this.isRunning() && inputType == AMDR.status.JUMPING) {
+          if (!this.crashed && this.isRunning() && inputType == AMDR.status.JUMPING) {
             this.playing = true;
 
             for (let i = 0, action; action = this.actions[i]; i++) {
@@ -1190,11 +1221,12 @@
             //this.amdr.setDuck(false);
           } else if (this.crashed) {
             // Check that enough time has elapsed before allowing jump key to restart.
-            var deltaTime = getTimeStamp() - this.time;
+            var deltaTime = getTimeStamp() - this.crashedTime;
 
             if (N7e.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
             (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
               N7e.keycodes.JUMP[keyCode])) {
+                this.stop();
                 this.restart();
               }
           } else if (this.paused && inputType == AMDR.status.JUMPING) {
@@ -1240,7 +1272,6 @@
          */
         gameOver: function (obstacle) {
           let crashPoint = obstacle.crash[0].intersection(obstacle.crash[1]).center();
-          this.playSound(this.soundFx.SOUND_OGGG,0.3);
           switch(obstacle.typeConfig.type) {
             case "RED_DUCK":
               this.playSound(this.soundFx.SOUND_QUACK, 0.2, false, 0.2);
@@ -1262,12 +1293,10 @@
             this.horizon.update(0, 0, true);
           }
 
-
-          this.stop();
+          //this.stop();
           this.crashed = true;
           this.distanceMeter.acheivement = false;
 
-          //
           this.canvasCtx.drawImage(N7e.imageSprite,
               N7e.spriteDefinition.HDPI.CRASH.x,
               N7e.spriteDefinition.HDPI.CRASH.y,
@@ -1277,14 +1306,14 @@
 
           this.amdr.update(this.currentSpeed, 100, AMDR.status.CRASHED);
 
-          // Game over panel.
           if (!this.gameOverPanel) {
-              this.gameOverPanel = new GameOverPanel(this.canvas,
-                  this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
-                  this.dimensions);
+            this.gameOverPanel = new GameOverPanel(this.canvas,
+              this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
+              this.dimensions);
           }
 
           this.gameOverPanel.draw();
+
 
           // Update the high score.
           if (this.distanceRan > this.highestScore) {
@@ -1294,8 +1323,7 @@
 
           // Reset the time clock.
           this.time = getTimeStamp();
-
-          N7e().musics.stop();
+          this.crashedTime = this.time;
         },
 
         stop: function () {
@@ -2505,6 +2533,15 @@
          */
         assignAction: function (action, speed) {
           let n7e = N7e();
+
+          if (!this.action || this.action.type != AMDR.status.CRASHED) {
+            this.action = action;
+            this.action.status = 2;
+            action = this.action;
+          } else {
+            return;
+          }
+
           switch(action.type) {
             case AMDR.status.JUMPING:
               {
@@ -2531,27 +2568,25 @@
 
                 action.friction = 2 * action.fullDistance / (action.fullTime * action.fullTime);
 
-                /*
-                action.averageSpeed = 0.5 * action.friction * action.fullTime;
-                console.log(action.fullTime * action.friction, action.averageSpeed);
-                */
-
-                /*
-                action.friction = (2 * speed * speed) / (action.fullDistance * 0.001);
-                console.log(action.fullDistance.toFixed(3), action.friction);
-
-                100 * 1000 / 60 = * delta
-                */
-
                 n7e.playSound(n7e.soundFx.SOUND_SLIDE,0.6);
               } break;
-            default:
-              return;
+            case AMDR.status.CRASHED:
+              {
+                let n7e = N7e();
+                n7e.playSound(N7e().soundFx.SOUND_OGGG,0.3);
+                n7e.musics.stop();
+                action.duration = 200;
+                // It seems more ergonomically natural to simply add the minimum than to clip the value.
+                action.top = action.duration / 1000;
+                action.halfTime = Math.sqrt(2000 * action.duration / AMDR.config.GRAVITY);
+                action.timer = 0;
+                action.yCrashed = this.yPos;
+                action.speed = speed;
+
+              } break;
+            default:;
           }
 
-          action.status = 2;
-          action.beginProgress = getTimeStamp();
-          this.action = action;
           this.update(speed, 0, action.type);
         },
 
@@ -3585,7 +3620,7 @@
          *     ease in section.
          * @param {boolean} showNightMode Night mode activated.
          */
-        update: function (deltaTime, currentSpeed, updateObstacles, showNightMode) {
+        update: function (deltaTime, currentSpeed, updateObstacles, showNightMode, alpha) {
           this.runningTime += deltaTime;
           this.nightMode.update(showNightMode);
           this.updateMountains(deltaTime, currentSpeed);
@@ -3593,7 +3628,14 @@
           this.horizonLine.update(deltaTime, currentSpeed);
 
           if (updateObstacles) {
-            this.updateObstacles(deltaTime, currentSpeed);
+            if (alpha == 1) {
+              this.updateObstacles(deltaTime, currentSpeed);
+            } else {
+              this.canvasCtx.save();
+              this.canvasCtx.globalAlpha = alpha;
+              this.updateObstacles(deltaTime, currentSpeed);
+              this.canvasCtx.restore();
+            }
           }
         },
 
