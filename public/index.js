@@ -2603,11 +2603,25 @@
          * @param {number} speed
          */
         updateAction: function (deltaTime, speed) {
-
           if (!this.action || this.action.status == -1) return false;
 
           this.action.timer += deltaTime;
           switch (this.action.type) {
+            case AMDR.status.RUNNING:
+              {
+                if (this.xPos < this.config.START_X_POS) {
+                  this.xPos += 0.2 * speed * (FPS / 1000) * deltaTime;
+                  if (this.xPos > this.config.START_X_POS) {
+                    this.xPos = this.config.START_X_POS;
+                  }
+                } else if (this.xPos > this.config.START_X_POS) {
+                  this.xPos -= 0.2 * speed * (FPS / 1000) * deltaTime;
+                  if (this.xPos < this.config.START_X_POS) {
+                    this.xPos = this.config.START_X_POS;
+                  }
+                }
+              }
+              break;
             case AMDR.status.JUMPING:
               {
                 let timer = this.action.halfTime - this.action.timer;
@@ -2667,11 +2681,11 @@
          */
         reset: function () {
           this.yPos = this.groundYPos;
-          this.xPos = this.config.START_X_POS;
+          this.xPos = -60;// this.config.START_X_POS;
           //this.ducking = false;
           this.update(0, 0, AMDR.status.RUNNING);
           this.dust.reset();
-          this.action = null;
+          this.action = {type:AMDR.status.RUNNING};
         }
     };
 
