@@ -231,6 +231,7 @@
       SOUND_CRASH: 'offline-sound-crash',
       SOUND_OGGG: 'offline-sound-oggg',
       SOUND_QUACK: 'offline-sound-quack',
+      SOUND_BICYCLE: 'offline-sound-bicycle',
     };
 
 
@@ -1342,7 +1343,7 @@
          * @param {number} delay
          */
 
-        playSound: function (soundBuffer, volume, loop, delay) {
+        playSound: function (soundBuffer, volume, loop, delay, pan) {
           if (soundBuffer) {
 
             delay = delay || 0;
@@ -1362,12 +1363,20 @@
 
             sourceNode = this.audioContext.createBufferSource();
             sourceNode.buffer = soundBuffer;
+            let vnode, pnode;
 
             if (volume) {
-              let vnode = this.audioContext.createGain();
+              vnode = this.audioContext.createGain();
               vnode.gain.value = volume;
               vnode.connect(dest);
               dest = vnode;
+            }
+
+            if (pan) {
+              pnode = this.audioContext.createStereoPanner();
+              pnode.pan.value = pan;
+              pnode.connect(dest);
+              dest = pnode;
             }
 
             /*
@@ -1386,15 +1395,16 @@
             sourceNode.start(this.audioContext.currentTime + delay);
             return {
               node: sourceNode,
-              gainNode: dest,
+              _gain: vnode,
+              _pan: pnode,
               stop: function() {
                 this.node.stop();
               },
               fadeCount: 10,
               fade: function() {
-                if (this.gainNode.gain.value > 0) {
-                  this.gainNode.gain.value -= 0.02;
-                  if (this.gainNode.gain.value < 0) {
+                if (this._gain.gain.value > 0) {
+                  this._gain.gain.value -= 0.02;
+                  if (this._gain.gain.value < 0) {
                     this.node.stop();
                     return;
                   }
@@ -3729,6 +3739,9 @@
           } else {
             var obstacleSpritePos = this.spritePos[obstacleType.type];
 
+            if (obstacleType.type == 'BICYCLE') {
+              N7e().playSound(N7e().soundFx.SOUND_BICYCLE,0.5,false,0,1);
+            }
             this.obstacles.push(new Obstacle(this.canvasCtx, obstacleType,
               obstacleSpritePos, this.dimensions,
               this.gapCoefficient, currentSpeed, obstacleType.width));
