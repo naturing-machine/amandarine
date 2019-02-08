@@ -647,7 +647,6 @@
           this.runningTime = 0;
           this.playingIntro = false;
           this.amdr.playingIntro = false;
-          this.amdr.config.START_X_POS = this.amdr.xPos; //Hack FIXME
           this.containerEl.style.webkitAnimation = '';
           this.playCount++;
 
@@ -673,7 +672,17 @@
         update: function () {
           // Filter ended action(s).
 
-          this.actions = this.actions.filter(function(action){ return action.status != -1 });
+          this.actions = this.actions.filter( action => {
+            if (action.first && action.status == -1) {
+              let n7e = N7e();
+              n7e.musics.stop();
+              n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
+              // First jump triggers the intro.
+              this.playIntro();
+            }
+            return action.status != -1
+          });
+
           if (this.actions.length) {
             let action = this.actions[0];
             // The action is ready to be triggered.
@@ -697,29 +706,16 @@
               this.canvasCtx.flter = '';
             } else {
               this.adjustSkyGradient(delta/N7e.config.SKY_SHADING_DURATION);
-              /*
-              if (this.sepia > 0) {
-                this.canvasCtx.filter = 'sepia('+this.sepia+')';
-                this.sepia = 1 - delta/N7e.config.SKY_SHADING_DURATION;
-              }
-              */
             }
           }
 
           this.clearCanvas();
-
-          //this.playHackSlide(!this.amdr.ducking);
 
           if (this.playing) {
             this.amdr.updateAction(deltaTime, this.currentSpeed);
 
             this.runningTime += deltaTime;
             var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
-
-            // First jump triggers the intro.
-            if (this.amdr.jumpCount == 1 && !this.playingIntro) {
-              this.playIntro();
-            }
 
             // The horizon doesn't move until the intro is over.
             if (this.playingIntro) {
@@ -778,8 +774,6 @@
                 }
               }
             }
-
-
           } else {
             this.horizon.update(0, this.currentSpeed, true);
           }
@@ -1045,9 +1039,7 @@
               this.gradients.sky2 = N7e.config.SKY.DAY;
               this.skyFadingStartTime = getTimeStamp();
               this.update();
-
               n7e.musics.stop();
-              n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
             }
           }
 
@@ -2218,10 +2210,6 @@
       this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * N7e().config.SCALE_FACTOR;
       // Current status.
       this.status = AMDR.status.WAITING;
-
-      //this.ducking = false;
-      this.jumpCount = 0;
-
       this.dust = new Particles(canvas, this.xPos, this.yPos, AMDR.config.DUST_DURATION);
 
       this.init();
@@ -2238,11 +2226,11 @@
       FRICTION: 9.8,
       HEIGHT: 40,
       HEIGHT_DUCK: 25,
-      INTRO_DURATION: 1500,
+      INTRO_DURATION: 400,
       MAX_JUMP_HEIGHT: 30,
       MIN_JUMP_HEIGHT: 30,
       SPRITE_WIDTH: 262,
-      START_X_POS: 50,
+      START_X_POS: 25,
       WIDTH: 40,
       WIDTH_DUCK: 40
     };
@@ -2379,8 +2367,8 @@
 
           // Game intro animation, Amandarine moves in from the left.
           if (this.playingIntro && this.xPos < this.config.START_X_POS) {
-            this.xPos += Math.round((this.config.START_X_POS /
-              this.config.INTRO_DURATION) * deltaTime);
+            this.xPos += (this.config.START_X_POS / this.config.INTRO_DURATION) * deltaTime;
+//              console.log(this.xPos, this.config.START_X_POS);
           }
 
 /*
@@ -2592,7 +2580,6 @@
 
                 if (timer < -this.action.halfTime) {
                   let n7e = N7e();
-                  this.jumpCount++;
                   this.action.status = -1;
                   this.yPos = this.groundYPos;
                   this.update(speed, 0, AMDR.status.RUNNING);
@@ -2658,7 +2645,6 @@
           this.xPos = this.config.START_X_POS;
           //this.ducking = false;
           this.update(0, 0, AMDR.status.RUNNING);
-          this.jumpCount = 0;
           this.dust.reset();
           this.action = null;
         }
