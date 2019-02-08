@@ -1014,8 +1014,21 @@
 
           let action;
 
+          let inputType;
+          if (e.type == N7e.events.TOUCHSTART) {
+            let clientWidth = N7e().touchController.offsetWidth;
+            for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
+              if (touch.clientX > clientWidth/2) {
+                inputType = AMDR.status.JUMPING;
+              } else {
+                inputType = AMDR.status.SLIDING;
+              }
+              break;
+            }
+          }
+
           if (!this.crashed && (N7e.keycodes.JUMP[e.keyCode] ||
-              e.type == N7e.events.TOUCHSTART)) {
+              inputType == AMDR.status.JUMPING)) {
 
             action = {
               begin: e.timeStamp,
@@ -1047,7 +1060,7 @@
             this.restart();
           }
 
-          if (this.playing && !this.crashed && N7e.keycodes.SLIDE[e.keyCode]) {
+          if (this.playing && !this.crashed && (N7e.keycodes.SLIDE[e.keyCode] || inputType == AMDR.status.SLIDING)) {
             e.preventDefault(); //Test if this is needed.
 
             action = {
@@ -1095,9 +1108,21 @@
           let n7e = N7e();
 
           var keyCode = String(e.keyCode);
-          var isjumpKey = N7e.keycodes.JUMP[keyCode] ||
-          e.type == N7e.events.TOUCHEND ||
-          e.type == N7e.events.MOUSEDOWN;
+
+          let inputType;
+          if (e.type == N7e.events.TOUCHEND) {
+            let clientWidth = N7e().touchController.offsetWidth;
+            for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
+              if (touch.clientX > clientWidth/2) {
+                inputType = AMDR.status.JUMPING;
+              } else {
+                inputType = AMDR.status.SLIDING;
+              }
+              break;
+            }
+          } else if (N7e.keycodes.JUMP[keyCode] || e.type == N7e.events.MOUSEDOWN) {
+            inputType = AMDR.status.JUMPING;
+          }
 
           if (keyCode == '67') {
             n7e.config.SHOW_COLLISION = !n7e.config.SHOW_COLLISION;
@@ -1140,8 +1165,7 @@
             this.amdr.update(this.currentSpeed, 0);
           }
 
-          if (this.isRunning() && isjumpKey) {
-
+          if (this.isRunning() && inputType == AMDR.status.JUMPING) {
             this.playing = true;
 
             for (let i = 0, action; action = this.actions[i]; i++) {
@@ -1153,7 +1177,7 @@
               }
             }
 
-          } else if (N7e.keycodes.SLIDE[keyCode]) {
+          } else if (N7e.keycodes.SLIDE[keyCode] || inputType == AMDR.status.SLIDING) {
 
             for (let i = 0, action; action = this.actions[i]; i++) {
               if (action.code == keyCode && action.status == 0) {
@@ -1173,7 +1197,7 @@
               N7e.keycodes.JUMP[keyCode])) {
                 this.restart();
               }
-          } else if (this.paused && isjumpKey) {
+          } else if (this.paused && inputType == AMDR.status.JUMPING) {
             // Reset the jump state
             this.amdr.reset();
             this.play();
@@ -1952,8 +1976,8 @@
 
               // Check if obstacle can be positioned at various heights.
               if (Array.isArray(this.typeConfig.yPos)) {
-                var yPosConfig = IS_MOBILE ? this.typeConfig.yPosMobile :
-                this.typeConfig.yPos;
+//                var yPosConfig = IS_MOBILE ? this.typeConfig.yPosMobile :
+                var yPosConfig = this.typeConfig.yPos;
                 this.yPos = yPosConfig[getRandomNum(0, yPosConfig.length - 1)];
               } else {
                 this.yPos = this.typeConfig.yPos;
