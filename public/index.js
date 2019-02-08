@@ -671,27 +671,38 @@
          */
         update: function () {
           // Filter ended action(s).
-
-          this.actions = this.actions.filter( action => {
-            if (action.first && action.status == -1) {
-              let n7e = N7e();
-              n7e.musics.stop();
-              n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
-              // First jump triggers the intro.
-              this.playIntro();
-            }
-            return action.status != -1
-          });
+          this.updatePending = false;
 
           if (this.actions.length) {
-            let action = this.actions[0];
-            // The action is ready to be triggered.
-            if (action.status == 1) {
-              this.amdr.assignAction(action, this.currentSpeed);
-            }
-          }
+            this.actions = this.actions.filter( action => {
+              if (action.status == -1) {
 
-          this.updatePending = false;
+                if (action.first) {
+                  let n7e = N7e();
+                  n7e.musics.stop();
+                  n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
+                  // First jump triggers the intro.
+                  this.playIntro();
+                }
+
+                this.amdr.assignAction({
+                  type: AMDR.status.RUNNING,
+                  status: 1,
+                }, this.currentSpeed);
+
+                return false;
+              }
+
+              return true;
+            });
+
+            if (this.actions.length) {
+              if (this.actions[0].status == 1) {
+                this.amdr.assignAction(this.actions[0], this.currentSpeed);
+              }
+            }
+
+          }
 
           var now = getTimeStamp();
           var deltaTime = now - (this.time || now);
@@ -793,21 +804,10 @@
                   break;
                 default:;
               }
-
             }
-
-            // Hack
-              /*
-            if (this.playing && !this.amdr.playingIntro) {
-              if ( this.amdr.xPos > this.amdr.config.START_X_POS) {
-                this.amdr.xPos -= Math.floor(0.5 * this.currentSpeed * (FPS/1000) *deltaTime);
-              } else {
-                this.amdr.xPos = this.amdr.config.START_X_POS;
-              }
-            }
-              */
 
             this.amdr.update(this.currentSpeed, deltaTime);
+
             this.scheduleNextUpdate();
           }
         },
@@ -1250,8 +1250,6 @@
               break;
             default:
               this.playSound(this.soundFx.SOUND_HIT, 1.0, false, 0.2);
-
-//              this.playSound(this.soundFx.HIT, 1.0, false, 10);
           }
           vibrate(200);
 
@@ -2392,7 +2390,6 @@
           // Game intro animation, Amandarine moves in from the left.
           if (this.playingIntro && this.xPos < this.config.START_X_POS) {
             this.xPos += (this.config.START_X_POS / this.config.INTRO_DURATION) * deltaTime;
-//              console.log(this.xPos, this.config.START_X_POS);
           }
 
 /*
@@ -2469,25 +2466,6 @@
 
               this.dust.draw();
           }
-/*
-            // Ducking.
-            if (this.ducking && this.status != AMDR.status.CRASHED) {
-                this.canvasCtx.drawImage(N7e.imageSprite, sourceX, sourceY,
-                    sourceWidth, sourceHeight,
-                    this.xPos, this.yPos,
-                    this.config.WIDTH_DUCK, this.config.HEIGHT);
-            } else {
-                // Crashed whilst ducking. AMDR is standing up so needs adjustment.
-                if (this.ducking && this.status == AMDR.status.CRASHED) {
-                    this.xPos++;
-                }
-                // Standing / running
-                this.canvasCtx.drawImage(N7e.imageSprite, sourceX, sourceY,
-                    sourceWidth, sourceHeight,
-                    this.xPos, this.yPos,
-                    this.config.WIDTH, this.config.HEIGHT);
-            }
-*/
         },
 
         /**
@@ -2606,13 +2584,8 @@
                   let n7e = N7e();
                   this.action.status = -1;
                   this.yPos = this.groundYPos;
-                  this.update(speed, 0, AMDR.status.RUNNING);
                   n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * this.action.pressDuration/n7e.config.MAX_ACTION_PRESS);
-                  break;
-                } else {
-                  this.update(speed, deltaTime);
                 }
-
               }
               break;
             case AMDR.status.SLIDING:
@@ -2627,39 +2600,32 @@
                 this.xPos = this.config.START_X_POS + distance;
                 //Sliding animation
 
-
-
                if (this.action.distance > this.action.fullDistance) {
-//                if (this.action.timer > this.action.maxPressDuration) {
                   this.action.status = -1;
                   this.xPos = this.config.START_X_POS;
-                  this.update(speed, 0, AMDR.status.RUNNING);
-                } else {
-                  this.update(speed, deltaTime);
+                }
+              }
+              break;
+            case AMDR.status.CRASHED:
+              {
+                let n7e = N7e();
+                let timer = this.action.halfTime - this.action.timer;
+                let dY = this.action.top * N7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR/4 * timer * timer;
+
+                this.yPos = this.action.yCrashed - dY;
+
+                n7e.setSpeed(this.action.speed * (3000-this.action.timer)/3000);
+
+                if (this.action.timer > 3000) {
+                  n7e.stop();
                 }
               }
               break;
             default:;
-              this.update(speed, deltaTime);
           }
 
           return true;
         },
-
-        /**
-         * @param {boolean} isDucking.
-         */
-         /*
-        setDuck: function (isDucking) {
-          if (isDucking && this.status != AMDR.status.DUCKING) {
-            this.update(0, AMDR.status.DUCKING);
-            this.ducking = true;
-          } else if (this.status == AMDR.status.DUCKING) {
-            this.update(0, AMDR.status.RUNNING);
-            this.ducking = false;
-          }
-        },
-        */
 
         /**
          * Reset Amandarine to running at start of game.
