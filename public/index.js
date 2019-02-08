@@ -739,20 +739,23 @@
                 let alpha = (3000-this.amdr.action.timer)/3000;
                 if (alpha < 0) alpha = 0;
                 this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
+
+                if (alpha > 0.95) {
+                  let crashPoint = this.amdr.action.crashPoint;
+                  this.canvasCtx.drawImage(N7e.imageSprite,
+                      N7e.spriteDefinition.HDPI.CRASH.x,
+                      N7e.spriteDefinition.HDPI.CRASH.y,
+                      this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
+                      crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
+                      this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
+                }
+
                 this.gameOverPanel.draw();
               } else {
                 this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, 1);
               }
 
             }
-
-            /*
-            if (this.crashed) {
-              this.amdr.update(this.currentSpeed, deltaTime);
-              this.scheduleNextUpdate();
-              return;
-            }
-            */
 
             // Check for collisions.
             let obstacle;
@@ -767,7 +770,9 @@
             }
 
             if (!obstacle) {
-              this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
+              if (!this.crashed) {
+                this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
+              }
 
               if (this.currentSpeed < this.config.MAX_SPEED) {
                 this.currentSpeed += this.config.ACCELERATION;
@@ -776,7 +781,7 @@
               this.amdr.assignAction({
                 type: AMDR.status.CRASHED,
                 status: 1,
-                //crashPoint: obstacle.crash[0].intersection(obstacle.crash[1]).center(),
+                crashPoint: obstacle.crash[0].intersection(obstacle.crash[1]).center(),
               }, this.currentSpeed);
               /*
                 let crashPoint = this.action.crashPoint;
@@ -1271,7 +1276,7 @@
          * @param {Obstacle} obstacle
          */
         gameOver: function (obstacle) {
-          let crashPoint = obstacle.crash[0].intersection(obstacle.crash[1]).center();
+          //let crashPoint = obstacle.crash[0].intersection(obstacle.crash[1]).center();
           switch(obstacle.typeConfig.type) {
             case "RED_DUCK":
               this.playSound(this.soundFx.SOUND_QUACK, 0.2, false, 0.2);
@@ -1297,12 +1302,14 @@
           this.crashed = true;
           this.distanceMeter.acheivement = false;
 
+          /*
           this.canvasCtx.drawImage(N7e.imageSprite,
               N7e.spriteDefinition.HDPI.CRASH.x,
               N7e.spriteDefinition.HDPI.CRASH.y,
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
               crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
+              */
 
           this.amdr.update(this.currentSpeed, 100, AMDR.status.CRASHED);
 
