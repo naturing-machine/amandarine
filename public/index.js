@@ -145,7 +145,8 @@
         DAY: [Math.floor(221*0.8), Math.floor(238*0.8), Math.floor(255*0.9), 238, 238, 255],
         //NIGHT: [68,136,170,102,153,187],
         NIGHT: [68,136,170,84,183,187],
-        START: [255,255,255,255,255,255]
+        START: [255,255,255,255,255,255],
+        SUNSET: [218,112,147,142,94,173],
       }
     };
 
@@ -783,15 +784,6 @@
                 status: 1,
                 crashPoint: obstacle.crash[0].intersection(obstacle.crash[1]).center(),
               }, this.currentSpeed);
-              /*
-                let crashPoint = this.action.crashPoint;
-                this.canvasCtx.drawImage(N7e.imageSprite,
-                    N7e.spriteDefinition.HDPI.CRASH.x,
-                    N7e.spriteDefinition.HDPI.CRASH.y,
-                    n7e.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
-                    crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
-                    this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
-                    */
               this.gameOver(obstacle);
             }
 
@@ -2581,6 +2573,7 @@
               {
                 let n7e = N7e();
                 n7e.playSound(N7e().soundFx.SOUND_OGGG,0.3);
+                n7e.setSky(n7e.config.SKY.SUNSET);
                 n7e.musics.stop();
                 action.duration = 200;
                 // It seems more ergonomically natural to simply add the minimum than to clip the value.
@@ -3099,7 +3092,7 @@
     // TODO mix with cloud so it can be multi-depth
     function Mountain(containerWidth,depth) {
       this.xPos = containerWidth;
-      this.yPos = HorizonLine.dimensions.YPOS + 5;
+      this.yPos = HorizonLine.dimensions.YPOS + 6;
       this.remove = false;
       this.depth = depth;
       this.mountainGap = getRandomNum(200, 500);
@@ -3174,7 +3167,8 @@
       this.canvasCtx = canvas.getContext('2d');
       this.xPos = containerWidth - 50;
       this.yPos = 50;
-      this.currentPhase = NightMode.phases.length - 1;
+      this.nextPhase = NightMode.phases.length - 1;
+      this.currentPhase = this.nextPhase;
       this.opacity = 0;
       this.containerWidth = containerWidth;
       this.stars = [];
@@ -3207,10 +3201,11 @@
         update: function (activated, delta) {
           // Moon phase.
           if (activated && this.opacity == 0) {
-            this.currentPhase++;
+            this.currentPhase = this.nextPhase;
+            this.nextPhase++;
 
-            if (this.currentPhase >= NightMode.phases.length) {
-              this.currentPhase = 0;
+            if (this.nextPhase >= NightMode.phases.length) {
+              this.nextPhase = 0;
             }
           }
 
@@ -3321,8 +3316,7 @@
         },
 
         reset: function () {
-          this.currentPhase = 0;
-          this.opacity = 0;
+          this.nextPhase = 0;
           this.update(false);
         }
     };
@@ -3678,7 +3672,7 @@
           }
         },
 
-        updateMountains: function (deltaTime, speed, showNightMode) {
+        updateMountains: function (deltaTime, speed) {
           var mountainSpeed = this.mountainSpeed / 1000 * deltaTime * speed;
           var numMountains = this.mountains.length;
           let n7e = N7e();
