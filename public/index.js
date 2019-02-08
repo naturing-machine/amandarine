@@ -820,12 +820,11 @@
           if (this.playing || (!this.activated &&
               this.amdr.blinkCount < N7e.config.MAX_BLINK_COUNT)) {
 
-            if (!this.crashed && this.actions.length && this.actions[0].status != -1) {
-              switch(this.actions[0].type) {
+            let action = this.actions[0];
+            if (!this.crashed && action && action.status != -1 && !action.hidden && !action.first) {
+              switch(action.type) {
                 case AMDR.status.JUMPING:
-                  if(!this.actions[0].first) {
-                    this.drawJumpingGuide(this.actions[0], now);
-                  }
+                  this.drawJumpingGuide(this.actions[0], now);
                   break;
                 case AMDR.status.SLIDING:
                   this.drawSlidingGuide(this.actions[0], now);
@@ -1360,7 +1359,6 @@
             this.playSound(this.soundFx.SOUND_SCORE,0.2);
             this.invert(true);
             this.update();
-            this.loadMusic('offline-play-music', N7e().config.PLAY_MUSIC);
           }
         },
 
@@ -2649,7 +2647,7 @@
                 this.xPos = this.config.START_X_POS + distance;
                 //Sliding animation
 
-               if (this.action.distance > this.action.fullDistance) {
+                if (this.action.distance > this.action.fullDistance) {
                   this.action.status = -1;
                   this.xPos = this.config.START_X_POS;
                 }
@@ -2681,11 +2679,26 @@
          */
         reset: function () {
           this.yPos = this.groundYPos;
-          this.xPos = -60;// this.config.START_X_POS;
-          //this.ducking = false;
+          this.xPos = -80;// this.config.START_X_POS;
           this.update(0, 0, AMDR.status.RUNNING);
           this.dust.reset();
-          this.action = {type:AMDR.status.RUNNING};
+          this.action = null;
+          /*
+          this.assignAction({
+            begin: getTimeStamp(),
+            type: AMDR.status.SLIDING,
+            pressDuration: N7e.config.MAX_ACTION_PRESS,
+            status: 1
+          }, 6);
+          */
+          N7e().actions.push({
+            begin: getTimeStamp(),
+            type: AMDR.status.SLIDING,
+            pressDuration: N7e.config.MAX_ACTION_PRESS,
+            status: 1,
+            first: true,
+          });
+
         }
     };
 
