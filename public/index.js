@@ -113,7 +113,7 @@
      * @enum {number}
      */
     N7e.config = {
-      ACCELERATION: 0.001,
+      ACCELERATION: 0.0005,
       BG_CLOUD_SPEED: 0.2,
       BOTTOM_PAD: 10,
       CLEAR_TIME: 3000,
@@ -146,7 +146,7 @@
         //NIGHT: [68,136,170,102,153,187],
         NIGHT: [68,136,170,84,183,187],
         START: [255,255,255,255,255,255],
-        SUNSET: [218,112,147,142,94,173],
+        SUNSET: [69,67,125,255,164,119],
       }
     };
 
@@ -1145,13 +1145,17 @@
             }
           }
 
-          if (keyCode == '83') {
-            n7e.config.SHOW_SEPIA = (n7e.config.SHOW_SEPIA+1)%10;
+          if (keyCode == '83' || (keyCode <= 57 && keyCode >= 48)) {
+            if (keyCode <= 57 && keyCode >= 48) {
+              n7e.config.SHOW_SEPIA = keyCode - 48;
+            } else {
+              n7e.config.SHOW_SEPIA = (n7e.config.SHOW_SEPIA+1)%10;
+            }
 
             this.canvasCtx.restore();
             this.canvasCtx.save();
             switch (n7e.config.SHOW_SEPIA) {
-              case 0: // Grass
+              case 0: // Normal
                 break;
               case 1: // Low
                 break;
@@ -1160,8 +1164,10 @@
               case 3:
                 this.canvasCtx.filter = 'grayscale(1)';
                 break;
+              case 9: // Extreme
+                break;
               default:
-                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.SHOW_SEPIA - 4) * 60)+'deg)';
+                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.SHOW_SEPIA - 4) * 72)+'deg)';
                 break;
                 break;
             }
@@ -2057,9 +2063,8 @@
               this.canvasCtx.drawImage(this.typeConfig.sprite || N7e.imageSprite,
                 sourceX, this.spritePos.y,
                 sourceWidth * this.size, sourceHeight,
-                this.xPos, this.yPos,
+                Math.floor(this.xPos), this.yPos,
                 this.typeConfig.width * this.size, this.typeConfig.height);
-
             },
 
             /**
@@ -2072,7 +2077,7 @@
                 if (this.typeConfig.speedOffset) {
                   speed += this.speedOffset;
                 }
-                this.xPos -= Math.floor((speed * FPS / 1000) * deltaTime);
+                this.xPos -= speed * FPS / 1000 * deltaTime;
 
                 // Update frame
                 if (this.typeConfig.numFrames) {
@@ -2227,8 +2232,6 @@
       this.groundYPos = 0;
       this.currentFrame = 0;
       this.currentAnimFrames = [];
-      this.blinkDelay = 0;
-      this.blinkCount = 0;
       this.animStartTime = 0;
       this.timer = 0;
       this.msPerFrame = 1000 / FPS;
@@ -2300,13 +2303,6 @@
     };
 
     /**
-     * Blinking coefficient.
-     * @const
-     */
-    AMDR.BLINK_TIMING = 7000;
-
-
-    /**
      * Animation config for different states.
      * @enum {Object}
      */
@@ -2338,7 +2334,6 @@
     AMDR.prototype = {
         /**
          * Amandarine player initaliser.
-         * Sets Amandarine to blink at random intervals.
          */
         init: function () {
           this.groundYPos = N7e.defaultDimensions.HEIGHT - this.config.HEIGHT -
@@ -2370,58 +2365,23 @@
             this.msPerFrame = AMDR.animFrames[opt_status].msPerFrame;
             this.currentAnimFrames = AMDR.animFrames[opt_status].frames;
 
-            /*
-            if (opt_status == AMDR.status.WAITING) {
-            this.animStartTime = getTimeStamp();
-            this.setBlinkDelay();
-            */
-            if (n7e.config.SHOW_SEPIA != 1 && opt_status != AMDR.status.CRASHED && opt_status != AMDR.status.WAITING && opt_status != AMDR.status.SLIDING) {
-              /*
-              if (this.xPos == 0) {
-                this.dust.x = -24;
-              } else {
-                this.dust.x = 0;
-              }
-              */
-              this.dust.x = this.xPos - 24;
-
-              this.dust.addPoint(0, 0, -40, -10 * Math.random());
-            }
-
             this.currentSprite = AMDR.animFrames[opt_status].sprite;
           }
 
           // Game intro animation, Amandarine moves in from the left.
+          /*
           if (this.playingIntro && this.xPos < this.config.START_X_POS) {
             this.xPos += (this.config.START_X_POS / this.config.INTRO_DURATION) * deltaTime;
           }
-
-/*
-          if (this.status == AMDR.status.WAITING) {
-            //this.blink(getTimeStamp());
-            this.draw(this.currentAnimFrames[this.currentFrame], 0);
-          } else {
-            this.draw(this.currentAnimFrames[this.currentFrame], 0);
-          }
-*/
+          */
 
           /* Don't draw crash state to observe the effective collision boxes */
           if (!n7e.config.SHOW_COLLISION || opt_status != AMDR.status.CRASHED ) {
             this.draw(this.currentAnimFrames[this.currentFrame], 0);
           }
 
-
           // Update the frame position.
           if (this.timer >= this.msPerFrame) {
-
-            if (n7e.config.SHOW_SEPIA != 1 && this.status == AMDR.status.SLIDING) {
-              //if (getRandomNum(0,1) == 0) {
-                this.dust.x = this.xPos - 24;
-                let sp = speed / 6;
-                this.dust.addPoint(-10, 0, sp * -90, sp * -15 * Math.random());
-                this.dust.addPoint(5, 0, sp * -75, sp * -15 * Math.random());
-              //}
-            }
 
             this.currentFrame = this.currentFrame ==
               this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
@@ -2465,26 +2425,15 @@
           //FIXME
           if (this.currentSprite) {
             this.canvasCtx.drawImage(this.currentSprite, sourceX, sourceY, 40, 40,
-              this.xPos, this.yPos,
+              Math.floor(this.xPos), Math.floor(this.yPos),
               this.config.WIDTH, this.config.HEIGHT);
 
               this.dust.draw();
           }
         },
 
-        /**
-         * Sets a random time for the blink to happen.
-         */
-        setBlinkDelay: function () {
-          this.blinkDelay =  + Math.ceil(Math.random() * AMDR.BLINK_TIMING);
         },
 
-        /**
-         * Make Amandarine blink at random intervals.
-         * @param {number} time Current time in milliseconds.
-         */
-        blink: function (time) {
-          var deltaTime = time - this.animStartTime;
 
           this.draw(this.currentAnimFrames[this.currentFrame], 0);
 /*
@@ -2492,11 +2441,6 @@
             if (deltaTime >= this.blinkDelay) {
                 this.draw(this.currentAnimFrames[this.currentFrame], 0);
 
-                if (this.currentFrame == 0) {
-                    // Set new random delay to blink.
-                    this.setBlinkDelay();
-                    this.animStartTime = time;
-                    this.blinkCount++;
                 }
             }
 */
@@ -2950,12 +2894,12 @@
      * Particles (Very Experimental)
      */
 
-    function Particles(canvas, x, y, age) {
-      this.age = age; // Used for calculating sprite offset.
+    function Particles(canvas, x, y, life) {
+      this.life = life; // Used for calculating sprite offset.
       this.canvas = canvas;
       this.canvasCtx = this.canvas.getContext('2d');
-      this.x = x;
-      this.y = y;
+      this.xPos = x;
+      this.yPos = y;
       this.points = [];
       this.init();
       this.tag = 0;
@@ -2967,26 +2911,26 @@
 
         draw: function () {
           for(let i = 0, point; point = this.points[i]; i++) {
-            let ratio = (this.age - point.age) / this.age;
-            let x = this.x + point.x + 40 + point.w * ratio;
-            let y = this.y + point.y + N7e.defaultDimensions.HEIGHT-25 + point.h * ratio;
+            let ratio = (this.life - point.life) / this.life;
+            let x = this.xPos + point.x + 40 + point.w * ratio;
+            let y = this.yPos + point.y + N7e.defaultDimensions.HEIGHT-25 + point.h * ratio;
             this.canvasCtx.drawImage(N7e.imageSprite,
               776 + 22 * Math.floor(8 * ratio), 2,
               22, 22,
-              x, y,
+              Math.ceil(x), Math.ceil(y),
               22, 22);
           }
         },
 
         update: function (aging) {
           this.points = this.points.filter( point => {
-            point.age -= aging;
-            return point.age > 0;
+            point.life -= aging;
+            return point.life > 0;
           });
         },
 
         addPoint: function(x, y, w, h) {
-          this.points.push({tag:this.tag++, x:x, y:y, w:w, h:h, age:this.age});
+          this.points.push({tag:this.tag++, x:x, y:y, w:w, h:h, life:this.life});
         },
 
         reset: function() {
@@ -3044,6 +2988,7 @@
         init: function () {
           this.yPos = getRandomNum(Cloud.config.MAX_SKY_LEVEL,
             Cloud.config.MIN_SKY_LEVEL);
+          this.opacity = getRandomNum(2,4) / 5;
           this.draw();
         },
 
@@ -3051,23 +2996,27 @@
          * Draw the cloud.
          */
         draw: function () {
-          this.canvasCtx.save();
-          this.canvasCtx.globalAlpha = 0.85;
-          var sourceWidth = Cloud.config.WIDTH;
-          var sourceHeight = Cloud.config.HEIGHTS[this.type];
+          this.canvasCtx.save(); {
 
-          if (IS_HIDPI) {
-            sourceWidth = sourceWidth * 2;
-            sourceHeight = sourceHeight * 2;
-          }
+            if (N7e.config.SHOW_SEPIA != 1) {
+              this.canvasCtx.globalAlpha = this.opacity;
+            }
+            this.canvasCtx.globalCompositeOperation = 'luminosity';
+            var sourceWidth = Cloud.config.WIDTH;
+            var sourceHeight = Cloud.config.HEIGHTS[this.type];
 
-          this.canvasCtx.drawImage(N7e.imageSprite, this.spritePos.x,
-            this.spritePos.y,
-            sourceWidth, sourceHeight,
-            Math.ceil(this.xPos), this.yPos,
-            Cloud.config.WIDTH, Cloud.config.HEIGHTS[this.type]);
+            if (IS_HIDPI) {
+              sourceWidth = sourceWidth * 2;
+              sourceHeight = sourceHeight * 2;
+            }
 
-          this.canvasCtx.restore();
+            this.canvasCtx.drawImage(N7e.imageSprite, this.spritePos.x,
+              this.spritePos.y,
+              sourceWidth, sourceHeight,
+              Math.ceil(this.xPos), this.yPos,
+              Cloud.config.WIDTH, Cloud.config.HEIGHTS[this.type]);
+
+          } this.canvasCtx.restore();
         },
 
         /**
@@ -3096,7 +3045,9 @@
     };
 
     // TODO mix with cloud so it can be multi-depth
-    function Mountain(containerWidth,depth) {
+    function Mountain(canvas, containerWidth,depth) {
+      this.canvas = canvas;
+      this.canvasCtx = this.canvas.getContext('2d');
       this.xPos = containerWidth;
       this.yPos = HorizonLine.dimensions.YPOS + 6;
       this.remove = false;
@@ -3110,40 +3061,71 @@
     Mountain.prototype = {
 
         init: function () {
-          this.height = getRandomNum(N7e.defaultDimensions.HEIGHT/6, N7e.defaultDimensions.HEIGHT/2);
+          this.height = getRandomNum(N7e.defaultDimensions.HEIGHT/8, N7e.defaultDimensions.HEIGHT/2);
           if (this.depth == 0) this.height * 0.7;
 
-          this.width = this.height * (1 + Math.random() * 4);
+          this.width = this.height * (2 + Math.random() * 3);
           if (this.width > 200) this.width = 200;
-          //this.draw();
+          this.draw();
         },
 
         /**
          * Draw the mountain.
          */
-        draw: function (canvasCtx) {
-            let x = this.xPos;
-            let y = this.yPos;
-            canvasCtx.moveTo(x, y);
-            /*
-            canvasCtx.lineTo(x + this.width/2, y-this.height);
-            canvasCtx.lineTo(x + this.width, y);
-            */
-            canvasCtx.bezierCurveTo(
+        draw: function () {
+          if (N7e.config.SHOW_SEPIA == 1) {
+            return;
+          }
+
+          this.canvasCtx.save();
+          let n7e = N7e();
+          this.canvasCtx.fillStyle = '#' + (this.depth == 0 ? n7e.gradients.rgb0x2 : n7e.gradients.rgb0x1);
+          this.canvasCtx.beginPath();
+          let x = this.xPos;
+          let y = this.yPos;
+          this.canvasCtx.moveTo(x, y);
+          /*
+          canvasCtx.lineTo(x + this.width/2, y-this.height);
+          canvasCtx.lineTo(x + this.width, y);
+          */
+          this.canvasCtx.bezierCurveTo(
+            x + this.width/2, y-this.height,
+            x + this.width/2, y-this.height,
+          x + this.width, y);
+          this.canvasCtx.closePath();
+          if (N7e.config.SHOW_SEPIA == 0) {
+            this.canvasCtx.filter = 'hue-rotate(-25deg)';
+          }
+          this.canvasCtx.fill();
+
+          if (N7e.config.SHOW_SEPIA == 9) {
+            let w = this.width * 0.8;
+            this.canvasCtx.clip();
+            this.canvasCtx.beginPath();
+            x-=w/30;y+=this.height/10;
+            this.canvasCtx.globalCompositeOperation = 'multiply';
+            this.canvasCtx.globalAlpha = 0.5;
+            this.canvasCtx.filter = 'blur(5px)';
+            this.canvasCtx.moveTo(x, y);
+            this.canvasCtx.bezierCurveTo(
+              x + w/2, y - this.height,
               x + this.width/2, y-this.height,
-              x + this.width/2, y-this.height,
-            x + this.width, y);
-            canvasCtx.closePath();
+              x + w, y);
+            this.canvasCtx.closePath();
+            this.canvasCtx.fill();
+          }
+
+          this.canvasCtx.restore();
         },
 
         /**
          * Update the mountain position.
          * @param {number} speed
          */
-        update: function (canvasCtx, speed) {
+        update: function (speed) {
           if (!this.remove) {
             this.xPos -= speed;
-            this.draw(canvasCtx);
+            this.draw();
 
             // Mark as removeable if no longer in the canvas.
             if (!this.isVisible()) {
@@ -3283,11 +3265,43 @@
           // Stars.
           if (this.drawStars) {
             for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-              this.canvasCtx.globalAlpha = this.opacity * this.stars[i].opacity;
+              let alpha = this.opacity * this.stars[i].opacity;
+              let mx = this.xPos + moonOutputWidth/2;
+              let my = this.yPos + NightMode.config.HEIGHT/2;
+              let dt = Math.abs(this.stars[i].x - mx) + Math.abs(this.stars[i].y - my) - 50;
+              if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
+
+              this.canvasCtx.globalAlpha = alpha * dt/50;
               this.canvasCtx.drawImage(N7e.imageSprite,
                 starSourceX, this.stars[i].sourceY, starSize, starSize,
                 Math.round(this.stars[i].x), this.stars[i].y,
                 NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
+            }
+          }
+
+          if (N7e.config.SHOW_SEPIA == 9) {
+            this.canvasCtx.filter = 'blur(6px)';
+
+            this.canvasCtx.drawImage(N7e.imageSprite, moonSourceX,
+              this.spritePos.y, moonSourceWidth, moonSourceHeight,
+              Math.round(this.xPos), this.yPos,
+              moonOutputWidth, NightMode.config.HEIGHT);
+
+            this.canvasCtx.filter = 'blur(2px)';
+            if (this.drawStars) {
+              for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+                let alpha = this.opacity * this.stars[i].opacity;
+                let mx = this.xPos + moonOutputWidth/2;
+                let my = this.yPos + NightMode.config.HEIGHT/2;
+                let dt = Math.abs(this.stars[i].x - mx) + Math.abs(this.stars[i].y - my) - 50;
+                if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
+
+                this.canvasCtx.globalAlpha = alpha * dt/50;
+                this.canvasCtx.drawImage(N7e.imageSprite,
+                  starSourceX, this.stars[i].sourceY, starSize, starSize,
+                  Math.round(this.stars[i].x), this.stars[i].y,
+                  NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
+              }
             }
           }
 
@@ -3394,6 +3408,129 @@
             return Math.random() > this.bumpThreshold ? this.dimensions.WIDTH : 0;
         },
 
+        generateGroundCache: function() {
+          if (!this.groundCanvas) {
+            this.groundCanvas = document.createElement('canvas');
+            this.groundCanvas.width = N7e.defaultDimensions.WIDTH;
+            this.groundCanvas.height = 25 * 200;
+            this.grCtx = this.groundCanvas.getContext('2d');
+          }
+
+          this.grCtx.clearRect(0, 0, N7e.defaultDimensions.WIDTH, this.groundCanvas.height);
+          this.grMode = N7e.config.SHOW_SEPIA;
+
+          this.grCtx.save();
+          this.grCtx.translate(0,25 - N7e.defaultDimensions.HEIGHT);
+          for (let i = 0; i < 200; i++) {
+              this.drawGround(this.grCtx, i);
+              this.grCtx.translate(0,25);
+          }
+          this.grCtx.restore();
+        },
+
+        drawGround: function(canvasCtx, spinner) {
+          canvasCtx.save();
+          canvasCtx.lineWidth = 5;
+          canvasCtx.lineCap = 'butt';
+          for ( let
+            scale = 1.02, //Perspective
+            step = 2,
+            pwStep = Math.pow(scale, step),
+            y = this.yPos + 12,
+            i = -8,
+            alphaStep = 0.15 * step / (N7e.defaultDimensions.HEIGHT - y),
+            pw = Math.pow(scale,i),
+            width = HorizonLine.dimensions.WIDTH;
+
+                y + i < N7e.defaultDimensions.HEIGHT + this.canvasCtx.lineWidth;
+
+                    i += step, pw *= pwStep ) {
+
+            let width = HorizonLine.dimensions.WIDTH / pw;
+            let grassH;
+
+            canvasCtx.save();
+            canvasCtx.scale(pw, 1);
+//            this.canvasCtx.transform(pw,0,0,1,0,0);
+
+            // Draw grasses
+            if (N7e.config.SHOW_SEPIA == 9) {
+              if (!this.grassMap) {
+                this.grassMap = [];
+                this.grassMapOffset = [];
+                for(let g = 0; g<10; g++) {
+                  let l = [];
+                  let sum;
+                  let n;
+                  this.grassMapOffset.push(getRandomNum(0,8));
+                  let gr = false;
+                  let thick = 1;
+
+                  sum = 100;
+                  do {
+                    n = gr ? getRandomNum(1,3)*thick : getRandomNum(1,2)*thick;
+                    gr = !gr;
+                    if (sum < n) {
+                      n = sum;
+                    }
+                    sum -= n;
+                    l.push(n);
+                  } while (sum > 0);
+
+                  sum = 100;
+                  do {
+                    n = gr ? getRandomNum(1,3)*thick : getRandomNum(0,1)* thick;
+                    gr = !gr;
+                    if (sum < n) {
+                      n = sum;
+                    }
+                    sum -= n;
+                    l.push(n);
+                  } while (sum > 0);
+
+                  if (l.length%2 != 0) l.push(0);
+
+                  this.grassMap.push(l);
+                }
+              }
+
+              grassH = 2+Math.ceil((i+8)/4);
+
+              canvasCtx.lineWidth = grassH;
+              grassH = Math.ceil(grassH/2);
+
+              let line = (i+8)%10;
+              canvasCtx.setLineDash(this.grassMap[line]);
+              canvasCtx.strokeStyle = "rgba(32,128,0,"+(alphaStep * (i+8))+")";
+
+              canvasCtx.beginPath();
+              canvasCtx.moveTo(0, y + i - grassH);
+              canvasCtx.lineTo(width, y + i - grassH);
+              //canvasCtx.quadraticCurveTo( width/2, y + i*1.5, width, y + i - grassH);
+              canvasCtx.lineDashOffset = -spinner + Math.floor(i*i/16) - width/2 + this.grassMapOffset[line];
+              canvasCtx.stroke();
+
+            } else { // Draw stripes
+
+  //            canvasCtx.setLineDash([45,55,35,65]);
+              canvasCtx.setLineDash([70,30]);
+              canvasCtx.lineWidth = step;
+              canvasCtx.strokeStyle = "rgba(200,200,0,"+(alphaStep/2 * (i+8))+")";
+
+              for (let s = 0; s <= 16; s+=2) {
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(0, y + i);
+                canvasCtx.lineTo(width, y + i);
+                canvasCtx.lineDashOffset = -spinner + s + Math.floor(i*i/16) - width/2;
+                canvasCtx.stroke();
+              }
+            }
+
+            canvasCtx.restore();
+          }
+          canvasCtx.restore();
+        },
+
         /**
          * Draw the horizon line.
          */
@@ -3412,104 +3549,18 @@
 
           if (N7e.config.SHOW_SEPIA == 1) return;
 
-          //Draw striping lawn
-          //TODO add superfluous switch
+          if (N7e.config.SHOW_SEPIA != this.grMode) {
+            this.generateGroundCache();
+          }
 
           this.canvasCtx.save();
-          this.canvasCtx.lineWidth = 5;
-          this.canvasCtx.lineCap = 'butt';
-//          this.canvasCtx.globalCompositeOperation = 'overlay';
-          for ( let
-            spinner = this.xPos[0] % 200,
-            scale = 1.02, //Perspective
-            step = 2,
-            pwStep = Math.pow(scale, step),
-            y = this.yPos + 12,
-            i = -8,
-            alphaStep = 0.15 * step / (N7e.defaultDimensions.HEIGHT - y),
-            pw = Math.pow(scale,i),
-            width = HorizonLine.dimensions.WIDTH;
-
-                y + i < N7e.defaultDimensions.HEIGHT + this.canvasCtx.lineWidth;
-
-                    i += step, pw *= pwStep ) {
-
-            let width = HorizonLine.dimensions.WIDTH / pw;
-            let grassH;
-
-            this.canvasCtx.save();
-            this.canvasCtx.scale(pw, 1);
-//            this.canvasCtx.transform(pw,0,0,1,0,0);
-
-            // Draw grasses
-            if (N7e.config.SHOW_SEPIA == 0) {
-              if (!this.grassMap) {
-                this.grassMap = [];
-                this.grassMapOffset = [];
-                for(let g = 0; g<10; g++) {
-                  let l = [];
-                  let sum = 100;
-                  let n;
-                  this.grassMapOffset.push(getRandomNum(0,8));
-                  let gr = false;
-                  do {
-                    n = gr ? getRandomNum(1,3) : getRandomNum(1,2);
-                    gr = !gr;
-                    if (sum < n) {
-                      n = sum;
-                    }
-                    sum -= n;
-                    l.push(n);
-                  } while (sum > 0);
-
-                  sum = 100;
-                  do {
-                    n = gr ? getRandomNum(1,3) : getRandomNum(0,1);
-                    gr = !gr;
-                    if (sum < n) {
-                      n = sum;
-                    }
-                    sum -= n;
-                    l.push(n);
-                  } while (sum > 0);
-
-                  if (l.length%2 != 0) l.push(0);
-
-                  this.grassMap.push(l);
-                }
-              }
-
-              grassH = 2+Math.floor((i+8)/4);
-
-              this.canvasCtx.lineWidth = grassH;
-              grassH /= 2;
-
-              let line = (i+8)%10;
-              this.canvasCtx.setLineDash(this.grassMap[line]);
-              this.canvasCtx.strokeStyle = "rgba(32,128,0,"+(alphaStep * (i+8))+")";
-              this.canvasCtx.beginPath();
-              this.canvasCtx.moveTo(0, y + i - grassH);
-              this.canvasCtx.lineTo(width, y + i - grassH);
-              //this.canvasCtx.quadraticCurveTo( width/2, y + i*1.5, width, y + i - grassH);
-              this.canvasCtx.lineDashOffset = -spinner - width/2 + this.grassMapOffset[line];
-              this.canvasCtx.stroke();
-
-            } else { // Draw stripes
-
-              this.canvasCtx.globalCompositeOperation = 'multiply';
-  //            this.canvasCtx.setLineDash([45,55,35,65]);
-              this.canvasCtx.setLineDash([100,100]);
-              this.canvasCtx.lineWidth = step;
-              this.canvasCtx.strokeStyle = "rgba(200,200,0,"+(alphaStep * (i+8))+")";
-              this.canvasCtx.beginPath();
-              this.canvasCtx.moveTo(0, y + i);
-              this.canvasCtx.lineTo(width, y + i);
-              this.canvasCtx.lineDashOffset = -spinner - width/2;
-              this.canvasCtx.stroke();
-            }
-
-            this.canvasCtx.restore();
-          }
+          if (N7e.config.SHOW_SEPIA == 0)
+            this.canvasCtx.globalCompositeOperation = 'multiply';
+          this.canvasCtx.drawImage(this.groundCanvas,
+              0, (Math.floor(this.xPos[0] + 600) % 200) * 25 + 4,
+              N7e.defaultDimensions.WIDTH, 22,
+              0, N7e.defaultDimensions.HEIGHT - 21,
+              N7e.defaultDimensions.WIDTH, 23);
           this.canvasCtx.restore();
 
         },
@@ -3539,7 +3590,7 @@
          * @param {number} speed
          */
         update: function (deltaTime, speed) {
-          var increment = Math.floor(speed * (FPS / 1000) * deltaTime);
+          var increment = speed * FPS / 1000 * deltaTime;
 
           if (this.xPos[0] <= 0) {
             this.updateXPos(0, increment);
@@ -3681,21 +3732,14 @@
         updateMountains: function (deltaTime, speed) {
           var mountainSpeed = this.mountainSpeed / 1000 * deltaTime * speed;
           var numMountains = this.mountains.length;
-          let n7e = N7e();
 
           if (numMountains) {
             for (let j = 0; j < 2; j++) {
-              this.canvasCtx.fillStyle = '#' + (j == 0 ? n7e.gradients.rgb0x2 : n7e.gradients.rgb0x1);
-              this.canvasCtx.beginPath();
               for (let i = numMountains - 1; i >= 0; i--) {
                 if (this.mountains[i].depth == j) {
-                  this.mountains[i].update(this.canvasCtx, mountainSpeed * (j ? 1.1 : 1));
+                  this.mountains[i].update(mountainSpeed * (j ? 1.1 : 1));
                 }
               }
-              this.canvasCtx.save();
-              this.canvasCtx.filter = 'hue-rotate(-25deg)';
-              this.canvasCtx.fill();
-              this.canvasCtx.restore();
             }
 
             var lastMountain = this.mountains[numMountains - 1];
@@ -3832,25 +3876,25 @@
         },
 
         addMountain: function(distance, level) {
-          let mountain = new Mountain(distance, level);
+          let mountain = new Mountain(this.canvas, distance, level);
           this.mountains.push(mountain);
 
-          let adjust = true;
+          let adjusted;
           let mountains = this.mountains;
-          while (adjust) {
-            adjust = false;
+          do {
+            adjusted = false;
             let untested = [];
 
             mountains.forEach(mnt => {
               if (mountain.xPos > mnt.xPos && mountain.xPos + mountain.width < mnt.xPos + mnt.width) {
-                mountain.xPos = mnt.xPos + mnt.width - mountain.width/2 + getRandomNum(0,100);
-                adjust = true;
+                mountain.xPos +=  mnt.width - mountain.width/2 + getRandomNum(0,100);
+                adjusted = true;
               } else {
                 untested.push(mnt);
               }
             });
             mountains = untested;
-          }
+          } while (adjusted);
         },
 
         addMountains: function () {
