@@ -586,8 +586,6 @@
 
             // Outer container and distance meter.
             if (this.playing || this.crashed || this.paused) {
-              this.containerEl.style.width = this.dimensions.WIDTH + 'px';
-              this.containerEl.style.height = this.dimensions.HEIGHT + 'px';
               this.distanceMeter.update(0, Math.ceil(this.distanceRan));
               this.stop();
             } else {
@@ -607,23 +605,6 @@
             this.amdr.playingIntro = true;
 
             // CSS animation definition.
-            var keyframes = '@-webkit-keyframes intro { ' +
-            'from { border-radius: 20px; width:' + AMDR.config.WIDTH + 'px }' +
-            'to { border-radius: 10px; width: ' + this.dimensions.WIDTH + 'px }' +
-            '}';
-
-            // create a style sheet to put the keyframe rule in
-            // and then place the style sheet in the html head
-            var sheet = document.createElement('style');
-            sheet.innerHTML = keyframes;
-            document.head.appendChild(sheet);
-
-            this.containerEl.addEventListener(N7e.events.ANIM_END,
-              this.startGame.bind(this));
-
-            this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
-            this.containerEl.style.width = this.dimensions.WIDTH + 'px';
-            this.containerEl.style.borderRadius = "10px";
 
             // if (this.touchController) {
             //     this.outerContainerEl.appendChild(this.touchController);
@@ -643,7 +624,6 @@
           this.runningTime = 0;
           this.playingIntro = false;
           this.amdr.playingIntro = false;
-          this.containerEl.style.webkitAnimation = '';
           this.playCount++;
 
           // Handle tabbing off the page. Pause the current game.
@@ -1351,7 +1331,6 @@
             this.distanceRan = 0;
             this.setSpeed(this.config.SPEED);
             this.time = getTimeStamp();
-            this.containerEl.classList.remove(N7e.classes.CRASHED);
             this.clearCanvas();
             this.distanceMeter.reset(this.highestScore);
             this.horizon.reset();

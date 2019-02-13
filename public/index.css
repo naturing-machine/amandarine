@@ -66,14 +66,10 @@ html, body {
 
 .offline .runner-container {
   height: 200px;
-  max-width: 600px;
-  overflow: hidden;
   position: absolute;
   top: 35px;
   top: 200px;
-  width: 40px;
-  border-radius: 25px;
-  animation: wobble 15s ease-in-out alternate infinite;
+  width: 600px;
 }
 
 .offline .runner-canvas {
@@ -84,6 +80,7 @@ html, body {
   position: absolute;
   top: 0;
   z-index: 2;
+  border-radius: 8px;
 }
 
 .offline .controller {
