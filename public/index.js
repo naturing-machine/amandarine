@@ -47,13 +47,13 @@
       this.time = 0;
       this.runningTime = 0;
       this.msPerFrame = 1000 / FPS;
-      this.currentSpeed = this.config.SPEED;
+      this.currentSpeed = 0;
 
       this.obstacles = [];
 
       this.actions = [];
 
-      this.activated = false; // Whether the easter egg has been activated.
+      this.activated = false;
       this.playing = false; // Whether the game is currently in play state.
       this.crashed = false;
       this.paused = false;
@@ -75,7 +75,7 @@
       this.imagesLoaded = 0;
 
       this.loadImages();
-      this.config.PLAY_MUSIC = true;
+      this.config.PLAY_MUSIC = false;
       this.loadMusic('offline-intro-music', this.config.PLAY_MUSIC);
       this.loadMusic('offline-play-music', false);
     }
@@ -357,6 +357,12 @@
               song = n7e.musics.songs[name] = {}
             }
 
+            if (autoplay) {
+              for (let name in n7e.musics.songs) {
+                n7e.musics.songs[name].autoplay = false;
+              }
+            }
+
             song.autoplay = autoplay;
 
             if (song.data) {
@@ -366,7 +372,8 @@
                 song.audio = this.playSound(song.data, 0.3);
               }
 
-            } else {
+            } else if (!song.hasOwnProperty('progress')) {
+              song.progress = 0;
               var resourceTemplate = document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
               let request = new XMLHttpRequest();
               request.open('GET', resourceTemplate.getElementById(name).src, true);
@@ -688,46 +695,33 @@
             }
           }
 
-          this.clearCanvas();
 
           if (this.playing) {
-            this.amdr.updateAction(deltaTime, this.currentSpeed);
-
+            this.clearCanvas();
             this.runningTime += deltaTime;
             var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
 
-            // The horizon doesn't move until the intro is over.
-            if (this.playingIntro) {
-              this.horizon.update(0, this.currentSpeed, hasObstacles);
+            if (this.crashed && this.gameOverPanel) {
+              this.gameOverPanel.updateDimensions(this.dimensions.WIDTH);
+              this.gameOverPanel.draw();
+
+              let alpha = (3000-this.actions[0].timer)/3000;
+              if (alpha < 0) alpha = 0;
+              this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
+
+              if (alpha > 0.95) {
+                let crashPoint = this.actions[0].crashPoint;
+                this.canvasCtx.drawImage(N7e.imageSprite,
+                    N7e.spriteDefinition.HDPI.CRASH.x,
+                    N7e.spriteDefinition.HDPI.CRASH.y,
+                    this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
+                    crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
+                    this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
+              }
+
+              this.gameOverPanel.draw();
             } else {
-              deltaTime = !this.activated ? 0 : deltaTime;
-
-              // Game over panel.
-              if (this.crashed && this.gameOverPanel) {
-                this.gameOverPanel.updateDimensions(this.dimensions.WIDTH);
-                this.gameOverPanel.draw();
-              }
-
-              if (this.crashed && this.gameOverPanel) {
-                let alpha = (3000-this.amdr.action.timer)/3000;
-                if (alpha < 0) alpha = 0;
-                this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
-
-                if (alpha > 0.95) {
-                  let crashPoint = this.amdr.action.crashPoint;
-                  this.canvasCtx.drawImage(N7e.imageSprite,
-                      N7e.spriteDefinition.HDPI.CRASH.x,
-                      N7e.spriteDefinition.HDPI.CRASH.y,
-                      this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
-                      crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
-                      this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
-                }
-
-                this.gameOverPanel.draw();
-              } else {
-                this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, 1);
-              }
-
+              this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, 1);
             }
 
             // Check for collisions.
@@ -787,152 +781,16 @@
                 }
               }
             }
-          } else {
-            this.horizon.update(0, this.currentSpeed, true);
+          } else if (!this.crashed){
+            this.clearCanvas();
+            this.horizon.update(0, 6, true);
           }
 
-          if (this.playing || (!this.activated &&
-              this.amdr.blinkCount < N7e.config.MAX_BLINK_COUNT)) {
+          let a = this.actions[0];
+          this.amdr.updateActionQueue(this.actions, now, deltaTime, this.currentSpeed);
 
-            let action = this.actions[0];
-            if (!this.crashed && action && action.status != -1 && !action.hidden && !action.first) {
-              switch(action.type) {
-                case AMDR.status.JUMPING:
-                  this.drawJumpingGuide(this.actions[0], now);
-                  break;
-                case AMDR.status.SLIDING:
-                  this.drawSlidingGuide(this.actions[0], now);
-                  break;
-                default:;
-              }
-            }
-
-            this.amdr.update(this.currentSpeed, deltaTime);
-
-            this.scheduleNextUpdate();
-          }
-        },
-
-        /**
-         * Draw sliding guide.
-         * @param {Object} action object
-         * @param {number} now
-         */
-        drawSlidingGuide: function (action, now) {
-
-          let slideDuration;
-          let alpha;
-          let baseX = this.amdr.xPos;
-
-          if (action.maxPressDuration) {
-            slideDuration = action.maxPressDuration;
-            baseX = this.amdr.config.START_X_POS - action.distance;
-            alpha = (action.fullDistance - action.distance)/action.fullDistance;
-            alpha *= alpha;
-          } else {
-            // status 0
-            slideDuration = now - action.begin;
-            if (slideDuration > N7e.config.MAX_ACTION_PRESS) {
-              slideDuration = N7e.config.MAX_ACTION_PRESS;
-            }
-            alpha = slideDuration/N7e.config.MAX_ACTION_PRESS;
-            slideDuration = N7e.config.SLIDE_FACTOR * shapeSpeedDuration(this.currentSpeed, slideDuration);
-          }
-
-          var distance = this.currentSpeed * 0.001 * FPS * slideDuration;
-
-          let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 4;
-
-          this.canvasCtx.save();
-          this.canvasCtx.globalAlpha = 0.50 * alpha;
-          this.canvasCtx.filter = 'grayscale(1)';
-          this.canvasCtx.globalCompositeOperation = 'hard-light';
-          this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
-              AMDR.animFrames.SLIDING.frames[frame]*2, 0, 40, 40,
-              baseX + distance, this.amdr.yPos,
-              this.amdr.config.WIDTH, this.amdr.config.HEIGHT);
-          this.canvasCtx.restore();
-        },
-
-        /**
-         * Draw jumping guide.
-         * @param {Object} action object
-         * @param {number} now
-         */
-        drawJumpingGuide: function (action, now) {
-          /* Draw jumping guide */
-
-          let pressDuration = action.maxPressDuration;
-
-          if (!pressDuration) {
-            // status 0
-            pressDuration = now - action.begin;
-            if (pressDuration > N7e.config.MAX_ACTION_PRESS) {
-              pressDuration = N7e.config.MAX_ACTION_PRESS;
-            }
-
-            pressDuration = shapeSpeedDuration(this.currentSpeed, pressDuration);
-          }
-
-          let fallDuration = Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
-
-          let jumpTop = pressDuration / 1000;
-
-          this.canvasCtx.save(); {
-            this.canvasCtx.beginPath();
-            this.canvasCtx.strokeStyle = "#000000";
-
-            let baseX = this.amdr.xPos + 12;
-            let baseY = this.amdr.groundYPos + 35;
-            let shiftLeft = 0;
-            let fadeOut = 1;
-            let DRAW_STEP = 50;
-            var increment = this.currentSpeed * 0.001 * FPS * DRAW_STEP;
-
-            if (action.status == 2) {
-              let last = now - action.end;
-              shiftLeft = increment * last / DRAW_STEP;
-              fadeOut = (fallDuration - last) / fallDuration;
-              if (fadeOut < 0) fadeOut = 0;
-            }
-
-            let unit = fallDuration * 2 / DRAW_STEP;
-            let gravityFactor = 0.0000005 * AMDR.config.GRAVITY;
-            this.canvasCtx.moveTo(
-              baseX + unit*increment - shiftLeft,
-              baseY - (jumpTop - (gravityFactor * fallDuration * fallDuration)) * N7e.config.SCALE_FACTOR
-            );
-
-            for (let timer = fallDuration; timer > - fallDuration - DRAW_STEP; timer-= DRAW_STEP, unit--) {
-              let drawY = baseY - (jumpTop - (gravityFactor * timer * timer)) * N7e.config.SCALE_FACTOR;
-              let drawX = baseX + unit*increment - shiftLeft;
-
-              if (drawX < this.amdr.xPos + 20 && drawY > baseY - 60 ) {
-                break;
-              }
-
-              this.canvasCtx.lineTo(drawX, drawY);
-            }
-
-            now = (now/10)%40;
-            let alpha = fadeOut * (fallDuration-150)/200;
-            if (alpha > 1) alpha = 1;
-
-            this.canvasCtx.lineCap = 'round';
-            this.canvasCtx.setLineDash([0,20]);
-
-            /*
-            this.canvasCtx.lineWidth = 1;
-            this.canvasCtx.lineDashOffset = now+5;
-            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
-            this.canvasCtx.stroke();
-            */
-
-            this.canvasCtx.lineWidth = alpha*5;
-            this.canvasCtx.lineDashOffset = now;
-            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
-            this.canvasCtx.stroke();
-          } this.canvasCtx.restore();
+          this.amdr.update(0, this.currentSpeed);
+          this.scheduleNextUpdate();
         },
 
         /**
@@ -1015,7 +873,9 @@
             e.preventDefault();
           }
 
-          let action;
+          if (this.crashed && e.type == N7e.events.TOUCHSTART && e.currentTarget == this.containerEl) {
+            this.restart();
+          }
 
           let inputType;
           if (e.type == N7e.events.TOUCHSTART) {
@@ -1301,7 +1161,6 @@
           if (!this.crashed) {
             this.playing = true;
             this.paused = false;
-            this.amdr.update(this.currentSpeed, 0, AMDR.status.RUNNING);
             this.time = getTimeStamp();
             this.update();
           }
