@@ -483,9 +483,24 @@
           this.adjustDimensions();
           this.setSpeed();
 
+          this.actionIndex = 0;
+          this.defaultAction = {
+            type: AMDR.status.WAITING,
+            priority: 0,
+          };
+          this.queueAction({
+            type: AMDR.status.RUNNING,
+            priority: 0,
+            speed: 1,
+            xPos: -80,
+            duration: 1400,
+            title: true,
+          });
+          this.queueAction(this.defaultAction);
+
+
           this.containerEl = document.createElement('div');
           this.containerEl.className = N7e.classes.CONTAINER;
-//	      this.containerEl.style.borderRadius = "20px";
 
           // Player canvas container.
           this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
@@ -649,36 +664,13 @@
           // Filter ended action(s).
           this.updatePending = false;
 
-          if (this.actions.length) {
-            this.actions = this.actions.filter( action => {
-              if (action.status == -1) {
-
-                if (action.first) {
-                  let n7e = N7e();
-                  n7e.musics.stop();
-                  n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
-                  // First jump triggers the intro.
-                  this.playIntro();
-                }
-
-                this.amdr.assignAction({
-                  type: AMDR.status.RUNNING,
-                  status: 1,
-                }, this.currentSpeed);
-
-                return false;
-              }
-
-              return true;
-            });
-
-            if (this.actions.length) {
-              if (this.actions[0].status == 1) {
-                this.amdr.assignAction(this.actions[0], this.currentSpeed);
-              }
-            }
-
-          }
+          /*
+          if (this.playing)
+            this.amdr.assignAction({
+              type: AMDR.status.RUNNING,
+              priority: 0,
+            }, this.currentSpeed);
+            */
 
           var now = getTimeStamp();
           var deltaTime = now - (this.time || now);
@@ -759,11 +751,13 @@
                 this.currentSpeed += this.config.ACCELERATION;
               }
             } else if (!this.crashed) {
-              this.amdr.assignAction({
+
+              this.queueAction({
                 type: AMDR.status.CRASHED,
-                status: 1,
+                priority: 3,
                 crashPoint: obstacle.crash[0].intersection(obstacle.crash[1]).center(),
               }, this.currentSpeed);
+
               this.gameOver(obstacle);
             }
 
@@ -998,6 +992,8 @@
           }
         },
 
+
+        // TODO forward amdr-related events to amdr
         /**
          * Process keydown.
          * @param {Event} e
@@ -1032,76 +1028,47 @@
               }
               break;
             }
+          } else if (N7e.keycodes.JUMP[e.keyCode]) {
+            inputType = AMDR.status.JUMPING;
+          } else if (N7e.keycodes.SLIDE[e.keyCode]) {
+            inputType = AMDR.status.SLIDING;
           }
 
-          if (!this.crashed && (N7e.keycodes.JUMP[e.keyCode] ||
-              inputType == AMDR.status.JUMPING)) {
-
-            action = {
-              begin: e.timeStamp,
-              type: AMDR.status.JUMPING,
-              code: String(e.keyCode), //FIXME avoid testing with code but action type
-              status: 0
-            };
-
-            /* TODO Definitions
-            status 0: Gathering info.
-            status 1: Done gatherng.
-            status 2: Triggered.
-            status -1: Discarded. (Animation has ended)
-            */
-
-            if (!this.playing) {
-              let n7e = N7e();
-
-              action.first = true;
-              this.loadSounds();
-              this.gradients.sky2 = N7e.config.SKY.DAY;
-              this.skyFadingStartTime = getTimeStamp();
-              this.update();
-              n7e.musics.stop();
-            }
+          if (this.actions.length && this.actions[0].title) {
+            inputType = null;
           }
 
-          if (this.crashed && e.type == N7e.events.TOUCHSTART && e.currentTarget == this.containerEl) {
-            this.restart();
-          }
+          if (!this.crashed) {
 
-          if (this.playing && !this.crashed && (N7e.keycodes.SLIDE[e.keyCode] || inputType == AMDR.status.SLIDING)) {
-            e.preventDefault(); //Test if this is needed.
+            let action;
+            if (inputType == AMDR.status.JUMPING) {
 
-            action = {
-              begin: e.timeStamp,
-              type: AMDR.status.SLIDING,
-              code: String(e.keyCode),
-              status: 0
-            };
+              action = this.amdr.newAction(this.actions, AMDR.status.JUMPING);
+              action.begin = action.begin || e.timeStamp;
 
-            /*
-            if (this.amdr.getAction() != AMDR.status.JUMPING && !this.amdr.ducking) {
-              this.amdr.setDuck(true);
-            }
-            */
-          }
+              if (!this.playing) {
+                let n7e = N7e();
 
-          QUEUE_ACTION: if (action) {
-            for (let i = 0, action0; action0 = this.actions[i]; i++) {
-              // First preparing action will be discarded.
-              if (action0.status == 0) {
-
-                // The prior state for the keycode wasn't yet handled so
-                // the event is actually a repeat, discard it.
-                if (action0.code == action.code) {
-                  return;
-                }
-
-                action0.status = -1;
-                this.actions.splice(i + 1, 0, action);
-                break QUEUE_ACTION;
+                action.first = true;
+                this.loadSounds();
+                this.gradients.sky2 = N7e.config.SKY.DAY;
+                this.skyFadingStartTime = getTimeStamp();
+                this.update();
+                n7e.musics.stop();
+                this.play();
               }
+
+            } else if (this.playing && inputType == AMDR.status.SLIDING) {
+              e.preventDefault(); //Test if this is needed.
+
+              action = this.amdr.newAction(this.actions, AMDR.status.SLIDING);
+              action.begin = action.begin || e.timeStamp;
             }
 
-            this.actions.push(action);
+            if (action && !action.index) {
+              this.queueAction(action);
+            }
+
           }
 
         },
@@ -1126,10 +1093,17 @@
                 inputType = AMDR.status.SLIDING;
               }
               break;
-            }
-          } else if (N7e.keycodes.JUMP[keyCode] || e.type == N7e.events.MOUSEDOWN) {
+            } //FIXME MOUSE
+          } else if (N7e.keycodes.JUMP[keyCode] || e.type == N7e.events.MOUSEUP) {
             inputType = AMDR.status.JUMPING;
+          } else if (N7e.keycodes.SLIDE[keyCode]) {
+            inputType = AMDR.status.SLIDING;
           }
+
+          if (this.actions.length && this.actions[0].title) {
+            inputType = null;
+          }
+
 
           if (keyCode == '67') {
             n7e.config.SHOW_COLLISION = !n7e.config.SHOW_COLLISION;
@@ -1175,29 +1149,30 @@
             this.adjustSkyGradient(1);
             this.clearCanvas();
             this.horizon.horizonLine.draw();
-            this.amdr.update(this.currentSpeed, 0);
+            this.amdr.update(0, this.currentSpeed);
           }
 
           if (!this.crashed && this.isRunning() && inputType == AMDR.status.JUMPING) {
             this.playing = true;
 
             for (let i = 0, action; action = this.actions[i]; i++) {
-              if (action.code == keyCode && !action.end) {
+              if (action.type == inputType && action.priority == 0) {
                 action.end = e.timeStamp;
                 action.pressDuration = action.end - action.begin;
                 if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
-                action.status = 1; // 0: Preparing, 1: Ready, 2: In progres, -1: Ended.
+                action.priority = 1;
+                break;
               }
             }
 
           } else if (N7e.keycodes.SLIDE[keyCode] || inputType == AMDR.status.SLIDING) {
-
             for (let i = 0, action; action = this.actions[i]; i++) {
-              if (action.code == keyCode && action.status == 0) {
+              if (action.type == inputType && action.priority == 0) {
                 action.end = e.timeStamp;
                 action.pressDuration = action.end - action.begin;
                 if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
-                action.status = 1;
+                action.priority = 1;
+                break;
               }
             }
             //this.amdr.setDuck(false);
@@ -1207,7 +1182,7 @@
 
             if (N7e.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
             (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
-              N7e.keycodes.JUMP[keyCode])) {
+              inputType == AMDR.status.JUMPING)) {
                 this.stop();
                 this.restart();
               }
@@ -1216,7 +1191,12 @@
             this.amdr.reset();
             this.play();
           }
+        },
 
+        queueAction: function (action) {
+          this.actionIndex++;
+          action.index = this.actionIndex;
+          this.actions.push(action);
         },
 
         /**
@@ -1288,7 +1268,7 @@
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
               */
 
-          this.amdr.update(this.currentSpeed, 100, AMDR.status.CRASHED);
+          this.amdr.update(100, this.currentSpeed, AMDR.status.CRASHED);
 
           if (!this.gameOverPanel) {
             this.gameOverPanel = new GameOverPanel(this.canvas,
@@ -1731,8 +1711,7 @@
       // Simple outer bounds check.
       if (amdrBox.intersects(obstacleBox)) {
         var collisionBoxes = obstacle.collisionBoxes;
-        var amdrCollisionBoxes = amdr.getAction() == AMDR.status.SLIDING ?
-        AMDR.collisionBoxes.SLIDING : AMDR.collisionBoxes.RUNNING;
+        var amdrCollisionBoxes = amdr.getCollisionBoxes();
 
         // Detailed axis aligned box check.
         for (var t = 0; t < amdrCollisionBoxes.length; t++) {
@@ -2238,7 +2217,7 @@
       this.config = AMDR.config;
       this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * N7e().config.SCALE_FACTOR;
       // Current status.
-      this.status = AMDR.status.WAITING;
+      //this.status = AMDR.status.WAITING;
       this.dust = new Particles(canvas, this.xPos, this.yPos, AMDR.config.DUST_DURATION);
 
       this.init();
@@ -2346,7 +2325,18 @@
           this.currentFrame = 0;
 
           this.draw(0, 0);
-          this.update(0, 0, AMDR.status.WAITING);
+        },
+
+
+        getCollisionBoxes: function () {
+          switch (this.status) {
+            case AMDR.status.SLIDING:
+              return AMDR.collisionBoxes.SLIDING
+
+            case AMDR.status.RUNNING:
+            default:
+              return AMDR.collisionBoxes.RUNNING;
+          }
         },
 
         /**
@@ -2354,8 +2344,8 @@
          * @param {!number} deltaTime
          * @param {AMDR.status} status Optional status to switch to.
          */
-        update: function (speed, deltaTime, opt_status) {
-          this.timer += deltaTime;
+        update: function (deltaTime, speed, opt_status) {
+          this.timer = (this.timer || 0) +  deltaTime;
           let n7e = N7e();
 
           // Update the status.
@@ -2432,90 +2422,202 @@
           }
         },
 
-        },
+      /*** Priority Definitions ***
+        0: Either...
+          a) Collecting active parameters (eg. weighting Jump & Slide)
+          b) Suspended. Waiting to be updated into a background task.
+        1: Either...
+          a) Will be active once an active task has ended.
+          b) Timeless background task. (eg. Wait, Run. Will never be active
+            but will eventually be pushed back to 0).
+        2: Active, will not be interrupted during game play. (eg. Jump, Slide)
+        3: Interrupting. (eg. Crash, Pause)
+       -1: Zombie, a released task.
+       ***/
 
-
-          this.draw(this.currentAnimFrames[this.currentFrame], 0);
-/*
-
-            if (deltaTime >= this.blinkDelay) {
-                this.draw(this.currentAnimFrames[this.currentFrame], 0);
-
-                }
+        newAction: function(actionQueue, type) {
+          for (let i = 0, action; action = actionQueue[i]; i++){
+            if (action.type == type && action.priority == 0) {
+              return action;
             }
-*/
+          }
+          return {type:type, priority:0};
         },
 
-        /**
-         * Start an action.
-         * @param {Object} action definition
-         * @param {Object} action definition
-         */
-        assignAction: function (action, speed) {
+        updateActionQueue: function (actionQueue, now, deltaTime, speed) {
+          actionQueue.sort((a,b) => a.priority == b.priority
+            ? a.index - b.index
+            : b.priority - a.priority);
+          actionQueue.splice(0, Infinity, ...actionQueue.filter( action => action.priority != -1 ));
+
           let n7e = N7e();
 
-          if (!this.action || this.action.type != AMDR.status.CRASHED) {
-            this.action = action;
-            this.action.status = 2;
-            action = this.action;
-          } else {
-            return;
+          UPDATE_ACTION_QUEUE: {
+            for (let i = 0, action; action = actionQueue[i]; i++) {
+              switch(action.priority) {
+                case 0: { /* Prepare action */
+
+                  switch(action.type) {
+                    case AMDR.status.JUMPING:
+                      this.drawJumpingGuide(action, now, speed);
+                      break;
+                    case AMDR.status.SLIDING:
+                      this.drawSlidingGuide(action, now, speed);
+                      break;
+                    case AMDR.status.RUNNING:
+                      if (action.hasOwnProperty('xPos')) {
+                        this.xPos = action.xPos;
+                      }
+                    case AMDR.status.WAITING:
+                      action.timer = 0;
+                      action.priority = 1;
+                      this.updateAction(action, deltaTime, speed);
+                      this.update(deltaTime, speed, action.type);
+                    default:;
+                  }
+
+                  break UPDATE_ACTION_QUEUE;
+                }
+
+                case 1:  /* Initialise action */
+                  switch(action.type) {
+                    case AMDR.status.JUMPING:
+                      {
+                        action.maxPressDuration = shapeSpeedDuration(speed, action.pressDuration);
+                        // It seems more ergonomically natural to simply add the minimum than to clip the value.
+                        action.top = action.maxPressDuration / 1000;
+                        action.halfTime = Math.sqrt(2000 * action.maxPressDuration / AMDR.config.GRAVITY);
+
+                        if (action.end + action.halfTime * 2 < now) {
+                          action.priority = -1;
+                          continue;
+                        }
+
+                        n7e.playSound(n7e.soundFx.SOUND_JUMP,0.4);
+                        n7e.playSound(n7e.soundFx.SOUND_DROP,0.4 * action.pressDuration/n7e.config.MAX_ACTION_PRESS);
+                        action.timer = 0;
+
+                        if (n7e.config.SHOW_SEPIA != 1) {
+                          this.dust.xPos = this.xPos - 24;
+                          this.dust.addPoint(0, 0, -40, -10 * Math.random());
+                        }
+
+                        this.update(0, speed, action.type);
+                      } break;
+                    case AMDR.status.SLIDING:
+                      {
+                        let sp = action.speed || speed + 0.2;
+
+                        if (!action.maxPressDuration) {
+                          action.maxPressDuration = n7e.config.SLIDE_FACTOR * shapeSpeedDuration(sp, action.pressDuration);
+                        }
+                        // Sliding act pretty much like jumping, just going one way forward.
+                        //action.pressDuration += N7e.config.MIN_ACTION_PRESS_FACTOR;
+
+                        action.fullDistance = sp * 0.001 * FPS * action.maxPressDuration;
+                        action.fullTime = action.fullDistance / (sp * FPS);
+
+                        if (action.end + action.fullTime * 1000 < now) {
+                          action.priority = -1;
+                          continue;
+                        }
+
+                        n7e.playSound(n7e.soundFx.SOUND_SLIDE,0.6);
+
+                        action.timer = 0;
+                        action.distance = 0;
+                        action.friction = 2 * action.fullDistance / (action.fullTime * action.fullTime);
+                        action.xPos = this.xPos;
+
+                        this.update(0, sp, action.type);
+                      } break;
+                    case AMDR.status.RUNNING:
+                      if (action.speed) {
+                        let sp = speed + action.speed;
+                        let increment = sp * FPS / 1000 * deltaTime;
+                        this.xPos += increment;
+                      }
+
+                      if (action.hasOwnProperty('duration') && action.duration > 0) {
+                        action.duration -= deltaTime;
+                        if (action.duration < 0) {
+                          action.priority = -1;
+                        }
+                        this.updateAction(action, deltaTime, speed);
+                        this.update(deltaTime, speed);
+                        break UPDATE_ACTION_QUEUE;
+                      }
+                    case AMDR.status.WAITING:
+                      this.updateAction(action, deltaTime, speed);
+                      this.update(deltaTime, speed);
+                      continue;
+                    default:
+                      break UPDATE_ACTION_QUEUE;
+                  }
+                  action.priority = 2;
+                  // All 1s will progress into 2s
+                case 2:
+                  this.updateAction(action, deltaTime, speed);
+
+                  if (action.priority == -1) {
+
+                    // At the end of the first action, the actual game begins.
+                    if (action.first) {
+                      n7e.musics.stop(); // shouldn't need
+                      n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
+                      n7e.playIntro();
+                      n7e.setSpeed(6);
+                      n7e.defaultAction.type = AMDR.status.RUNNING;
+                    }
+
+                    // To get default action updated.
+                    n7e.defaultAction.priority = 0;
+                  }
+
+                  this.update(deltaTime, speed);
+                  break UPDATE_ACTION_QUEUE;
+                case 3:
+                  switch(action.type) {
+                    case AMDR.status.PAUSED:
+                      //NYI
+                      break UPDATE_ACTION_QUEUE;
+                    case AMDR.status.CRASHED: {
+                      if (!action.updated) {
+                        n7e.musics.stop();
+                        n7e.playSound(N7e().soundFx.SOUND_OGGG,0.3);
+                        n7e.setSky(n7e.config.SKY.SUNSET);
+
+                        action.duration = 200;
+                        action.top = action.duration / 1000;
+                        action.halfTime = Math.sqrt(2000 * action.duration / AMDR.config.GRAVITY);
+                        action.timer = 0;
+                        action.yCrashed = this.yPos;
+                        action.lagging = speed;
+                        action.updated = true;
+                        this.updateAction(action, deltaTime, speed);
+                        this.update(deltaTime, speed, action.type);
+                      } else {
+                        this.updateAction(action, deltaTime, speed);
+                        this.update(deltaTime, speed);
+                      }
+
+                      if (action.priority == -1) {
+                        actionQueue.length = 0;
+                      }
+                    } break UPDATE_ACTION_QUEUE;
+                    default:;
+                  }
+
+                default:
+                  this.updateAction(action, deltaTime, speed);
+                  break UPDATE_ACTION_QUEUE;
+              }
+            }
           }
 
-          switch(action.type) {
-            case AMDR.status.JUMPING:
-              {
-                action.maxPressDuration = shapeSpeedDuration(speed, action.pressDuration);
-                // It seems more ergonomically natural to simply add the minimum than to clip the value.
-                action.top = action.maxPressDuration / 1000;
-                action.halfTime = Math.sqrt(2000 * action.maxPressDuration / AMDR.config.GRAVITY);
-                action.timer = 0;
+          //this.updateAction(deltaTime, speed);
 
-                n7e.playSound(n7e.soundFx.SOUND_JUMP,0.4);
-                n7e.playSound(n7e.soundFx.SOUND_DROP,0.4 * action.pressDuration/n7e.config.MAX_ACTION_PRESS);
-
-              } break;
-            case AMDR.status.SLIDING:
-              {
-                action.maxPressDuration = n7e.config.SLIDE_FACTOR * shapeSpeedDuration(speed, action.pressDuration);
-                // Sliding act pretty much like jumping, just going one way forward.
-                //action.pressDuration += N7e.config.MIN_ACTION_PRESS_FACTOR;
-
-                action.timer = 0;
-                action.fullDistance = speed * 0.001 * FPS * action.maxPressDuration;
-                action.distance = 0;
-                action.fullTime = action.fullDistance / (speed * FPS);
-
-                action.friction = 2 * action.fullDistance / (action.fullTime * action.fullTime);
-
-                n7e.playSound(n7e.soundFx.SOUND_SLIDE,0.6);
-              } break;
-            case AMDR.status.CRASHED:
-              {
-                let n7e = N7e();
-                n7e.playSound(N7e().soundFx.SOUND_OGGG,0.3);
-                n7e.setSky(n7e.config.SKY.SUNSET);
-                n7e.musics.stop();
-                action.duration = 200;
-                // It seems more ergonomically natural to simply add the minimum than to clip the value.
-                action.top = action.duration / 1000;
-                action.halfTime = Math.sqrt(2000 * action.duration / AMDR.config.GRAVITY);
-                action.timer = 0;
-                action.yCrashed = this.yPos;
-                action.speed = speed;
-
-              } break;
-            default:;
-          }
-
-          this.update(speed, 0, action.type);
-        },
-
-        getAction: function () {
-          if (this.action && this.action.status != -1) {
-            return this.action.type;
-          }
-          return AMDR.status.RUNNING;
+          //this.update(speed, deltaTime);
         },
 
         /**
@@ -2523,78 +2625,222 @@
          * @param {number} deltaTime
          * @param {number} speed
          */
-        updateAction: function (deltaTime, speed) {
-          if (!this.action || this.action.status == -1) return false;
+        updateAction: function (action, deltaTime, speed) {
+          if (!action || action.priority == -1) {
+            console.log('something wrong');
+            return false;
+          }
 
-          this.action.timer += deltaTime;
-          switch (this.action.type) {
-            case AMDR.status.RUNNING:
-              {
+          let n7e = N7e();
+
+          action.timer += deltaTime;
+          switch (action.type) {
+            case AMDR.status.WAITING:
+              break;
+            case AMDR.status.RUNNING: {
+              if (this.xPos < this.config.START_X_POS) {
+                this.xPos += 0.2 * speed * (FPS / 1000) * deltaTime;
+                if (this.xPos > this.config.START_X_POS) {
+                  this.xPos = this.config.START_X_POS;
+                }
+              } else if (this.xPos > this.config.START_X_POS) {
+                this.xPos -= 0.2 * speed * (FPS / 1000) * deltaTime;
                 if (this.xPos < this.config.START_X_POS) {
-                  this.xPos += 0.2 * speed * (FPS / 1000) * deltaTime;
-                  if (this.xPos > this.config.START_X_POS) {
-                    this.xPos = this.config.START_X_POS;
-                  }
-                } else if (this.xPos > this.config.START_X_POS) {
-                  this.xPos -= 0.2 * speed * (FPS / 1000) * deltaTime;
-                  if (this.xPos < this.config.START_X_POS) {
-                    this.xPos = this.config.START_X_POS;
-                  }
-                }
-              }
-              break;
-            case AMDR.status.JUMPING:
-              {
-                let timer = this.action.halfTime - this.action.timer;
-                let dY = this.action.top * N7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * timer * timer;
-
-                this.yPos = this.groundYPos - dY;
-
-                if (timer < -this.action.halfTime) {
-                  let n7e = N7e();
-                  this.action.status = -1;
-                  this.yPos = this.groundYPos;
-                  n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * this.action.pressDuration/n7e.config.MAX_ACTION_PRESS);
-                }
-              }
-              break;
-            case AMDR.status.SLIDING:
-              {
-                var increment = Math.floor(speed * (FPS / 1000) * deltaTime);
-
-                this.action.distance += increment;
-
-                let it = this.action.fullTime - this.action.timer/1000;
-                let distance = this.action.fullDistance - 1/2 * it * it * this.action.friction - this.action.distance;
-
-                this.xPos = this.config.START_X_POS + distance;
-                //Sliding animation
-
-                if (this.action.distance > this.action.fullDistance) {
-                  this.action.status = -1;
                   this.xPos = this.config.START_X_POS;
                 }
               }
-              break;
-            case AMDR.status.CRASHED:
-              {
-                let n7e = N7e();
-                let timer = this.action.halfTime - this.action.timer;
-                let dY = this.action.top * N7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR/4 * timer * timer;
+            } break;
+            case AMDR.status.JUMPING: {
+              let timer = action.halfTime - action.timer;
+              let dY = action.top * n7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * timer * timer;
 
-                this.yPos = this.action.yCrashed - dY;
+              this.yPos = this.groundYPos - dY;
 
-                n7e.setSpeed(this.action.speed * (3000-this.action.timer)/3000);
-
-                if (this.action.timer > 3000) {
-                  n7e.stop();
+              if (timer < -action.halfTime) {
+                n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * action.pressDuration/n7e.config.MAX_ACTION_PRESS);
+                action.priority = -1;
+                this.yPos = this.groundYPos;
+                if (n7e.config.SHOW_SEPIA != 1) {
+                  this.dust.xPos = this.xPos - 24;
+                  this.dust.addPoint(0, 0, -40, -10 * Math.random());
                 }
               }
-              break;
+            } break;
+            case AMDR.status.SLIDING: {
+              var increment = speed * FPS / 1000 * deltaTime;
+
+              action.distance += increment;
+
+              let it = action.fullTime - action.timer/1000;
+              if (it < 0) it = 0;
+              let distance = action.fullDistance - 1/2 * it * it * action.friction - action.distance;
+
+              this.xPos = action.xPos + distance;
+              //Sliding animation
+
+              if (n7e.config.SHOW_SEPIA != 1
+                  && this.status == AMDR.status.SLIDING
+                  & this.dust.points.length < action.timer / 30) {
+                this.dust.xPos = this.xPos - 24;
+                let dsp = (action.speed ? action.speed : speed) / 6;
+                this.dust.addPoint(-10, 0, dsp * -90, dsp * -15 * Math.random());
+                this.dust.addPoint(5, 0, dsp * -75, dsp * -15 * Math.random());
+              }
+
+              if (action.timer >= action.fullTime * 1000) {
+                action.priority = -1;
+//                this.xPos = this.config.START_X_POS;
+              }
+            } break;
+            case AMDR.status.CRASHED: {
+              let timer = action.halfTime - action.timer;
+              let dY = action.top * n7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR/4 * timer * timer;
+
+              this.yPos = action.yCrashed - dY;
+
+              let lagging = action.lagging * (3000-action.timer)/3000;
+              if (lagging < 0) {
+                lagging = 0;
+              }
+              n7e.setSpeed(lagging);
+
+              if (action.timer > 3000) {
+                action.priority = -1;
+                n7e.stop();
+              }
+            } break;
             default:;
           }
 
+          if (!action || action.priority == -1) return false;
+
           return true;
+        },
+
+        /**
+         * Draw jumping guide.
+         * @param {Object} action object
+         * @param {number} now
+         */
+        drawJumpingGuide: function (action, now, speed) {
+          /* Draw jumping guide */
+
+          let n7e = N7e();
+
+          let pressDuration = action.maxPressDuration;
+
+          if (!pressDuration) {
+            // priority 0
+            pressDuration = now - action.begin;
+            if (pressDuration > n7e.config.MAX_ACTION_PRESS) {
+              pressDuration = n7e.config.MAX_ACTION_PRESS;
+            }
+
+            pressDuration = shapeSpeedDuration(speed, pressDuration);
+          }
+
+          let fallDuration = Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
+
+          let jumpTop = pressDuration / 1000;
+
+          this.canvasCtx.save(); {
+            this.canvasCtx.beginPath();
+            this.canvasCtx.strokeStyle = "#000000";
+
+            let baseX = this.xPos + 12;
+            let baseY = this.groundYPos + 35;
+            let shiftLeft = 0;
+            let fadeOut = 1;
+            let DRAW_STEP = 50;
+            var increment = speed * 0.001 * FPS * DRAW_STEP;
+
+            if (action.priority == 2) {
+              let last = now - action.end;
+              shiftLeft = increment * last / DRAW_STEP;
+              fadeOut = (fallDuration - last) / fallDuration;
+              if (fadeOut < 0) fadeOut = 0;
+            }
+
+            let unit = fallDuration * 2 / DRAW_STEP;
+            let gravityFactor = 0.0000005 * AMDR.config.GRAVITY;
+            this.canvasCtx.moveTo(
+              baseX + unit*increment - shiftLeft,
+              baseY - (jumpTop - (gravityFactor * fallDuration * fallDuration)) * n7e.config.SCALE_FACTOR
+            );
+
+            for (let timer = fallDuration; timer > - fallDuration - DRAW_STEP; timer-= DRAW_STEP, unit--) {
+              let drawY = baseY - (jumpTop - (gravityFactor * timer * timer)) * n7e.config.SCALE_FACTOR;
+              let drawX = baseX + unit*increment - shiftLeft;
+
+              if (drawX < this.xPos + 20 && drawY > baseY - 60 ) {
+                break;
+              }
+
+              this.canvasCtx.lineTo(drawX, drawY);
+            }
+
+            now = (now/10)%40;
+            let alpha = fadeOut * (fallDuration-150)/200;
+            if (alpha > 1) alpha = 1;
+
+            this.canvasCtx.lineCap = 'round';
+            this.canvasCtx.setLineDash([0,20]);
+
+            /*
+            this.canvasCtx.lineWidth = 1;
+            this.canvasCtx.lineDashOffset = now+5;
+            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
+            this.canvasCtx.stroke();
+            */
+
+            this.canvasCtx.lineWidth = alpha*5;
+            this.canvasCtx.lineDashOffset = now;
+            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
+            this.canvasCtx.stroke();
+          } this.canvasCtx.restore();
+        },
+
+        /**
+         * Draw sliding guide.
+         * @param {Object} action object
+         * @param {number} now
+         */
+        drawSlidingGuide: function (action, now, speed) {
+
+          let n7e = N7e();
+
+          let slideDuration;
+          let alpha;
+          let baseX = this.xPos;
+
+          if (action.maxPressDuration) {
+            slideDuration = action.maxPressDuration;
+            baseX = n7e.config.START_X_POS - action.distance;
+            alpha = (action.fullDistance - action.distance)/action.fullDistance;
+            alpha *= alpha;
+          } else {
+            // priority 0
+            slideDuration = now - action.begin;
+            if (slideDuration > n7e.config.MAX_ACTION_PRESS) {
+              slideDuration = n7e.config.MAX_ACTION_PRESS;
+            }
+            alpha = slideDuration/n7e.config.MAX_ACTION_PRESS;
+            slideDuration = n7e.config.SLIDE_FACTOR * shapeSpeedDuration(speed, slideDuration);
+          }
+
+          var distance = speed * 0.001 * FPS * slideDuration;
+
+          let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 4;
+
+          this.canvasCtx.save();
+          this.canvasCtx.globalAlpha = 0.50 * alpha;
+          this.canvasCtx.filter = 'grayscale(1)';
+          this.canvasCtx.globalCompositeOperation = 'hard-light';
+          this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
+              AMDR.animFrames.SLIDING.frames[frame]*2, 0, 40, 40,
+              Math.floor(baseX + distance), this.groundYPos,
+              this.config.WIDTH, this.config.HEIGHT);
+          this.canvasCtx.restore();
         },
 
         /**
@@ -2606,21 +2852,16 @@
           this.update(0, 0, AMDR.status.RUNNING);
           this.dust.reset();
           this.action = null;
-          /*
-          this.assignAction({
+          N7e().queueAction({
             begin: getTimeStamp(),
             type: AMDR.status.SLIDING,
             pressDuration: N7e.config.MAX_ACTION_PRESS,
-            status: 1
-          }, 6);
-          */
-          N7e().actions.push({
-            begin: getTimeStamp(),
-            type: AMDR.status.SLIDING,
-            pressDuration: N7e.config.MAX_ACTION_PRESS,
-            status: 1,
+            priority: 1,
             first: true,
+            speed: 7.2,
+            maxPressDuration: 1500,
           });
+          N7e().queueAction(N7e().defaultAction);
 
         }
     };
