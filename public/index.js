@@ -75,7 +75,7 @@
       this.imagesLoaded = 0;
 
       this.loadImages();
-      this.config.PLAY_MUSIC = false;
+      this.config.PLAY_MUSIC = true;
       this.loadMusic('offline-intro-music', this.config.PLAY_MUSIC);
       this.loadMusic('offline-play-music', false);
     }
@@ -176,7 +176,6 @@
       ICON: 'icon-offline',
       INVERTED: 'inverted',
       SNACKBAR: 'snackbar',
-      SPACEBAR: 'spacebar',
       SNACKBAR_SHOW: 'snackbar-show',
       TOUCH_CONTROLLER: 'controller'
     };
@@ -284,6 +283,7 @@
             N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling');
             N7e.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
             N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash');
+            N7e.imageKeysIntroduction = document.getElementById('offline-resources-keys');
             this.spriteDef = N7e.spriteDefinition.HDPI;
 
             Obstacle.types[0].mag = 2;
@@ -461,7 +461,7 @@
           } else {
             this.gradients.current = [];
             for(let i = 0; i < 6; i++) {
-              this.gradients.current.push(Math.floor(this.gradients.sky1[i] + (this.gradients.sky2[i] - this.gradients.sky1[i]) * ratio));
+              this.gradients.current.push(Math.floor(this.gradients.sky1[i] - ratio * (this.gradients.sky1[i] - this.gradients.sky2[i])));
             }
           }
 
@@ -517,6 +517,7 @@
           this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
 
           this.canvasCtx = this.canvas.getContext('2d');
+
           this.canvasCtx.fillStyle = '#f7f7f7';
           this.canvasCtx.fill();
           N7e.updateCanvasScaling(this.canvas);
@@ -538,18 +539,6 @@
           this.amdr = new AMDR(this.canvas, this.spriteDef.NATHERINE);
 
           this.outerContainerEl.appendChild(this.containerEl);
-
-          this.spacebarEl = document.createElement('div');
-          this.spacebarEl.className = N7e.classes.SPACEBAR;
-          this.outerContainerEl.appendChild(this.spacebarEl);
-          this.spacebarEl.style.width = '75px';
-          this.spacebarEl.style.height = '54px';
-          this.spacebarEl.style.zIndex = '3';
-          this.spacebarEl.style.backgroundImage = 'url(assets/spacebar.png)';
-          this.spacebarEl.style.top = this.containerEl.offsetTop + 106 +'px';
-          this.spacebarEl.style.left = this.containerEl.offsetLeft + 30 +'px';
-          this.spacebarEl.style.position = 'absolute';
-          this.spacebarEl.style.animation = 'blinker 1s linear infinite';
 
           if (IS_MOBILE) {
             this.createTouchController();
@@ -781,9 +770,19 @@
                 }
               }
             }
-          } else if (!this.crashed){
+          } else if (!this.crashed) {
             this.clearCanvas();
             this.horizon.update(0, 6, true);
+
+            this.showKeyDelta = !!this.showKeyDelta ? this.showKeyDelta : 1;
+            this.showKeyDelta += deltaTime;
+            if (this.showKeyDelta > 2000){
+              let xMap = [2,1,-2,-4,-2,1], yMap = [1,0,-2,-2,-2,0];
+              this.canvasCtx.drawImage(N7e.imageKeysIntroduction,
+                0, 0, 75, 54,
+                this.amdr.xPos + 25 + xMap[this.amdr.currentFrame],
+                this.amdr.yPos + yMap[this.amdr.currentFrame] - 50, 75, 54);
+            }
           }
 
           let a = this.actions[0];
@@ -861,11 +860,6 @@
           // Reject repeating key events.
           if (e.repeat) {
             return;
-          }
-
-          if (this.spacebarEl) {
-            this.spacebarEl.parentNode.removeChild(this.spacebarEl);
-            delete this.spacebarEl;
           }
 
           // Prevent native page scrolling whilst tapping on mobile.
@@ -993,16 +987,13 @@
                 break;
               case 1: // Low
                 break;
-              case 2: // Stripes
-                break;
-              case 3:
+              case 2: // Grayscale
                 this.canvasCtx.filter = 'grayscale(1)';
                 break;
               case 9: // Extreme
                 break;
               default:
-                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.SHOW_SEPIA - 4) * 72)+'deg)';
-                break;
+                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.SHOW_SEPIA - 3) * 60)+'deg)';
                 break;
             }
 
@@ -2238,9 +2229,6 @@
 
           }
           if (n7e.config.SHOW_SEPIA != 1) this.dust.update(deltaTime);
-
-          return true;
-
         },
 
         /**
@@ -2249,29 +2237,13 @@
          * @param {number} y
          */
         draw: function (x, y) {
-          var sourceX = x;
-          var sourceY = y;
-          /* All Amdr sprite sizes are equal for now.
-          var sourceWidth = this.ducking && this.status != AMDR.status.CRASHED ?
-          this.config.WIDTH_DUCK : this.config.WIDTH;
-          var sourceHeight = this.config.WIDTH;
-          var sourceHeight = this.config.HEIGHT;
-          */
-
-          if (IS_HIDPI) {
-            sourceX *= 2;
-            sourceY *= 2;
-            /*
-            sourceWidth *= 2;
-            sourceHeight *= 2;
-            */
-          }
+          var sourceX = x * 2;
+          var sourceY = y * 2;
 
           // Adjustments for sprite sheet position.
           sourceX += this.spritePos.x;
           sourceY += this.spritePos.y;
 
-          //FIXME
           if (this.currentSprite) {
             this.canvasCtx.drawImage(this.currentSprite, sourceX, sourceY, 40, 40,
               Math.floor(this.xPos), Math.floor(this.yPos),
@@ -2373,7 +2345,7 @@
                         // Sliding act pretty much like jumping, just going one way forward.
                         //action.pressDuration += N7e.config.MIN_ACTION_PRESS_FACTOR;
 
-                        action.fullDistance = sp * 0.001 * FPS * action.maxPressDuration;
+                        action.fullDistance = 1.5 * sp * 0.001 * FPS * action.maxPressDuration;
                         action.fullTime = action.fullDistance / (sp * FPS);
 
                         if (action.end + action.fullTime * 1000 < now) {
@@ -2687,7 +2659,9 @@
             slideDuration = n7e.config.SLIDE_FACTOR * shapeSpeedDuration(speed, slideDuration);
           }
 
-          var distance = speed * 0.001 * FPS * slideDuration;
+          //let distance = speed * 0.001 * FPS * slideDuration;
+          let distance = 1.5 * speed * 0.001 * FPS * slideDuration;
+
 
           let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 4;
 
@@ -2707,7 +2681,7 @@
          */
         reset: function () {
           this.yPos = this.groundYPos;
-          this.xPos = -80;// this.config.START_X_POS;
+          this.xPos = -120;// this.config.START_X_POS;
           this.update(0, 0, AMDR.status.RUNNING);
           this.dust.reset();
           this.action = null;
@@ -2857,6 +2831,7 @@
           sourceY += this.spritePos.y;
 
           this.canvasCtx.save();
+          //this.canvasCtx.globalCompositeOperation = 'difference';
 
           if (opt_highScore) {
             // Left of the current score.
@@ -3547,7 +3522,6 @@
                     i += step, pw *= pwStep ) {
 
             let width = HorizonLine.dimensions.WIDTH / pw;
-            let grassH;
 
             canvasCtx.save();
             canvasCtx.scale(pw, 1);
@@ -3562,13 +3536,12 @@
                   let l = [];
                   let sum;
                   let n;
-                  this.grassMapOffset.push(getRandomNum(0,8));
+                  this.grassMapOffset.push(getRandomNum(0,4));
                   let gr = false;
-                  let thick = 1;
 
                   sum = 100;
                   do {
-                    n = gr ? getRandomNum(1,3)*thick : getRandomNum(1,2)*thick;
+                    n = gr ? getRandomNum(3,5) : getRandomNum(0,1);
                     gr = !gr;
                     if (sum < n) {
                       n = sum;
@@ -3579,7 +3552,7 @@
 
                   sum = 100;
                   do {
-                    n = gr ? getRandomNum(1,3)*thick : getRandomNum(0,1)* thick;
+                    n = gr ? getRandomNum(2,8) : getRandomNum(1,2);
                     gr = !gr;
                     if (sum < n) {
                       n = sum;
@@ -3594,21 +3567,20 @@
                 }
               }
 
-              grassH = 2+Math.ceil((i+8)/4);
-
-              canvasCtx.lineWidth = grassH;
-              grassH = Math.ceil(grassH/2);
-
-              let line = (i+8)%10;
-              canvasCtx.setLineDash(this.grassMap[line]);
               canvasCtx.strokeStyle = "rgba(32,128,0,"+(alphaStep * (i+8))+")";
+              let line;
+              let grassH = 1+Math.ceil(1.2 * (i+8)/4);
 
-              canvasCtx.beginPath();
-              canvasCtx.moveTo(0, y + i - grassH);
-              canvasCtx.lineTo(width, y + i - grassH);
-              //canvasCtx.quadraticCurveTo( width/2, y + i*1.5, width, y + i - grassH);
-              canvasCtx.lineDashOffset = -spinner + Math.floor(i*i/16) - width/2 + this.grassMapOffset[line];
-              canvasCtx.stroke();
+              for (let r = 0; r < 5; r++,grassH *= 0.75) {
+                line = (i+8+r)%10;
+                canvasCtx.setLineDash(this.grassMap[line]);
+                canvasCtx.lineWidth = grassH;
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(0, y + i - grassH +3);
+                canvasCtx.lineTo(width, y + i - grassH +3);
+                canvasCtx.lineDashOffset = 2*(r-2) -spinner - width/2 + this.grassMapOffset[line];
+                canvasCtx.stroke();
+              }
 
             } else { // Draw stripes
 
@@ -3621,7 +3593,7 @@
                 canvasCtx.beginPath();
                 canvasCtx.moveTo(0, y + i);
                 canvasCtx.lineTo(width, y + i);
-                canvasCtx.lineDashOffset = -spinner + s + Math.floor(i*i/16) - width/2;
+                canvasCtx.lineDashOffset = -spinner + s + Math.floor(i*i/8) - width/2;
                 canvasCtx.stroke();
               }
             }
