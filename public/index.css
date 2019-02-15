@@ -60,6 +60,7 @@ html, body {
   line-height: 1.55;
   margin: 0 auto;
   max-width: 600px;
+  min-width: 600px;
   padding-top: 100px;
   width: 100%;
 }

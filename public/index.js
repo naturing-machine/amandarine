@@ -140,7 +140,7 @@
       SLIDE_FACTOR: 1,
       SPEED: 6,
       SHOW_COLLISION: false,
-      SHOW_SEPIA: 0,
+      GRAPHICS_MODE: 9,
       SKY: {
         DAY: [Math.floor(221*0.8), Math.floor(238*0.8), Math.floor(255*0.9), 238, 238, 255],
         //NIGHT: [68,136,170,102,153,187],
@@ -448,7 +448,7 @@
          */
         adjustSkyGradient: function(ratio) {
 
-          if (N7e.config.SHOW_SEPIA == 1) {
+          if (N7e.config.GRAPHICS_MODE == 1) {
             ratio = Math.floor(ratio*10)/10;
           } else {
             ratio = Math.floor(ratio*20)/20;
@@ -468,7 +468,7 @@
           let rgb0x1 = ((1 << 24) + (this.gradients.current[0] << 16) + (this.gradients.current[1] << 8) + this.gradients.current[2]).toString(16).slice(1);
           let rgb0x2 = ((1 << 24) + (this.gradients.current[3] << 16) + (this.gradients.current[4] << 8) + this.gradients.current[5]).toString(16).slice(1);
 
-          if (N7e.config.SHOW_SEPIA == 1) {
+          if (N7e.config.GRAPHICS_MODE == 1) {
             this.skyGradient = "#" + rgb0x1;
           } else if (this.gradients.rgb0x1 != rgb0x1 || this.gradients.rgb0x2 != rgb0x2) {
             this.skyGradient = this.canvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
@@ -973,16 +973,16 @@
             }
           }
 
-          if (keyCode == '83' || (keyCode <= 57 && keyCode >= 48)) {
+          if (keyCode == '71' || (keyCode <= 57 && keyCode >= 48)) {
             if (keyCode <= 57 && keyCode >= 48) {
-              n7e.config.SHOW_SEPIA = keyCode - 48;
+              n7e.config.GRAPHICS_MODE = keyCode - 48;
             } else {
-              n7e.config.SHOW_SEPIA = (n7e.config.SHOW_SEPIA+1)%10;
+              n7e.config.GRAPHICS_MODE = (n7e.config.GRAPHICS_MODE+1)%10;
             }
 
             this.canvasCtx.restore();
             this.canvasCtx.save();
-            switch (n7e.config.SHOW_SEPIA) {
+            switch (n7e.config.GRAPHICS_MODE) {
               case 0: // Normal
                 break;
               case 1: // Low
@@ -993,7 +993,7 @@
               case 9: // Extreme
                 break;
               default:
-                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.SHOW_SEPIA - 3) * 60)+'deg)';
+                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.GRAPHICS_MODE - 3) * 60)+'deg)';
                 break;
             }
 
@@ -2228,7 +2228,7 @@
             this.timer = 0;
 
           }
-          if (n7e.config.SHOW_SEPIA != 1) this.dust.update(deltaTime);
+          if (n7e.config.GRAPHICS_MODE != 1) this.dust.update(deltaTime);
         },
 
         /**
@@ -2328,7 +2328,7 @@
                         n7e.playSound(n7e.soundFx.SOUND_DROP,0.4 * action.pressDuration/n7e.config.MAX_ACTION_PRESS);
                         action.timer = 0;
 
-                        if (n7e.config.SHOW_SEPIA != 1) {
+                        if (n7e.config.GRAPHICS_MODE != 1) {
                           this.dust.xPos = this.xPos - 24;
                           this.dust.addPoint(0, 0, -40, -10 * Math.random());
                         }
@@ -2491,7 +2491,7 @@
                 n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * action.pressDuration/n7e.config.MAX_ACTION_PRESS);
                 action.priority = -1;
                 this.yPos = this.groundYPos;
-                if (n7e.config.SHOW_SEPIA != 1) {
+                if (n7e.config.GRAPHICS_MODE != 1) {
                   this.dust.xPos = this.xPos - 24;
                   this.dust.addPoint(0, 0, -40, -10 * Math.random());
                 }
@@ -2509,7 +2509,7 @@
               this.xPos = action.xPos + distance;
               //Sliding animation
 
-              if (n7e.config.SHOW_SEPIA != 1
+              if (n7e.config.GRAPHICS_MODE != 1
                   && this.status == AMDR.status.SLIDING
                   & this.dust.points.length < action.timer / 30) {
                 this.dust.xPos = this.xPos - 24;
@@ -3073,7 +3073,7 @@
         draw: function () {
           this.canvasCtx.save(); {
 
-            if (N7e.config.SHOW_SEPIA != 1) {
+            if (N7e.config.GRAPHICS_MODE != 1) {
               this.canvasCtx.globalAlpha = this.opacity;
             }
             this.canvasCtx.globalCompositeOperation = 'luminosity';
@@ -3354,7 +3354,8 @@
             }
           }
 
-          if (N7e.config.SHOW_SEPIA == 9) {
+          /*
+          if (N7e.config.GRAPHICS_MODE == 9) {
             this.canvasCtx.filter = 'blur(6px)';
 
             this.canvasCtx.drawImage(N7e.imageSprite, moonSourceX,
@@ -3379,6 +3380,7 @@
               }
             }
           }
+          */
 
           this.canvasCtx.restore();
         },
@@ -3492,7 +3494,7 @@
           }
 
           this.grCtx.clearRect(0, 0, N7e.defaultDimensions.WIDTH, this.groundCanvas.height);
-          this.grMode = N7e.config.SHOW_SEPIA;
+          this.grMode = N7e.config.GRAPHICS_MODE;
 
           this.grCtx.save();
           this.grCtx.translate(0,25 - N7e.defaultDimensions.HEIGHT);
@@ -3528,7 +3530,7 @@
 //            this.canvasCtx.transform(pw,0,0,1,0,0);
 
             // Draw grasses
-            if (N7e.config.SHOW_SEPIA == 9) {
+            if (N7e.config.GRAPHICS_MODE == 9) {
               if (!this.grassMap) {
                 this.grassMap = [];
                 this.grassMapOffset = [];
@@ -3619,21 +3621,25 @@
             this.xPos[1], this.yPos,
             this.dimensions.WIDTH, this.dimensions.HEIGHT);
 
-          if (N7e.config.SHOW_SEPIA == 1) return;
+          if (N7e.config.GRAPHICS_MODE == 1) return;
 
-          if (N7e.config.SHOW_SEPIA != this.grMode) {
+          if (N7e.config.GRAPHICS_MODE != this.grMode) {
             this.generateGroundCache();
           }
 
-          this.canvasCtx.save();
-          if (N7e.config.SHOW_SEPIA == 0)
+          if (N7e.config.GRAPHICS_MODE == 0) {
+            this.canvasCtx.save();
             this.canvasCtx.globalCompositeOperation = 'multiply';
-          this.canvasCtx.drawImage(this.groundCanvas,
-              0, (Math.floor(this.xPos[0] + 600) % 200) * 25 + 4,
-              N7e.defaultDimensions.WIDTH, 22,
-              0, N7e.defaultDimensions.HEIGHT - 21,
-              N7e.defaultDimensions.WIDTH, 23);
-          this.canvasCtx.restore();
+          }
+            this.canvasCtx.drawImage(this.groundCanvas,
+                0, (Math.floor(this.xPos[0] + 600) % 200) * 25 + 2,
+                N7e.defaultDimensions.WIDTH, 22,
+                0, N7e.defaultDimensions.HEIGHT - 22,
+                N7e.defaultDimensions.WIDTH, 22);
+
+          if (N7e.config.GRAPHICS_MODE == 0) {
+            this.canvasCtx.restore();
+          }
 
         },
 
