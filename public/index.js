@@ -692,7 +692,7 @@
 
             if (this.crashed && this.gameOverPanel) {
               this.gameOverPanel.updateDimensions(this.dimensions.WIDTH);
-              this.gameOverPanel.draw();
+              this.gameOverPanel.draw(deltaTime);
 
               let alpha = (3000-this.actions[0].timer)/3000;
               if (alpha < 0) alpha = 0;
@@ -1174,6 +1174,7 @@
             this.playSound(this.soundFx.SOUND_SCORE,0.2);
             this.invert(true);
             this.update();
+            this.gameOverPanel.timer = 0;
           }
         },
 
@@ -1442,7 +1443,8 @@
       this.canvasDimensions = dimensions;
       this.textImgPos = textImgPos;
       this.restartImgPos = restartImgPos;
-      this.draw();
+      this.timer = 0;
+      this.draw(0);
     };
 
 
@@ -1476,7 +1478,12 @@
         /**
          * Draw the panel.
          */
-        draw: function () {
+        draw: function (deltaTime) {
+          deltaTime = deltaTime ? deltaTime : 1;
+          this.timer += deltaTime;
+          let dist = this.timer/100;
+          if (dist > 1) dist = 1;
+
           var dimensions = GameOverPanel.dimensions;
 
           var centerX = this.canvasDimensions.WIDTH / 2;
@@ -1512,16 +1519,26 @@
           textSourceY += this.textImgPos.y;
 
           // Game over text from sprite.
+          this.canvasCtx.save();
+          this.canvasCtx.globalAlpha = dist;
           this.canvasCtx.drawImage(N7e.imageSprite,
               textSourceX, textSourceY, textSourceWidth, textSourceHeight,
-              textTargetX, textTargetY, textTargetWidth, textTargetHeight);
+              textTargetX, textTargetY + 20*(1-dist),
+              textTargetWidth, textTargetHeight * dist);
 
           // Restart button.
           this.canvasCtx.drawImage(N7e.imageSprite,
               this.restartImgPos.x, this.restartImgPos.y,
               restartSourceWidth, restartSourceHeight,
-              restartTargetX, restartTargetY, dimensions.RESTART_WIDTH,
-              dimensions.RESTART_HEIGHT);
+              restartTargetX + (1-dist) * dimensions.RESTART_WIDTH/2,
+              restartTargetY + (1-dist) * dimensions.RESTART_HEIGHT/2,
+              dimensions.RESTART_WIDTH * dist, dimensions.RESTART_HEIGHT * dist);
+          this.canvasCtx.drawImage(N7e.imageSprite,
+              this.restartImgPos.x, this.restartImgPos.y + 33,
+              restartSourceWidth, restartSourceHeight,
+              restartTargetX, restartTargetY + 8,
+              dimensions.RESTART_WIDTH, dimensions.RESTART_HEIGHT);
+          this.canvasCtx.restore();
         }
     };
 
