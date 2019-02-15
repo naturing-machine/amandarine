@@ -777,11 +777,11 @@
             this.showKeyDelta = !!this.showKeyDelta ? this.showKeyDelta : 1;
             this.showKeyDelta += deltaTime;
             if (this.showKeyDelta > 2000){
-              let xMap = [2,1,-2,-4,-2,1], yMap = [1,0,-2,-2,-2,0];
+              let xMap = [2,1,-2,-3,-2,1], yMap = [1,0,-2,-2,-2,0];
               this.canvasCtx.drawImage(N7e.imageKeysIntroduction,
                 0, 0, 75, 54,
-                this.amdr.xPos + 25 + xMap[this.amdr.currentFrame],
-                this.amdr.yPos + yMap[this.amdr.currentFrame] - 50, 75, 54);
+                Math.round(this.amdr.xPos + xMap[this.amdr.currentFrame] + 20),
+                Math.round(this.amdr.yPos + yMap[this.amdr.currentFrame] - 47), 75, 54);
             }
           }
 
