@@ -699,7 +699,7 @@
               this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
 
               if (alpha > 0.95) {
-                let crashPoint = this.actions[0].crashPoint;
+                let crashPoint = this.actions[0].boxes[0].intersection(this.actions[0].boxes[1]).center();
                 this.canvasCtx.drawImage(N7e.imageSprite,
                     N7e.spriteDefinition.HDPI.CRASH.x,
                     N7e.spriteDefinition.HDPI.CRASH.y,
@@ -738,7 +738,7 @@
               this.queueAction({
                 type: AMDR.status.CRASHED,
                 priority: 3,
-                crashPoint: obstacle.crash[0].intersection(obstacle.crash[1]).center(),
+                boxes: obstacle.crash,
               }, this.currentSpeed);
 
               this.gameOver(obstacle);
@@ -871,7 +871,7 @@
             this.restart();
           }
 
-          let inputType;
+          let inputType = null;
           if (e.type == N7e.events.TOUCHSTART) {
             let clientWidth = N7e().touchController.offsetWidth;
             for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
@@ -1084,7 +1084,6 @@
          * @param {Obstacle} obstacle
          */
         gameOver: function (obstacle) {
-          //let crashPoint = obstacle.crash[0].intersection(obstacle.crash[1]).center();
           switch(obstacle.typeConfig.type) {
             case "RED_DUCK":
               this.playSound(this.soundFx.SOUND_QUACK, 0.2, false, 0.2);
@@ -1110,16 +1109,7 @@
           this.crashed = true;
           this.distanceMeter.acheivement = false;
 
-          /*
-          this.canvasCtx.drawImage(N7e.imageSprite,
-              N7e.spriteDefinition.HDPI.CRASH.x,
-              N7e.spriteDefinition.HDPI.CRASH.y,
-              this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
-              crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
-              this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
-              */
-
-          this.amdr.update(100, this.currentSpeed, AMDR.status.CRASHED);
+          this.amdr.update(100, this.currentSpeed, this.actions[0]);
 
           if (!this.gameOverPanel) {
             this.gameOverPanel = new GameOverPanel(this.canvas,
@@ -2162,8 +2152,8 @@
         msPerFrame: 1000 / 24
       },
       CRASHED: {
-        frames: [0],
-        msPerFrame: 1000
+        frames: [0,20],
+        msPerFrame: Infinity
       },
       JUMPING: {
         frames: [0,20,40,40,40],
@@ -2217,12 +2207,15 @@
 
           // Update the status.
           if (opt_status) {
-            this.status = opt_status;
+            this.status = opt_status.type;
             this.currentFrame = 0;
-            this.msPerFrame = AMDR.animFrames[opt_status].msPerFrame;
-            this.currentAnimFrames = AMDR.animFrames[opt_status].frames;
+            this.msPerFrame = AMDR.animFrames[opt_status.type].msPerFrame;
+            this.currentAnimFrames = AMDR.animFrames[opt_status.type].frames;
 
-            this.currentSprite = AMDR.animFrames[opt_status].sprite;
+            this.currentSprite = AMDR.animFrames[opt_status.type].sprite;
+            if (opt_status.type == AMDR.status.CRASHED && opt_status.dir == 1) {
+              this.currentFrame = 1;
+            }
           }
 
           // Game intro animation, Amandarine moves in from the left.
@@ -2233,7 +2226,7 @@
           */
 
           /* Don't draw crash state to observe the effective collision boxes */
-          if (!n7e.config.SHOW_COLLISION || opt_status != AMDR.status.CRASHED ) {
+          if (!n7e.config.SHOW_COLLISION || opt_status.type != AMDR.status.CRASHED ) {
             this.draw(this.currentAnimFrames[this.currentFrame], 0);
           }
 
@@ -2320,7 +2313,7 @@
                       action.timer = 0;
                       action.priority = 1;
                       this.updateAction(action, deltaTime, speed);
-                      this.update(deltaTime, speed, action.type);
+                      this.update(deltaTime, speed, action);
                     default:;
                   }
 
@@ -2350,7 +2343,7 @@
                           this.dust.addPoint(0, 0, -40, -10 * Math.random());
                         }
 
-                        this.update(0, speed, action.type);
+                        this.update(0, speed, action);
                       } break;
                     case AMDR.status.SLIDING:
                       {
@@ -2377,8 +2370,12 @@
                         action.friction = 2 * action.fullDistance / (action.fullTime * action.fullTime);
                         action.xPos = this.xPos;
 
-                        this.update(0, sp, action.type);
+                        this.update(0, sp, action);
                       } break;
+
+                    // These background-type actions (priority 1 without specific
+                    // duration) below will 'continue' through the action queue
+                    // to proceed with the active preparing action (priority 0).
                     case AMDR.status.RUNNING:
                       if (action.speed) {
                         let sp = speed + action.speed;
@@ -2435,6 +2432,13 @@
                         n7e.playSound(N7e().soundFx.SOUND_OGGG,0.3);
                         n7e.setSky(n7e.config.SKY.SUNSET);
 
+                        let cx = action.boxes[0].center().x - action.boxes[1].center().x;
+                        let cy = action.boxes[0].center().y - action.boxes[1].center().y;
+                        if (Math.abs(cx) > Math.abs(cy/2)) {
+                          action.dir = cx > 0 ? 1 : -1;
+                        } else {
+                          action.dir = cy > 0 ? -1 : 1;
+                        }
                         action.duration = 200;
                         action.top = action.duration / 1000;
                         action.halfTime = Math.sqrt(2000 * action.duration / AMDR.config.GRAVITY);
@@ -2443,7 +2447,7 @@
                         action.lagging = speed;
                         action.updated = true;
                         this.updateAction(action, deltaTime, speed);
-                        this.update(deltaTime, speed, action.type);
+                        this.update(deltaTime, speed, action);
                       } else {
                         this.updateAction(action, deltaTime, speed);
                         this.update(deltaTime, speed);
@@ -2545,6 +2549,7 @@
               let dY = action.top * n7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR/4 * timer * timer;
 
               this.yPos = action.yCrashed - dY;
+              this.xPos += deltaTime/10 * action.dir;
 
               let lagging = action.lagging * (3000-action.timer)/3000;
               if (lagging < 0) {
@@ -2699,7 +2704,6 @@
         reset: function () {
           this.yPos = this.groundYPos;
           this.xPos = -120;// this.config.START_X_POS;
-          this.update(0, 0, AMDR.status.RUNNING);
           this.dust.reset();
           this.action = null;
           N7e().queueAction({
