@@ -3139,8 +3139,9 @@
           this.height = getRandomNum(N7e.defaultDimensions.HEIGHT/8, N7e.defaultDimensions.HEIGHT/2);
           if (this.depth == 0) this.height * 0.7;
 
-          this.width = this.height * (2 + Math.random() * 3);
+          this.width = Math.floor(this.height * (2 + Math.random() * 3));
           if (this.width > 200) this.width = 200;
+
           this.draw();
         },
 
@@ -3148,49 +3149,62 @@
          * Draw the mountain.
          */
         draw: function () {
-          if (N7e.config.SHOW_SEPIA == 1) {
-            return;
-          }
 
-          this.canvasCtx.save();
-          let n7e = N7e();
-          this.canvasCtx.fillStyle = '#' + (this.depth == 0 ? n7e.gradients.rgb0x2 : n7e.gradients.rgb0x1);
-          this.canvasCtx.beginPath();
-          let x = this.xPos;
-          let y = this.yPos;
-          this.canvasCtx.moveTo(x, y);
-          /*
-          canvasCtx.lineTo(x + this.width/2, y-this.height);
-          canvasCtx.lineTo(x + this.width, y);
-          */
-          this.canvasCtx.bezierCurveTo(
-            x + this.width/2, y-this.height,
-            x + this.width/2, y-this.height,
-          x + this.width, y);
-          this.canvasCtx.closePath();
-          if (N7e.config.SHOW_SEPIA == 0) {
-            this.canvasCtx.filter = 'hue-rotate(-25deg)';
-          }
-          this.canvasCtx.fill();
-
-          if (N7e.config.SHOW_SEPIA == 9) {
-            let w = this.width * 0.8;
-            this.canvasCtx.clip();
+          this.canvasCtx.save(); {
+            let n7e = N7e();
+            this.canvasCtx.fillStyle = '#' + (this.depth == 0 ? n7e.gradients.rgb0x2 : n7e.gradients.rgb0x1);
             this.canvasCtx.beginPath();
-            x-=w/30;y+=this.height/10;
-            this.canvasCtx.globalCompositeOperation = 'multiply';
-            this.canvasCtx.globalAlpha = 0.5;
-            this.canvasCtx.filter = 'blur(5px)';
-            this.canvasCtx.moveTo(x, y);
+            this.canvasCtx.moveTo(this.xPos, this.yPos);
             this.canvasCtx.bezierCurveTo(
-              x + w/2, y - this.height,
-              x + this.width/2, y-this.height,
-              x + w, y);
+              this.xPos + this.width/2, this.yPos-this.height,
+              this.xPos + this.width/2, this.yPos-this.height,
+            this.xPos + this.width, this.yPos);
             this.canvasCtx.closePath();
+            if (N7e.config.GRAPHICS_MODE == 0) {
+              this.canvasCtx.filter = 'hue-rotate(-25deg)';
+            }
             this.canvasCtx.fill();
-          }
 
-          this.canvasCtx.restore();
+            // cache shadow TODO make shadow reusable
+            if (N7e.config.GRAPHICS_MODE != 1) {
+              if (!this.mntCanvas) {
+                this.mntCanvas = document.createElement('canvas');
+                this.mntCanvas.width = this.width;
+                this.mntCanvas.height = this.height;
+                this.mntCtx = this.mntCanvas.getContext('2d');
+                this.mntCtx.fillStyle = '#452249';
+
+                this.mntCtx.beginPath();
+                this.mntCtx.moveTo(0, this.height);
+                this.mntCtx.bezierCurveTo(
+                  this.width/2, 0,
+                  this.width/2, 0,
+                this.width, this.height);
+                this.mntCtx.closePath();
+                this.mntCtx.clip();
+
+                let w = this.width * 0.8;
+                let x = 0, y = this.height;
+                x-=w/30;y+=this.height/10;
+
+                this.mntCtx.beginPath();
+                this.mntCtx.globalAlpha = 0.7;
+                this.mntCtx.filter = 'blur(10px)';
+                this.mntCtx.moveTo(x, y);
+                this.mntCtx.bezierCurveTo(
+                  x + w/2, y - this.height,
+                  x + this.width/2, y-this.height,
+                  x + w, y);
+                this.mntCtx.closePath();
+                this.mntCtx.fill();
+              }
+
+              this.canvasCtx.globalCompositeOperation = 'overlay';
+              this.canvasCtx.drawImage(
+                this.mntCanvas,0,0,this.width,this.height,
+                this.xPos,this.yPos - this.height,this.width,this.height);
+            } this.canvasCtx.restore();
+          }
         },
 
         /**
@@ -3439,6 +3453,7 @@
       this.xPos = [];
       this.yPos = 0;
       this.bumpThreshold = 0.5;
+      this.grMode = -1;
 
       this.setSourceDimensions();
       this.draw();
@@ -3716,6 +3731,7 @@
       this.cloudSpeed = this.config.BG_CLOUD_SPEED;
 
       this.mountains = [];
+      this.oldMountains = [];
       this.mountainSpeed = 6;
 
       // Horizon
@@ -3746,6 +3762,10 @@
           this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
           this.nightMode = new NightMode(this.canvas, this.spritePos.MOON,
             this.dimensions.WIDTH);
+          this.addMountains();
+          this.addMountains();
+          this.oldMountains = this.mountains;
+          this.mountains = [];
         },
 
         /**
@@ -3799,7 +3819,7 @@
             }
 
             // Remove expired clouds.
-            this.clouds = this.clouds.filter(function (obj) {
+            this.clouds = this.clouds.filter(obj => {
               return !obj.remove;
             });
           } else {
@@ -3828,8 +3848,13 @@
               this.addMountains();
             }
 
-            this.mountains = this.mountains.filter(function (obj) {
-              return !obj.remove;
+            this.mountains = this.mountains.filter(obj => {
+              if (obj.remove) {
+                this.oldMountains.push(obj);
+                obj.remove = false;
+                return false;
+              }
+              return true;
             });
           } else {
             this.addMountains();
@@ -3954,7 +3979,17 @@
         },
 
         addMountain: function(distance, level) {
-          let mountain = new Mountain(this.canvas, distance, level);
+          let mountain;
+          //TODO elevate mounains randomly to reduce cache size.
+          if (this.oldMountains.length > 10) {
+            mountain = this.oldMountains.splice(getRandomNum(0,10),1)[0];
+            mountain.xPos = distance;
+            mountain.remove = false;
+            mountain.depth = level;
+          } else {
+            mountain = new Mountain(this.canvas, distance, level);
+          }
+
           this.mountains.push(mountain);
 
           let adjusted;
@@ -3979,7 +4014,6 @@
           this.addMountain(this.dimensions.WIDTH + getRandomNum(0,1000), 0);
           this.addMountain(this.dimensions.WIDTH + getRandomNum(100,900), 0);
           this.addMountain(this.dimensions.WIDTH + getRandomNum(200,800), 0);
-          this.addMountain(this.dimensions.WIDTH + getRandomNum(0,1000), 0);
           this.addMountain(this.dimensions.WIDTH + getRandomNum(100,900), 1);
           this.addMountain(this.dimensions.WIDTH + getRandomNum(200,800), 1);
           this.addMountain(this.dimensions.WIDTH + getRandomNum(300,700), 1);
