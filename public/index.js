@@ -1012,7 +1012,6 @@
 
           if (!this.crashed && this.isRunning() && inputType == AMDR.status.JUMPING) {
             console.log('true');
-            FIXFIX
             this.playing = true;
 
             for (let i = 0, action; action = this.actions[i]; i++) {
