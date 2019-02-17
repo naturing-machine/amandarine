@@ -1,13 +1,13 @@
 /* .............................................. B_Y */
-/* .... ####| . BBBB\ . BB| SSSSSSSS| DDDDDDDD| . 0|G */
+/* .... ####| . BBBB\ . BB| SSSSSSSS| DDDDDDDD| . O|G */
 /* ... ##/##| . BB|BB\  BB| SS| . SS/ DD| ....... R|R */
-/* .. ##/ ##| . BB| BB\ BB| ..  SS/ . DDDDDDD| .. A|0 */
-/* . #########| BB|  BB\BB| .. SS| .. DD| ....... N|0 */
+/* .. ##/ ##| . BB| BB\ BB| ..  SS/ . DDDDDDD| .. A|O */
+/* . #########| BB|  BB\BB| .. SS| .. DD| ....... N|O */
 /* ...... ##| . BB| . BBBB| .. SS| .. DDDDDDDD| . G|V */
 /* .............................................. E|E */
 
 // Copyright (c) 2014 The Chromium Authors. All rights reserved.
-// Copyright (c) 2019 0range Gr00ve Sorority. All rights reserved.
+// Copyright (c) 2019 ORANGE GROOVE Sororité. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file AND if possible, in the Public Domain.
 
@@ -414,10 +414,17 @@
               var soundSrc =
               resourceTemplate.getElementById(N7e.sounds[sound]).src;
               soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
-              var buffer = decodeBase64ToArrayBuffer(soundSrc);
+              let len = (soundSrc.length / 4) * 3;
+              let str = atob(soundSrc);
+              let arrayBuffer = new ArrayBuffer(len);
+              let bytes = new Uint8Array(arrayBuffer);
+
+              for (let i = 0; i < len; i++) {
+                bytes[i] = str.charCodeAt(i);
+              }
 
               // Async, so no guarantee of order in array.
-              this.audioContext.decodeAudioData(buffer, function (index, audioData) {
+              this.audioContext.decodeAudioData(bytes.buffer, function (index, audioData) {
                 this.soundFx[index] = audioData;
               }.bind(this, sound));
 
@@ -1004,6 +1011,8 @@
           }
 
           if (!this.crashed && this.isRunning() && inputType == AMDR.status.JUMPING) {
+            console.log('true');
+            FIXFIX
             this.playing = true;
 
             for (let i = 0, action; action = this.actions[i]; i++) {
@@ -1387,23 +1396,6 @@
       container.appendChild(canvas);
 
       return canvas;
-    }
-
-
-    /**
-     * Decodes the base 64 audio to ArrayBuffer used by Web Audio.
-     * @param {string} base64String
-     */
-    function decodeBase64ToArrayBuffer(base64String) {
-      var len = (base64String.length / 4) * 3;
-      var str = atob(base64String);
-      var arrayBuffer = new ArrayBuffer(len);
-      var bytes = new Uint8Array(arrayBuffer);
-
-      for (var i = 0; i < len; i++) {
-        bytes[i] = str.charCodeAt(i);
-      }
-      return bytes.buffer;
     }
 
 
