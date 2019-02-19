@@ -96,10 +96,6 @@
     var FPS = 60;
 
     /** @const */
-    var IS_HIDPI = window.devicePixelRatio > 1;
-    IS_HIDPI = true; // Force HIDPI for now.
-
-    /** @const */
     var IS_IOS = /iPad|iPhone|iPod/.test(window.navigator.platform);
 
     /** @const */
@@ -194,34 +190,19 @@
      * @enum {Object}
      */
     N7e.spriteDefinition = {
-      /*
-      LDPI: {
-      CACTUS_LARGE: { x: 332, y: 2 },
-      CACTUS_SMALL: { x: 228, y: 2 },
-      CLOUD: { x: 86, y: 2 },
-      HORIZON: { x: 2, y: 54 },
-      MOON: { x: 484, y: 2 },
-      RED_DUCK: { x: 134, y: 2 },
+      BICYCLE: { x: 0, y: 0 },
+      CACTUS_LARGE: { x: 369, y: 0 },
+      CACTUS_SMALL: { x: 266, y: 0 },
+      CLOUD: { x: 166, y: [2,32,70] },
+      CRASH: { x: 800, y: 35},
+      DUST: { x: 776, y: 2 },
+      HORIZON: { x: 2, y: 104 },
+      MOON: { x: 954, y: 0 },
+      NATHERINE: { x: 0, y: 0 },
+      RED_DUCK: { x: 1537, y: 4 },
       RESTART: { x: 2, y: 2 },
-      TEXT_SPRITE: { x: 655, y: 2 },
-      NATHERINE: { x: 848, y: 2 },
-      STAR: { x: 645, y: 2 }
-    },*/
-      HDPI: {
-        BICYCLE: { x: 0, y: 0 },
-        CACTUS_LARGE: { x: 472, y: 2 },
-        CACTUS_SMALL: { x: 266, y: 2 },
-        CLOUD: { x: 166, y: [2,30,70] },
-        CRASH: { x: 800, y: 35},
-        DUST: { x: 776, y: 2 },
-        HORIZON: { x: 2, y: 104 },
-        MOON: { x: 954, y: 2 },
-        NATHERINE: { x: 0, y: 0 },
-        RED_DUCK: { x: 1537, y: 4 },
-        RESTART: { x: 2, y: 2 },
-        TEXT_SPRITE: { x: 1294, y: 2 },
-        STAR: { x: 1276, y: 2 }
-      }
+      TEXT_SPRITE: { x: 1294, y: 0 },
+      STAR: { x: 1114, y: 0 }
     };
 
 
@@ -283,38 +264,29 @@
          */
         loadImages: function () {
 
-          if (IS_HIDPI) {
-            N7e.imageSprite = document.getElementById('offline-resources-2x');
-            N7e.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running');
-            N7e.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding');
-            N7e.imageSpriteAmdrJumping = document.getElementById('offline-resources-nat-jumping');
-            N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling');
-            N7e.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
-            N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash');
-            N7e.imageKeysIntroduction = document.getElementById('offline-resources-keys');
-            this.spriteDef = N7e.spriteDefinition.HDPI;
+          N7e.imageSprite = document.getElementById('offline-resources-2x');
+          N7e.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running');
+          N7e.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding');
+          N7e.imageSpriteAmdrJumping = document.getElementById('offline-resources-nat-jumping');
+          N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling');
+          N7e.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
+          N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash');
+          N7e.imageKeysIntroduction = document.getElementById('offline-resources-shortkeys');
+          this.spriteDef = N7e.spriteDefinition;
 
-            Obstacle.types[0].mag = 2;
-            Obstacle.types[1].mag = 2;
-            Obstacle.types[2].mag = 2;
-            Obstacle.types[3].mag = 1;
+          /*
+          Obstacle.types[0].mag = 2;
+          Obstacle.types[1].mag = 2;
+          Obstacle.types[2].mag = 2;
+          Obstacle.types[3].mag = 1;
+          */
 
-            Obstacle.types[3].sprite = N7e.imageSpriteBicycle;
-            AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling;
-            AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrJumping;
-            AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding;
-            AMDR.animFrames.RUNNING.sprite = N7e.imageSpriteAmdrRunning;
-            AMDR.animFrames.CRASHED.sprite = N7e.imageSpriteAmdrCrashed;
-
-
-          } else {
-            //NYI
-            console.error("NYI: 1x isn't supported ATM.");
-            /*
-            N7e.imageSprite = document.getElementById('offline-resources-1x');
-            this.spriteDef = N7e.spriteDefinition.LDPI;
-            */
-          }
+          Obstacle.types[3].sprite = N7e.imageSpriteBicycle;
+          AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling;
+          AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrJumping;
+          AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding;
+          AMDR.animFrames.RUNNING.sprite = N7e.imageSpriteAmdrRunning;
+          AMDR.animFrames.CRASHED.sprite = N7e.imageSpriteAmdrCrashed;
 
           var loader = {
             spriteList: [ N7e.imageSprite, N7e.imageSpriteAmdrIdling, N7e.imageSpriteAmdrRunning, N7e.imageSpriteAmdrSliding, N7e.imageSpriteAmdrCrashed, N7e.imageSpriteBicycle, ],
@@ -770,8 +742,8 @@
               if (alpha > 0.95) {
                 let crashPoint = this.actions[0].boxes[0].intersection(this.actions[0].boxes[1]).center();
                 this.canvasCtx.drawImage(N7e.imageSprite,
-                    N7e.spriteDefinition.HDPI.CRASH.x,
-                    N7e.spriteDefinition.HDPI.CRASH.y,
+                    N7e.spriteDefinition.CRASH.x,
+                    N7e.spriteDefinition.CRASH.y,
                     this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
                     crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
                     this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
@@ -1506,9 +1478,9 @@
      */
     GameOverPanel.dimensions = {
       TEXT_X: 0,
-      TEXT_Y: 13,
-      TEXT_WIDTH: 90,
-      TEXT_HEIGHT: 31,
+      TEXT_Y: 26,
+      TEXT_WIDTH: 86,
+      TEXT_HEIGHT: 26,
       RESTART_WIDTH: 38,
       RESTART_HEIGHT: 34
     };
@@ -1555,17 +1527,6 @@
           var restartSourceHeight = dimensions.RESTART_HEIGHT;
           var restartTargetX = centerX - (dimensions.RESTART_WIDTH / 2);
           var restartTargetY = this.canvasDimensions.HEIGHT / 2;
-
-          if (IS_HIDPI) {
-            textSourceY *= 2;
-            textSourceX *= 2;
-            textSourceWidth *= 2;
-            textSourceHeight *= 2;
-            /* Since we switched to use a smaller version of the button.
-            restartSourceWidth *= 2;
-            restartSourceHeight *= 2;
-            */
-          }
 
           textSourceX += this.textImgPos.x;
           textSourceY += this.textImgPos.y;
@@ -1926,11 +1887,6 @@
               var sourceWidth = this.typeConfig.width;
               var sourceHeight = this.typeConfig.height;
 
-              if (IS_HIDPI) {
-                sourceWidth = sourceWidth * this.typeConfig.mag;
-                sourceHeight = sourceHeight * this.typeConfig.mag;
-              }
-
               // X position in sprite.
               var sourceX = (sourceWidth * this.size) * (0.5 * (this.size - 1)) +
               this.spritePos.x;
@@ -2050,9 +2006,9 @@
         minGap: 120,
         minSpeed: 0,
         collisionBoxes: [
-          new CollisionBox(0, 7, 5, 27),
-          new CollisionBox(4, 0, 6, 34),
-          new CollisionBox(10, 4, 7, 14)
+          new CollisionBox(0, 14, 10, 54),
+          new CollisionBox(8, 0, 12, 68),
+          new CollisionBox(20, 8, 14, 28)
         ]
       },
       {
@@ -2064,9 +2020,9 @@
         minGap: 120,
         minSpeed: 0,
         collisionBoxes: [
-          new CollisionBox(0, 12, 7, 38),
-          new CollisionBox(8, 0, 7, 49),
-          new CollisionBox(13, 10, 10, 38)
+          new CollisionBox(0, 24, 14, 76),
+          new CollisionBox(16, 0, 14, 98),
+          new CollisionBox(26, 20, 20, 76)
         ]
       },
       {
@@ -2821,9 +2777,9 @@
      * @enum {number}
      */
     DistanceMeter.dimensions = {
-      WIDTH: 10,
-      HEIGHT: 13,
-      DEST_WIDTH: 11
+      WIDTH: 14,
+      HEIGHT: 14,
+      DEST_WIDTH: 16
     };
 
 
@@ -2897,17 +2853,10 @@
           var sourceX = DistanceMeter.dimensions.WIDTH * value;
           var sourceY = 0;
 
-          var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH;
+          var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH + DistanceMeter.dimensions.DEST_WIDTH/2;
           var targetY = this.y;
           var targetWidth = DistanceMeter.dimensions.WIDTH;
           var targetHeight = DistanceMeter.dimensions.HEIGHT;
-
-          // For high DPI we 2x source values.
-          if (IS_HIDPI) {
-            sourceWidth *= 2;
-            sourceHeight *= 2;
-            sourceX *= 2;
-          }
 
           sourceX += this.spritePos.x;
           sourceY += this.spritePos.y;
@@ -3129,12 +3078,12 @@
      * @enum {number}
      */
     Cloud.config = {
-      HEIGHTS: [14,20,8],
+      HEIGHTS: [28,36,18],
       MAX_CLOUD_GAP: 400,
       MAX_SKY_LEVEL: 30,
       MIN_CLOUD_GAP: 100,
       MIN_SKY_LEVEL: N7e.defaultDimensions.HEIGHT - 79,
-      WIDTH: 46
+      WIDTH: 92
     };
 
 
@@ -3161,11 +3110,6 @@
             this.canvasCtx.globalCompositeOperation = 'luminosity';
             var sourceWidth = Cloud.config.WIDTH;
             var sourceHeight = Cloud.config.HEIGHTS[this.type];
-
-            if (IS_HIDPI) {
-              sourceWidth = sourceWidth * 2;
-              sourceHeight = sourceHeight * 2;
-            }
 
             this.canvasCtx.drawImage(N7e.imageSprite, this.spritePos.x,
               this.spritePos.y,
@@ -3342,8 +3286,8 @@
       FADE_SPEED: 0.035,
       HEIGHT: 40,
       MOON_SPEED: 0.25,
-      NUM_STARS: 7,
-      STAR_SIZE: 9,
+      NUM_STARS: 15,
+      STAR_SIZE: 10,
       STAR_SPEED: 0.3,
       STAR_MAX_Y: N7e.defaultDimensions.HEIGHT - 50,
       WIDTH: 20
@@ -3404,23 +3348,15 @@
 
         draw: function () {
           let n7e = N7e();
-          var moonSourceWidth = this.currentPhase == 3 ? NightMode.config.WIDTH * 2 :
-          NightMode.config.WIDTH;
+          var moonSourceWidth = this.currentPhase == 3
+            ? NightMode.config.WIDTH * 2
+            : NightMode.config.WIDTH;
           var moonSourceHeight = NightMode.config.HEIGHT;
           var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
           var moonOutputWidth = moonSourceWidth;
           var starSize = NightMode.config.STAR_SIZE;
           //var starSourceX = n7e.spriteDefinition.LDPI.STAR.x;
-          var starSourceX = N7e.spriteDefinition.HDPI.STAR.x;
-
-          if (IS_HIDPI) {
-            moonSourceWidth *= 2;
-            moonSourceHeight *= 2;
-            moonSourceX = this.spritePos.x +
-            (NightMode.phases[this.currentPhase] * 2);
-            starSize *= 2;
-            //starSourceX = n7e.spriteDefinition.HDPI.STAR.x;
-          }
+          var starSourceX = N7e.spriteDefinition.STAR.x;
 
           this.canvasCtx.save();
 
@@ -3432,6 +3368,7 @@
             moonOutputWidth, NightMode.config.HEIGHT);
 
           this.canvasCtx.globalAlpha = 1;
+          this.canvasCtx.globalCompositeOperation = 'lighten';
 
           // Stars.
           if (this.drawStars) {
@@ -3443,42 +3380,38 @@
               if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
 
               this.canvasCtx.globalAlpha = alpha * dt/50;
+              //this.canvasCtx.filter = 'hue-rotate('+this.stars[i].hue+'deg)';
               this.canvasCtx.drawImage(N7e.imageSprite,
                 starSourceX, this.stars[i].sourceY, starSize, starSize,
-                Math.round(this.stars[i].x), this.stars[i].y,
+                Math.ceil(this.stars[i].x), this.stars[i].y,
                 NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
             }
           }
 
-          /*
-          if (N7e.config.GRAPHICS_MODE == 9) {
-            this.canvasCtx.filter = 'blur(6px)';
+          this.canvasCtx.restore();
+        },
 
-            this.canvasCtx.drawImage(N7e.imageSprite, moonSourceX,
-              this.spritePos.y, moonSourceWidth, moonSourceHeight,
-              Math.round(this.xPos), this.yPos,
-              moonOutputWidth, NightMode.config.HEIGHT);
+        generateMoonCache: function () {
+              /*
+          let blurWidth = 5;
+          let frameWidth = 2 * (2 * NightMode.config.WIDTH + 2 * blurWidth);
+          let frameHeight = 2 * (NightMode.config.HEIGHT + blurWidth * 2);
+          this.moonCanvas = document.createElement('canvas');
+          this.moonCanvas.width = 16 * framWidth;
+          this.moonCanvas.height = 2 * ;
+          let ctx = this.moonCanvas.getContext('2d');
 
-            this.canvasCtx.filter = 'blur(2px)';
-            if (this.drawStars) {
-              for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-                let alpha = this.opacity * this.stars[i].opacity;
-                let mx = this.xPos + moonOutputWidth/2;
-                let my = this.yPos + NightMode.config.HEIGHT/2;
-                let dt = Math.abs(this.stars[i].x - mx) + Math.abs(this.stars[i].y - my) - 50;
-                if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
-
-                this.canvasCtx.globalAlpha = alpha * dt/50;
-                this.canvasCtx.drawImage(N7e.imageSprite,
-                  starSourceX, this.stars[i].sourceY, starSize, starSize,
-                  Math.round(this.stars[i].x), this.stars[i].y,
-                  NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
-              }
+          for (let i = 0; i < 16; i++) {
+            let x = i * 2 * (NightMode.config.WIDTH + blurWidth);
+            if ( i < 4) {
+              ctx.drawImage(N7e.imageSprite,
+                this.spritePos.x + NightMode.phases[phase], this.spritePos.y,
+                NightMode.config.WIDTH * 2, NightMode.config.HEIGHT * 2,
+                x + blurwidth, blurWidth,
+                NightMode.config.WIDTH * 2, NightMode.config.HEIGHT * 2);
             }
           }
-          */
-
-          this.canvasCtx.restore();
+                */
         },
 
         // Do star placement.
@@ -3492,19 +3425,15 @@
             this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
             this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
             this.stars[i].opacity = 0.5 + 0.5 * Math.random();
+            //this.stars[i].hue = Math.floor(Math.random() * 360);
 
             let fading_range = 1/2 * NightMode.config.STAR_MAX_Y;
             if (this.stars[i].y > 1/2 * NightMode.config.STAR_MAX_Y) {
               this.stars[i].opacity *= 2 - this.stars[i].y/fading_range;
             }
 
-            if (IS_HIDPI) {
-              this.stars[i].sourceY = N7e.spriteDefinition.HDPI.STAR.y +
-              NightMode.config.STAR_SIZE * 2 * getRandomNum(0, 3);
-            }/* else {
-              this.stars[i].sourceY = N7e.spriteDefinition.LDPI.STAR.y +
-              NightMode.config.STAR_SIZE * i;
-            }*/
+            this.stars[i].sourceY = N7e.spriteDefinition.STAR.y +
+            NightMode.config.STAR_SIZE * getRandomNum(0, 3);
           }
         },
 
@@ -3559,15 +3488,11 @@
          */
         setSourceDimensions: function () {
           for (var dimension in HorizonLine.dimensions) {
-            if (IS_HIDPI) {
-              if (dimension != 'YPOS') {
-                this.sourceDimensions[dimension] =
-                  HorizonLine.dimensions[dimension] * 2;
-              }
-            } else {
+            if (dimension != 'YPOS') {
               this.sourceDimensions[dimension] =
-                HorizonLine.dimensions[dimension];
+              HorizonLine.dimensions[dimension] * 2;
             }
+
             this.dimensions[dimension] = HorizonLine.dimensions[dimension];
           }
 
@@ -3587,19 +3512,19 @@
             this.groundCanvas = document.createElement('canvas');
             this.groundCanvas.width = N7e.defaultDimensions.WIDTH;
             this.groundCanvas.height = 25 * 200;
-            this.grCtx = this.groundCanvas.getContext('2d');
           }
+          let ctx = this.groundCanvas.getContext('2d');
 
-          this.grCtx.clearRect(0, 0, N7e.defaultDimensions.WIDTH, this.groundCanvas.height);
+          ctx.clearRect(0, 0, N7e.defaultDimensions.WIDTH, this.groundCanvas.height);
           this.grMode = N7e.config.GRAPHICS_MODE;
 
-          this.grCtx.save();
-          this.grCtx.translate(0,25 - N7e.defaultDimensions.HEIGHT);
+          ctx.save();
+          ctx.translate(0,25 - N7e.defaultDimensions.HEIGHT);
           for (let i = 0; i < 200; i++) {
-              this.drawGround(this.grCtx, i);
-              this.grCtx.translate(0,25);
+              this.drawGround(ctx, i);
+              ctx.translate(0,25);
           }
-          this.grCtx.restore();
+          ctx.restore();
         },
 
         drawGround: function(canvasCtx, spinner) {
