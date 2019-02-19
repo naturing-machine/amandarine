@@ -177,7 +177,15 @@
       INVERTED: 'inverted',
       SNACKBAR: 'snackbar',
       SNACKBAR_SHOW: 'snackbar-show',
-      TOUCH_CONTROLLER: 'controller'
+      TOUCH_CONTROLLER: 'controller',
+      CONSOLE_LEFT: 'runner-left-button',
+      CONSOLE_RIGHT: 'runner-right-button',
+      CONSOLE_MUSIC: 'runner-music-button',
+      CONSOLE_GRAPHICS: 'runner-graphics-button',
+      CONSOLE_RESTART: 'runner-restart-button',
+      CONSOLE_TROPHY: 'runner-trophy-button',
+      CONSOLE_N7E: 'runner-n7e-button',
+      CONSOLE_RESET: 'runner-reset-button',
     };
 
 
@@ -512,13 +520,45 @@
           });
           this.queueAction(this.defaultAction);
 
-
           this.containerEl = document.createElement('div');
           this.containerEl.className = N7e.classes.CONTAINER;
+//          this.containerEl.style.transform = "rotate("+(Math.random()*5-2.5).toFixed(2)+"deg)";
 
           // Player canvas container.
-          this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
-            this.dimensions.HEIGHT, N7e.classes.PLAYER);
+
+          this.canvas = document.createElement('canvas');
+          this.canvas.className = N7e.classes.CANVAS;
+          this.canvas.width = this.dimensions.WIDTH;
+          this.canvas.height = this.dimensions.HEIGHT;
+          this.containerEl.appendChild(this.canvas);
+
+          this.consoleButtons = {
+            CONSOLE_LEFT: { x: 104, y: 495, w: 100, h: 100, id:'offline-resources-console-button-left' },
+            CONSOLE_RIGHT: { x: 596, y: 495, w: 100, h: 100, id:'offline-resources-console-button-right' },
+            CONSOLE_MUSIC: { x: 233, y: 495, w: 66, h: 50, id:'offline-resources-console-button-music' },
+            CONSOLE_GRAPHICS: { x: 233, y: 545, w: 66, h: 50, id:'offline-resources-console-button-graphics' },
+            CONSOLE_RESTART: { x: 501, y: 495, w: 66, h: 50, id:'offline-resources-console-button-restart' },
+            CONSOLE_TROPHY: { x: 501, y: 545, w: 66, h: 50, id:'offline-resources-console-button-trophy' },
+            CONSOLE_N7E: { x: 357, y: 628, w: 18, h: 18, id:'offline-resources-console-button-n7e' },
+            CONSOLE_RESET: { x: 424, y: 628, w: 18, h: 18, id:'offline-resources-console-button-reset' },
+          };
+
+          for( let key in this.consoleButtons ) {
+            let btt = this.consoleButtons[key];
+            btt.pressure = 0;
+            btt.dir = 0;
+            btt.frame = -1;
+            btt.canvas = document.createElement('canvas');
+            btt.canvas.width = btt.w;
+            btt.canvas.height = btt.h;
+            btt.canvas.style.left = btt.x+'px';
+            btt.canvas.style.top = btt.y+'px';
+            btt.canvas.style.position = 'absolute';
+            btt.sprite = document.getElementById(btt.id);
+            //elm.canvas.className = N7e.classes[key];
+            btt.canvasCtx = btt.canvas.getContext('2d'/*,{alpha:false}*/);
+            this.containerEl.appendChild(btt.canvas);
+          }
 
             // This or we won't recieve
           this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
@@ -554,8 +594,10 @@
           this.startListening();
           this.update();
 
+          /*
           window.addEventListener(N7e.events.RESIZE,
             this.debounceResize.bind(this));
+            */
         },
 
         /**
@@ -588,7 +630,7 @@
           var padding = Number(boxStyles.paddingLeft.substr(0,
             boxStyles.paddingLeft.length - 2));
 
-          this.dimensions.WIDTH = this.outerContainerEl.offsetWidth - padding * 2;
+          //this.dimensions.WIDTH = this.outerContainerEl.offsetWidth - padding * 2;
 
           // Redraw the elements back onto the canvas.
           if (this.canvas) {
@@ -679,6 +721,27 @@
           var deltaTime = now - (this.time || now);
           this.time = now;
 
+          for( let key in this.consoleButtons ) {
+            let btt = this.consoleButtons[key];
+
+            if (btt.dir) {
+              btt.pressure += deltaTime * btt.dir;
+              if (btt.pressure < 0) {
+                btt.pressure = 0;
+                btt.dir = 0;
+              } else if (btt.pressure > 100) {
+                btt.pressure = 100;
+                btt.dir = 0;
+              }
+            }
+
+            let frame = Math.floor(4 * btt.pressure / 100);
+            if (frame != btt.frame) {
+              btt.frame = frame;
+              btt.canvasCtx.drawImage(btt.sprite,btt.w*frame,0,btt.w,btt.h,0,0,btt.w,btt.h);
+            }
+          }
+
           if (this.skyFadingStartTime) {
             let delta = now - this.skyFadingStartTime;
             if (delta > N7e.config.SKY_SHADING_DURATION) {
@@ -690,7 +753,6 @@
               this.adjustSkyGradient(delta/N7e.config.SKY_SHADING_DURATION);
             }
           }
-
 
           if (this.playing) {
             this.clearCanvas();
@@ -878,6 +940,12 @@
             this.restart();
           }
 
+          if (e.keyCode == '77') {
+            this.consoleButtons.CONSOLE_MUSIC.dir = 1;
+          } else if (e.keyCode == '71') {
+            this.consoleButtons.CONSOLE_GRAPHICS.dir = 1;
+          }
+
           let inputType = null;
           if (e.type == N7e.events.TOUCHSTART) {
             let clientWidth = N7e().touchController.offsetWidth;
@@ -893,6 +961,16 @@
             inputType = AMDR.status.JUMPING;
           } else if (N7e.keycodes.SLIDE[e.keyCode]) {
             inputType = AMDR.status.SLIDING;
+          }
+
+          switch(inputType) {
+            case AMDR.status.JUMPING:
+              this.consoleButtons.CONSOLE_RIGHT.dir = 1;
+              break;
+            case AMDR.status.SLIDING:
+              this.consoleButtons.CONSOLE_LEFT.dir = 1;
+              break;
+            default:;
           }
 
           if (this.actions.length && this.actions[0].title) {
@@ -965,12 +1043,24 @@
             inputType = null;
           }
 
-
-          if (keyCode == '67') {
-            n7e.config.SHOW_COLLISION = !n7e.config.SHOW_COLLISION;
+          switch(inputType) {
+            case AMDR.status.JUMPING:
+              this.consoleButtons.CONSOLE_RIGHT.dir = -1;
+              break;
+            case AMDR.status.SLIDING:
+              this.consoleButtons.CONSOLE_LEFT.dir = -1;
+              break;
+            default:;
           }
 
-          if (keyCode == '77') {
+          if (keyCode == '67') {
+
+            n7e.config.SHOW_COLLISION = !n7e.config.SHOW_COLLISION;
+
+          } else if (keyCode == '77') {
+
+            this.consoleButtons.CONSOLE_MUSIC.dir = -1;
+
             if (n7e.config.PLAY_MUSIC) {
               n7e.musics.stop();
               n7e.config.PLAY_MUSIC = false;
@@ -981,6 +1071,7 @@
           }
 
           if (keyCode == '71' || (keyCode <= 57 && keyCode >= 48)) {
+            this.consoleButtons.CONSOLE_GRAPHICS.dir = -1;
             if (keyCode <= 57 && keyCode >= 48) {
               n7e.config.GRAPHICS_MODE = keyCode - 48;
             } else {
@@ -1377,26 +1468,6 @@
         window.navigator.vibrate(duration);
       }
     }
-
-
-    /**
-     * Create canvas element.
-     * @param {HTMLElement} container Element to append canvas to.
-     * @param {number} width
-     * @param {number} height
-     * @param {string} opt_classname
-     * @return {HTMLCanvasElement}
-     */
-    function createCanvas(container, width, height, opt_classname) {
-      var canvas = document.createElement('canvas');
-      canvas.className = opt_classname ? N7e.classes.CANVAS + ' ' + opt_classname : N7e.classes.CANVAS;
-      canvas.width = width;
-      canvas.height = height;
-      container.appendChild(canvas);
-
-      return canvas;
-    }
-
 
     /**
      * Return the current timestamp.
@@ -2007,7 +2078,6 @@
           N7e.defaultDimensions.HEIGHT - 75,
           N7e.defaultDimensions.HEIGHT - 100
         ], // Variable height.
-        yPosMobile: [100, 50], // Variable height mobile.
         multipleSpeed: 999,
         // minSpeed: 8.5,
         minSpeed: 0,
@@ -2217,7 +2287,7 @@
           */
 
           /* Don't draw crash state to observe the effective collision boxes */
-          if (!n7e.config.SHOW_COLLISION || opt_status.type != AMDR.status.CRASHED ) {
+          if (!n7e.config.SHOW_COLLISION || (opt_status && opt_status.type != AMDR.status.CRASHED)) {
             this.draw(this.currentAnimFrames[this.currentFrame], 0);
           }
 

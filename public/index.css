@@ -7,7 +7,7 @@ html, body {
   margin: 0;
   width: 100%;
   height: 100%;
-  //background-color: #000033;
+  background-image: linear-gradient(0deg, #d499ae, #e6b1af);
 }
 
 .icon {
@@ -18,7 +18,13 @@ html, body {
 
 .icon-offline {
   content: -webkit-image-set( url(assets/default_100_percent/100-error-offline.png) 1x, url(assets/default_200_percent/200-error-offline.png) 2x);
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -30px;
+  margin-left: -30px;
+  width: 60px;
+  height: 60px;
 }
 
 .hidden {
@@ -41,6 +47,14 @@ html, body {
   z-index: 5;
 }
 
+#twitter {
+  position: absolute;
+  top: 0px;
+  left: 86px;
+  -webkit-transition: all 0.5s ease-out;
+  z-index: 5;
+}
+
 .banner-off-screen {
   top: -32px !important;
   opacity: 0.5;
@@ -55,42 +69,116 @@ html, body {
 /* Offline page */
 
 .offline .interstitial-wrapper {
-  color: #2b2b2b;
-  font-size: 1em;
-  line-height: 1.55;
-  margin: 0 auto;
-  max-width: 600px;
-  min-width: 600px;
-  padding-top: 100px;
-  width: 100%;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin-top: -400px;
+  margin-left: -400px;
+  width: 800px;
+  height: 800px;
+  padding: 0;
 }
 
 .offline .runner-container {
-  height: 200px;
-  position: absolute;
-  top: 35px;
-  top: 200px;
-  width: 600px;
+  width: 800px;
+  height: 800px;
+  top: 0;
+  left: 0;
+  background-image: url(assets/console.png);
+  background-repeat: no-repeat;
 }
 
 .offline .runner-canvas {
   height: 200px;
-  max-width: 600px;
+  width: 600px;
+  top: 237px;
+  left: 100px;
   opacity: 1;
   overflow: hidden;
   position: absolute;
-  top: 0;
   z-index: 2;
-  border-radius: 8px;
+  border-radius: 5px;
+}
+
+.offline .runner-left-button {
+  left: 104px;
+  top: 495px;
+  height: 100px;
+  width: 100px;
+  position: absolute;
+  z-index: 2;
+}
+
+.offline .runner-right-button {
+  left: 596px;
+  top: 495px;
+  width: 100px;
+  height: 100px;
+  position: absolute;
+  z-index: 2;
+}
+
+.offline .runner-music-button {
+  left: 233px;
+  top: 495px;
+  width: 66px;
+  height: 50px;
+  position: absolute;
+  z-index: 2;
+}
+
+.offline .runner-graphics-button {
+  left: 233px;
+  top: 545px;
+  width: 66px;
+  height: 50px;
+  position: absolute;
+  z-index: 2;
+}
+
+.offline .runner-restart-button {
+  left: 501px;
+  top: 495px;
+  width: 66px;
+  height: 50px;
+  position: absolute;
+  z-index: 2;
+}
+
+.offline .runner-trophy-button {
+  left: 501px;
+  top: 545px;
+  width: 66px;
+  height: 50px;
+  position: absolute;
+  z-index: 2;
+}
+
+.offline .runner-n7e-button {
+  left: 357px;
+  top: 628px;
+  width: 18px;
+  height: 18px;
+  position: absolute;
+  z-index: 2;
+}
+
+.offline .runner-reset-button {
+  left: 424px;
+  top: 628px;
+  width: 18px;
+  height: 18px;
+  position: absolute;
+  z-index: 2;
 }
 
 .offline .controller {
-  background: rgba(247, 247, 247, .1);
   height: 100vh;
   left: 0;
-  position: absolute;
-  top: 30px;
+  position: fixed;
+  top: 50px;
   width: 100vw;
+  margin: 0;
   z-index: 1;
 }
 
