@@ -2492,13 +2492,13 @@
                         n7e.playSound(N7e().soundFx.SOUND_OGGG,0.3);
                         n7e.setSky(n7e.config.SKY.SUNSET);
 
-                        let cx = action.boxes[0].center().x - action.boxes[1].center().x;
-                        let cy = action.boxes[0].center().y - action.boxes[1].center().y;
-                        if (Math.abs(cx) > Math.abs(cy/2)) {
-                          action.dir = cx > 0 ? 1 : -1;
+                        let crashPoint = action.boxes[0].intersection(action.boxes[1]).center();
+                        if (crashPoint.x > action.boxes[0].center().x) {
+                          action.dir = -1;
                         } else {
-                          action.dir = cy > 0 ? -1 : 1;
+                          action.dir = 1;
                         }
+
                         action.duration = 200;
                         action.top = action.duration / 1000;
                         action.halfTime = Math.sqrt(2000 * action.duration / AMDR.config.GRAVITY);
