@@ -3489,19 +3489,17 @@
             NightMode.config.NUM_STARS);
 
           for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-            this.stars[i] = {};
-            this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
-            this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
-            this.stars[i].opacity = 0.5 + 0.5 * Math.random();
-            //this.stars[i].hue = Math.floor(Math.random() * 360);
+            this.stars[i] = {
+              x: getRandomNum(segmentSize * i, segmentSize * (i + 1)),
+              y: getRandomNum(0, NightMode.config.STAR_MAX_Y),
+              opacity: 0.5 + 0.5 * Math.random(),
+              sourceY: N7e.spriteDefinition.STAR.y + NightMode.config.STAR_SIZE * i%4,
+              //hue: Math.floor(Math.random() * 360),
+            };
 
-            let fading_range = 1/2 * NightMode.config.STAR_MAX_Y;
-            if (this.stars[i].y > 1/2 * NightMode.config.STAR_MAX_Y) {
-              this.stars[i].opacity *= 2 - this.stars[i].y/fading_range;
+            if (this.stars[i].y > NightMode.config.STAR_MAX_Y / 2) {
+              this.stars[i].opacity *= 2 - this.stars[i].y/(0.5 * NightMode.config.STAR_MAX_Y);
             }
-
-            this.stars[i].sourceY = N7e.spriteDefinition.STAR.y +
-            NightMode.config.STAR_SIZE * getRandomNum(0, 3);
           }
         },
 
