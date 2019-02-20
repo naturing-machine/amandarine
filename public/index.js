@@ -556,10 +556,13 @@
           this.distanceMeter = new DistanceMeter(this.canvas,
             this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
 
+          this.terminal = new Terminal(this.canvas, this.spriteDef.TEXT_SPRITE);
+
           // Draw Amandarine
           this.amdr = new AMDR(this.canvas, this.spriteDef.NATHERINE);
 
           this.outerContainerEl.appendChild(this.containerEl);
+          this.outerContainerEl.style.opacity = 1;
 
           if (IS_MOBILE) {
             this.createTouchController();

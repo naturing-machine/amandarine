@@ -77,6 +77,8 @@ html, body {
   width: 800px;
   height: 800px;
   padding: 0;
+  opacity: 0;
+  transition: opacity 1s;
 }
 
 .offline .runner-container {
@@ -97,7 +99,6 @@ html, body {
   position: absolute;
   z-index: 2;
   border-radius: 5px;
-  /* opacity: 0.4; *//* Kinda Cool */
 }
 
 .offline .runner-left-button {
