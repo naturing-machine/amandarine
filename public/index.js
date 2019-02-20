@@ -52,6 +52,7 @@
       this.obstacles = [];
 
       this.actions = [];
+      this.activeActions = [];
 
       this.activated = false;
       this.playing = false; // Whether the game is currently in play state.
@@ -488,7 +489,7 @@
             speed: 1,
             xPos: -80,
             duration: 1400,
-            title: true,
+            story: true,
           });
           this.queueAction(this.defaultAction);
 
@@ -725,7 +726,7 @@
               delete this.skyFadingStartTime;
               this.adjustSkyGradient(1);
               //this.sepia = 0;
-              this.canvasCtx.flter = '';
+              //this.canvasCtx.flter = '';
             } else {
               this.adjustSkyGradient(delta/N7e.config.SKY_SHADING_DURATION);
             }
@@ -952,8 +953,9 @@
             default:;
           }
 
-          if (this.actions.length && this.actions[0].title) {
+          if (this.actions.length && this.actions[0].story) {
             inputType = null;
+            return;
           }
 
           if (!this.crashed) {
@@ -984,6 +986,7 @@
             }
 
             if (action && !action.index) {
+              this.activeActions[inputType] = action;
               this.queueAction(action);
             }
 
@@ -1064,32 +1067,65 @@
             this.clearCanvas();
             this.horizon.horizonLine.draw();
             this.amdr.update(0, this.currentSpeed);
+
+            return;
+
           }
 
-          if (!this.crashed && this.isRunning() && inputType == AMDR.status.JUMPING) {
+          let inputType;
+          if (e.type == N7e.events.TOUCHEND) {
+            let clientWidth = N7e().touchController.offsetWidth;
+            for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
+              if (touch.clientX > clientWidth/2) {
+                inputType = AMDR.status.JUMPING;
+              } else {
+                inputType = AMDR.status.SLIDING;
+              }
+              break;
+            } //FIXME MOUSE
+          } else if (N7e.keycodes.JUMP[keyCode] || e.type == N7e.events.MOUSEUP) {
+            inputType = AMDR.status.JUMPING;
+          } else if (N7e.keycodes.SLIDE[keyCode]) {
+            inputType = AMDR.status.SLIDING;
+          }
+
+          if (this.actions.length && this.actions[0].story) {
+            return;
+          }
+
+          /* Set console animation status */
+          switch(inputType) {
+            case AMDR.status.JUMPING:
+              this.consoleButtons.CONSOLE_RIGHT.dir = -1;
+              break;
+            case AMDR.status.SLIDING:
+              this.consoleButtons.CONSOLE_LEFT.dir = -1;
+              break;
+            default:
+              return;
+          }
+
+          let action = this.activeActions[inputType];
+
+          if (!this.crashed && action && inputType == AMDR.status.JUMPING) {
             this.playing = true;
 
-            for (let i = 0, action; action = this.actions[i]; i++) {
-              if (action.type == inputType && action.priority == 0) {
-                action.end = e.timeStamp;
-                action.pressDuration = action.end - action.begin;
-                if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
-                action.priority = 1;
-                break;
-              }
+            if (action.priority == 0) {
+              action.end = e.timeStamp;
+              action.pressDuration = action.end - action.begin;
+              if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
+              action.priority = 1;
             }
 
-          } else if (N7e.keycodes.SLIDE[keyCode] || inputType == AMDR.status.SLIDING) {
-            for (let i = 0, action; action = this.actions[i]; i++) {
-              if (action.type == inputType && action.priority == 0) {
-                action.end = e.timeStamp;
-                action.pressDuration = action.end - action.begin;
-                if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
-                action.priority = 1;
-                break;
-              }
+          } else if (action && inputType == AMDR.status.SLIDING) {
+
+            if (action.priority == 0) {
+              action.end = e.timeStamp;
+              action.pressDuration = action.end - action.begin;
+              if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
+              action.priority = 1;
             }
-            //this.amdr.setDuck(false);
+
           } else if (this.crashed) {
             // Check that enough time has elapsed before allowing jump key to restart.
             var deltaTime = getTimeStamp() - this.crashedTime;
