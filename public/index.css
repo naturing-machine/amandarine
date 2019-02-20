@@ -84,7 +84,7 @@ html, body {
   height: 800px;
   top: 0;
   left: 0;
-  background-image: url(assets/console.png);
+  /*background-image: url(assets/console.png);*/
   background-repeat: no-repeat;
 }
 
@@ -93,11 +93,11 @@ html, body {
   width: 600px;
   top: 237px;
   left: 100px;
-  opacity: 1;
   overflow: hidden;
   position: absolute;
   z-index: 2;
   border-radius: 5px;
+  /* opacity: 0.4; *//* Kinda Cool */
 }
 
 .offline .runner-left-button {

@@ -193,15 +193,15 @@
       BICYCLE: { x: 0, y: 0 },
       CACTUS_LARGE: { x: 369, y: 0 },
       CACTUS_SMALL: { x: 266, y: 0 },
-      CLOUD: { x: 166, y: [2,32,70] },
+      CLOUD: { x: 166, y: [1,20,46,61,76,95] },
       CRASH: { x: 800, y: 35},
       DUST: { x: 776, y: 2 },
       HORIZON: { x: 2, y: 104 },
       MOON: { x: 954, y: 0 },
       NATHERINE: { x: 0, y: 0 },
-      RED_DUCK: { x: 1537, y: 4 },
+      RED_DUCK: { x: 2165, y: 4 },
       RESTART: { x: 2, y: 2 },
-      TEXT_SPRITE: { x: 1294, y: 0 },
+      TEXT_SPRITE: { x: 1125, y: 0 },
       STAR: { x: 1114, y: 0 }
     };
 
@@ -492,8 +492,10 @@
           });
           this.queueAction(this.defaultAction);
 
-          this.containerEl = document.createElement('div');
-          this.containerEl.className = N7e.classes.CONTAINER;
+          this.containerEl = document.getElementById('main-content');
+          //this.containerEl = document.createElement('div');
+          //this.containerEl.className = N7e.classes.CONTAINER;
+
 //          this.containerEl.style.transform = "rotate("+(Math.random()*5-2.5).toFixed(2)+"deg)";
 
           // Player canvas container.
@@ -1074,7 +1076,6 @@
           }
 
           if (!this.crashed && this.isRunning() && inputType == AMDR.status.JUMPING) {
-            console.log('true');
             this.playing = true;
 
             for (let i = 0, action; action = this.actions[i]; i++) {
@@ -1189,7 +1190,6 @@
           }
 
           this.gameOverPanel.draw();
-
 
           // Update the high score.
           if (this.distanceRan > this.highestScore) {
@@ -1478,7 +1478,7 @@
      */
     GameOverPanel.dimensions = {
       TEXT_X: 0,
-      TEXT_Y: 26,
+      TEXT_Y: 18,
       TEXT_WIDTH: 86,
       TEXT_HEIGHT: 26,
       RESTART_WIDTH: 38,
@@ -2974,7 +2974,7 @@
 
         /**
          * Set the highscore as a array string.
-         * Position of char in the sprite: H - 10, I - 11.
+         * Position of char in the sprite: A - 10, B - 11, ...
          * @param {number} distance Distance ran in pixels.
          */
         setHighScore: function (distance) {
@@ -2982,7 +2982,7 @@
           var highScoreStr = (this.defaultString +
             distance).substr(-this.maxScoreUnits);
 
-          this.highScore = ['10', '11', ''].concat(highScoreStr.split(''));
+          this.highScore = ['17', '18', ''].concat(highScoreStr.split(''));
         },
 
         /**
@@ -3078,10 +3078,10 @@
      * @enum {number}
      */
     Cloud.config = {
-      HEIGHTS: [28,36,18],
+      HEIGHTS: [18,24,12,14,18,9],
       MAX_CLOUD_GAP: 400,
       MAX_SKY_LEVEL: 30,
-      MIN_CLOUD_GAP: 100,
+      MIN_CLOUD_GAP: 50,
       MIN_SKY_LEVEL: N7e.defaultDimensions.HEIGHT - 79,
       WIDTH: 92
     };
@@ -3092,9 +3092,9 @@
          * Initialise the cloud. Sets the Cloud height.
          */
         init: function () {
+          this.opacity = getRandomNum(1,4) / 5;
           this.yPos = getRandomNum(Cloud.config.MAX_SKY_LEVEL,
-            Cloud.config.MIN_SKY_LEVEL);
-          this.opacity = getRandomNum(2,4) / 5;
+            Cloud.config.MIN_SKY_LEVEL) + Math.floor(50 * (1 - this.opacity));
           this.draw();
         },
 
@@ -3126,7 +3126,7 @@
          */
         update: function (speed) {
           if (!this.remove) {
-            this.xPos -= speed;
+            this.xPos -= speed + speed * this.opacity;
             this.draw();
 
             // Mark as removeable if no longer in the canvas.
@@ -3270,12 +3270,14 @@
       this.canvasCtx = canvas.getContext('2d');
       this.xPos = containerWidth - 50;
       this.yPos = 50;
-      this.nextPhase = NightMode.phases.length - 1;
+//      this.nextPhase = NightMode.phases.length - 1;
+      this.nextPhase = 7;
       this.currentPhase = this.nextPhase;
       this.opacity = 0;
       this.containerWidth = containerWidth;
       this.stars = [];
       this.drawStars = false;
+      this.generateMoonCache();
       this.placeStars();
     };
 
@@ -3284,13 +3286,17 @@
      */
     NightMode.config = {
       FADE_SPEED: 0.035,
+
+      MOON_BLUR: 10,
+      MOON_SPEED: 0.1,
+      WIDTH: 20,
       HEIGHT: 40,
-      MOON_SPEED: 0.25,
+
       NUM_STARS: 15,
       STAR_SIZE: 10,
-      STAR_SPEED: 0.3,
+      STAR_SPEED: 0.07,
       STAR_MAX_Y: N7e.defaultDimensions.HEIGHT - 50,
-      WIDTH: 20
+
     };
 
     NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
@@ -3307,7 +3313,7 @@
             this.currentPhase = this.nextPhase;
             this.nextPhase++;
 
-            if (this.nextPhase >= NightMode.phases.length) {
+            if (this.nextPhase >= 15) {
               this.nextPhase = 0;
             }
           }
@@ -3324,7 +3330,7 @@
             this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
 
             // Update stars.
-            if (this.drawStars) {
+            if (N7e.config.GRAPHICS_MODE != 1 && this.drawStars) {
               for (var i = 0, star; star = this.stars[i]; i++) {
                 star.x = this.updateXPos(star.x, NightMode.config.STAR_SPEED);
               }
@@ -3348,34 +3354,56 @@
 
         draw: function () {
           let n7e = N7e();
-          var moonSourceWidth = this.currentPhase == 3
-            ? NightMode.config.WIDTH * 2
-            : NightMode.config.WIDTH;
-          var moonSourceHeight = NightMode.config.HEIGHT;
-          var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
-          var moonOutputWidth = moonSourceWidth;
+
           var starSize = NightMode.config.STAR_SIZE;
-          //var starSourceX = n7e.spriteDefinition.LDPI.STAR.x;
           var starSourceX = N7e.spriteDefinition.STAR.x;
 
           this.canvasCtx.save();
 
           // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
           this.canvasCtx.globalAlpha = this.opacity;
-          this.canvasCtx.drawImage(N7e.imageSprite, moonSourceX,
-            this.spritePos.y, moonSourceWidth, moonSourceHeight,
-            Math.round(this.xPos), this.yPos,
-            moonOutputWidth, NightMode.config.HEIGHT);
-
-          this.canvasCtx.globalAlpha = 1;
           this.canvasCtx.globalCompositeOperation = 'lighten';
 
+          let mx,my;
+
+          if (N7e.config.GRAPHICS_MODE != 1 && this.moonCanvas) {
+            let yShift = 7 - this.currentPhase;
+            yShift *= yShift;
+            let fw = 2 * (NightMode.config.WIDTH + NightMode.config.MOON_BLUR);
+            let fh = NightMode.config.HEIGHT + NightMode.config.MOON_BLUR * 2;
+            mx = Math.ceil(this.xPos/N7e.defaultDimensions.WIDTH * (N7e.defaultDimensions.WIDTH+fw*2) - fw - NightMode.config.MOON_BLUR);
+            my = yShift + this.yPos - NightMode.config.MOON_BLUR;
+
+            this.canvasCtx.drawImage(this.moonCanvas,
+              this.currentPhase * fw, 0,
+              fw, fh,
+              mx, my,
+              fw, fh);
+              mx += fw/2;
+              my += fh/2;
+          } else {
+            mx = Math.ceil(this.xPos);
+            my = this.yPos;
+            var moonSourceWidth = this.currentPhase == 3
+              ? NightMode.config.WIDTH * 2
+              : NightMode.config.WIDTH;
+            var moonSourceHeight = NightMode.config.HEIGHT;
+            var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
+            var moonOutputWidth = moonSourceWidth;
+
+            this.canvasCtx.drawImage(N7e.imageSprite, moonSourceX,
+              this.spritePos.y, moonSourceWidth, moonSourceHeight,
+              mx, my,
+              moonOutputWidth, NightMode.config.HEIGHT);
+            mx += moonOutputWidth/2;
+            my += NightMode.config.HEIGHT/2;
+          }
+
+          this.canvasCtx.globalAlpha = 1;
           // Stars.
-          if (this.drawStars) {
+          if (N7e.config.GRAPHICS_MODE != 1 && this.drawStars) {
             for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
               let alpha = this.opacity * this.stars[i].opacity;
-              let mx = this.xPos + moonOutputWidth/2;
-              let my = this.yPos + NightMode.config.HEIGHT/2;
               let dt = Math.abs(this.stars[i].x - mx) + Math.abs(this.stars[i].y - my) - 50;
               if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
 
@@ -3392,26 +3420,66 @@
         },
 
         generateMoonCache: function () {
-              /*
-          let blurWidth = 5;
-          let frameWidth = 2 * (2 * NightMode.config.WIDTH + 2 * blurWidth);
-          let frameHeight = 2 * (NightMode.config.HEIGHT + blurWidth * 2);
+          let frameWidth = 2 * NightMode.config.WIDTH + 2 * NightMode.config.MOON_BLUR;
+          let frameHeight = NightMode.config.HEIGHT + 2 * NightMode.config.MOON_BLUR;
           this.moonCanvas = document.createElement('canvas');
-          this.moonCanvas.width = 16 * framWidth;
-          this.moonCanvas.height = 2 * ;
+          this.moonCanvas.width = 16 * frameWidth;
+          this.moonCanvas.height = frameHeight
           let ctx = this.moonCanvas.getContext('2d');
 
-          for (let i = 0; i < 16; i++) {
-            let x = i * 2 * (NightMode.config.WIDTH + blurWidth);
-            if ( i < 4) {
+          for (let i = 0; i < 15; i++) {
+            if (i >= 4 && i < 11 ) {
               ctx.drawImage(N7e.imageSprite,
-                this.spritePos.x + NightMode.phases[phase], this.spritePos.y,
-                NightMode.config.WIDTH * 2, NightMode.config.HEIGHT * 2,
-                x + blurwidth, blurWidth,
-                NightMode.config.WIDTH * 2, NightMode.config.HEIGHT * 2);
+                this.spritePos.x + 3 * NightMode.config.WIDTH, this.spritePos.y,
+                NightMode.config.WIDTH * 2, NightMode.config.HEIGHT,
+                i * frameWidth + NightMode.config.MOON_BLUR, NightMode.config.MOON_BLUR,
+                NightMode.config.WIDTH * 2, NightMode.config.HEIGHT);
+            }
+
+            if (i < 4) {
+              ctx.drawImage(N7e.imageSprite,
+                this.spritePos.x + i * NightMode.config.WIDTH, this.spritePos.y,
+                NightMode.config.WIDTH, NightMode.config.HEIGHT,
+                NightMode.config.MOON_BLUR + i * frameWidth, NightMode.config.MOON_BLUR,
+                NightMode.config.WIDTH, NightMode.config.HEIGHT);
+            } else if ( i < 7 ) {
+              ctx.save();
+              ctx.globalCompositeOperation = 'destination-out';
+              ctx.drawImage(N7e.imageSprite,
+                this.spritePos.x + (i+1) * NightMode.config.WIDTH, this.spritePos.y,
+                NightMode.config.WIDTH, NightMode.config.HEIGHT,
+                NightMode.config.MOON_BLUR + i * frameWidth + NightMode.config.WIDTH, NightMode.config.MOON_BLUR,
+                NightMode.config.WIDTH, NightMode.config.HEIGHT);
+              ctx.restore();
+            } else if (i < 11) {
+              ctx.save();
+              ctx.globalCompositeOperation = 'destination-out';
+              ctx.drawImage(N7e.imageSprite,
+                this.spritePos.x + (i-8) * NightMode.config.WIDTH, this.spritePos.y,
+                NightMode.config.WIDTH, NightMode.config.HEIGHT,
+                NightMode.config.MOON_BLUR + i * frameWidth, NightMode.config.MOON_BLUR,
+                NightMode.config.WIDTH, NightMode.config.HEIGHT);
+              ctx.restore();
+            } else {
+              ctx.drawImage(N7e.imageSprite,
+                this.spritePos.x + (i-7) * NightMode.config.WIDTH, this.spritePos.y,
+                NightMode.config.WIDTH, NightMode.config.HEIGHT,
+                NightMode.config.MOON_BLUR + i * frameWidth + NightMode.config.WIDTH, NightMode.config.MOON_BLUR,
+                NightMode.config.WIDTH, NightMode.config.HEIGHT);
             }
           }
-                */
+
+          ctx.globalAlpha = 0.8;
+          ctx.filter = 'blur('+NightMode.config.MOON_BLUR/8+'px)';
+          ctx.drawImage(this.moonCanvas,0,0);
+
+          ctx.filter = 'blur('+NightMode.config.MOON_BLUR/2+'px)';
+          ctx.drawImage(this.moonCanvas,0,0);
+
+          ctx.globalAlpha = 1;
+          ctx.filter = 'blur(2px)';
+          ctx.drawImage(this.moonCanvas,0,0);
+
         },
 
         // Do star placement.
@@ -3438,7 +3506,7 @@
         },
 
         reset: function () {
-          this.nextPhase = 0;
+          //this.nextPhase = 0;
           this.update(false);
         }
     };
@@ -3756,7 +3824,7 @@
       BUMPY_THRESHOLD: .3,
       CLOUD_FREQUENCY: .5,
       HORIZON_HEIGHT: 16,
-      MAX_CLOUDS: 6
+      MAX_CLOUDS: 8
     };
 
 
@@ -3786,6 +3854,7 @@
         update: function (deltaTime, currentSpeed, updateObstacles, showNightMode, alpha) {
           this.runningTime += deltaTime;
           this.nightMode.update(showNightMode);
+          this.updateClouds(deltaTime, currentSpeed, true);
           this.updateMountains(deltaTime, currentSpeed);
           this.updateClouds(deltaTime, currentSpeed);
           this.horizonLine.update(deltaTime, currentSpeed);
@@ -3807,28 +3876,34 @@
          * @param {number} deltaTime
          * @param {number} currentSpeed
          */
-        updateClouds: function (deltaTime, speed) {
+        updateClouds: function (deltaTime, speed, background) {
           var cloudSpeed = this.cloudSpeed / 1000 * deltaTime * speed;
           var numClouds = this.clouds.length;
 
           if (numClouds) {
             for (var i = numClouds - 1; i >= 0; i--) {
-              this.clouds[i].update(cloudSpeed);
+              if (background && this.clouds[i].opacity < 0.5) {
+                this.clouds[i].update(cloudSpeed);
+              } else if (!background && this.clouds[i].opacity >= 0.5) {
+                this.clouds[i].update(cloudSpeed);
+              }
             }
 
             var lastCloud = this.clouds[numClouds - 1];
 
             // Check for adding a new cloud.
-            if (numClouds < this.config.MAX_CLOUDS &&
+            if (!background && numClouds < this.config.MAX_CLOUDS &&
                 (this.dimensions.WIDTH - lastCloud.xPos) > lastCloud.cloudGap &&
                 this.cloudFrequency > Math.random()) {
               this.addCloud();
             }
 
             // Remove expired clouds.
-            this.clouds = this.clouds.filter(obj => {
-              return !obj.remove;
-            });
+            if(!background) {
+              this.clouds = this.clouds.filter(obj => {
+                return !obj.remove;
+              });
+            }
           } else {
             this.addCloud();
           }
@@ -4030,7 +4105,14 @@
 
 
 function onDocumentLoad() {
-  new N7e('.interstitial-wrapper');
+  let request = new XMLHttpRequest();
+  request.open('GET', 'assets/console.png');
+  request.onload = () => {
+    let console = document.getElementById('main-content');
+    console.style.backgroundImage = 'url(assets/console.png)';
+    new N7e('.interstitial-wrapper');
+  }
+  request.send();
 }
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
