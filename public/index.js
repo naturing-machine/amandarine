@@ -797,6 +797,14 @@
 
             if (playAchievementSound) {
               this.playSound(this.soundFx.SOUND_SCORE,0.2);
+              let d = this.distanceMeter.getActualDistance(this.distanceRan);
+              if (d >= 500 && d < 600) {
+                this.terminal.setMessages('KEEP GOING! ☺',5000);
+              } else if (d >= 1000 && d < 1100) {
+                this.terminal.setMessages('GOOD JOB! ☺',5000);
+              } else if (d >= 2000 && d < 2100) {
+                this.terminal.setMessages('JUST DONT DIE! ☺',5000);
+              }
             }
 
             if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
@@ -832,12 +840,13 @@
             }
           }
 
-          this.terminal.update(deltaTime);
-
           let a = this.actions[0];
           this.amdr.updateActionQueue(this.actions, now, deltaTime, this.currentSpeed);
 
           this.amdr.update(0, this.currentSpeed);
+
+          this.terminal.update(deltaTime);
+
           this.scheduleNextUpdate();
         },
 
@@ -1044,7 +1053,7 @@
                 this.terminal.setMessages('STRIPES', 2000);
                 break;
               case 1: // Low
-                this.terminal.setMessages('ROCK-BOTTOM', 2000);
+                this.terminal.setMessages('☺ ROCK-BOTTOM', 2000);
                 break;
               case 2: // Grayscale
                 this.terminal.setMessages('GRAYSCALE', 2000);
@@ -1222,6 +1231,10 @@
           if (this.distanceRan > this.highestScore) {
               this.highestScore = Math.ceil(this.distanceRan);
               this.distanceMeter.setHighScore(this.highestScore);
+              let d = this.distanceMeter.getActualDistance(this.highestScore);
+              if (d > 999) {
+                this.terminal.setMessages('A NEW HIGH ' + d + '! ☺',5000);
+              }
           }
 
           // Reset the time clock.
@@ -1249,6 +1262,9 @@
           if (!this.raqId) {
             this.actions = [];
             this.playCount++;
+            if (this.playCount == 10) {
+              this.terminal.setMessages('Natherine♥You.☺',15000);
+            }
             this.runningTime = 0;
             this.playing = true;
             this.crashed = false;
@@ -2779,8 +2795,8 @@
         },
 
         setMessages: function (messageStr, timer) {
-          this.timer = timer;
-          this.messages = messageStr.toUpperCase().split('').map(ch => {
+          this.timer = timer || 2000;
+          this.messages = messageStr.toString().toUpperCase().split('').map(ch => {
             let code = ch.charCodeAt(0);
             if (code >= 65 && code <= 90) {
               return 1265 + (code - 65) * 14;
@@ -2788,25 +2804,47 @@
             if (code >= 48 && code <= 57) {
               return 1125 + (code - 48) * 14;
             }
+            if (ch == '.') {
+              return 1629;
+            }
+            if (ch == '?') {
+              return 1657;
+            }
+            if (ch == '!') {
+              return 1657;
+            }
+            if (ch == '▻') {
+              return 1671;
+            }
             if (ch == '-') {
               return 1699;
             }
             if (ch == ' ') {
               return 1713;
             }
-            if (ch == '▻') {
-              return 1671;
-            }
             if (ch == '♬') {
-              return 1727
+              return 1727;
             }
+            if (ch == '♥') {
+              return 1741;
+            }
+            if (ch == '☺') {
+              return 1755;
+            }
+            return -code;
           });
         },
 
         update: function (deltaTime) {
           if (this.timer > 0) {
-            for (let i = 0, x; x = this.messages[i];i++) {
-              this.canvasCtx.drawImage(this.image, x, 0, 14, 14, 14 + i * 14, 10, 14, 14);
+            for (let i = 0, cur = 0, l = 0, x; x = this.messages[i];i++) {
+              if (x == -10) {
+                cur = 0;
+                l++;
+                continue;
+              }
+              this.canvasCtx.drawImage(this.image, x, 0, 14, 18, 14 + cur * 14, 10 + 16*l, 14, 18);
+              cur++;
             }
             this.timer -= deltaTime;
           }
