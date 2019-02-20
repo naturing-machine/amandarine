@@ -141,7 +141,7 @@
         DAY: [Math.floor(221*0.8), Math.floor(238*0.8), Math.floor(255*0.9), 238, 238, 255],
         //NIGHT: [68,136,170,102,153,187],
         NIGHT: [68,136,170,84,183,187],
-        START: [255,255,255,255,255,255],
+        START: [200,200,200,200,200,200],
         SUNSET: [69,67,125,255,164,119],
       }
     };
@@ -828,6 +828,8 @@
             }
           }
 
+          this.terminal.update(deltaTime);
+
           let a = this.actions[0];
           this.amdr.updateActionQueue(this.actions, now, deltaTime, this.currentSpeed);
 
@@ -996,55 +998,31 @@
 
           var keyCode = String(e.keyCode);
 
-          let inputType;
-          if (e.type == N7e.events.TOUCHEND) {
-            let clientWidth = N7e().touchController.offsetWidth;
-            for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
-              if (touch.clientX > clientWidth/2) {
-                inputType = AMDR.status.JUMPING;
-              } else {
-                inputType = AMDR.status.SLIDING;
-              }
-              break;
-            } //FIXME MOUSE
-          } else if (N7e.keycodes.JUMP[keyCode] || e.type == N7e.events.MOUSEUP) {
-            inputType = AMDR.status.JUMPING;
-          } else if (N7e.keycodes.SLIDE[keyCode]) {
-            inputType = AMDR.status.SLIDING;
-          }
-
-          if (this.actions.length && this.actions[0].title) {
-            inputType = null;
-          }
-
-          switch(inputType) {
-            case AMDR.status.JUMPING:
-              this.consoleButtons.CONSOLE_RIGHT.dir = -1;
-              break;
-            case AMDR.status.SLIDING:
-              this.consoleButtons.CONSOLE_LEFT.dir = -1;
-              break;
-            default:;
-          }
-
           if (keyCode == '67') {
+            /* Debug collisions */
 
             n7e.config.SHOW_COLLISION = !n7e.config.SHOW_COLLISION;
+            return;
 
           } else if (keyCode == '77') {
+            /* Music toggle */
 
             this.consoleButtons.CONSOLE_MUSIC.dir = -1;
 
             if (n7e.config.PLAY_MUSIC) {
               n7e.musics.stop();
               n7e.config.PLAY_MUSIC = false;
+              this.terminal.setMessages('♬ OFF', 2000);
             } else {
               n7e.config.PLAY_MUSIC = true;
               n7e.loadMusic('offline-play-music', n7e.config.PLAY_MUSIC);
+              this.terminal.setMessages('♬ ON', 2000);
             }
-          }
+            return;
 
-          if (keyCode == '71' || (keyCode <= 57 && keyCode >= 48)) {
+          } else if (keyCode == '71' || (keyCode <= 57 && keyCode >= 48)) {
+
+            /* Graphics Mode switches */
             this.consoleButtons.CONSOLE_GRAPHICS.dir = -1;
             if (keyCode <= 57 && keyCode >= 48) {
               n7e.config.GRAPHICS_MODE = keyCode - 48;
@@ -1054,18 +1032,28 @@
 
             this.canvasCtx.restore();
             this.canvasCtx.save();
+            this.canvas.style.opacity = 1.0;
             switch (n7e.config.GRAPHICS_MODE) {
               case 0: // Normal
+                this.terminal.setMessages('STRIPES', 2000);
                 break;
               case 1: // Low
+                this.terminal.setMessages('ROCK-BOTTOM', 2000);
                 break;
               case 2: // Grayscale
+                this.terminal.setMessages('GRAYSCALE', 2000);
                 this.canvasCtx.filter = 'grayscale(1)';
                 break;
+              case 3: // Daylight
+                this.terminal.setMessages('DAYLIGHT', 2000);
+                this.canvas.style.opacity = 0.5;
+                break;
               case 9: // Extreme
+                this.terminal.setMessages('GRASS', 2000);
                 break;
               default:
-                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.GRAPHICS_MODE - 3) * 60)+'deg)';
+                this.terminal.setMessages('SHADE ▻ '+(n7e.config.GRAPHICS_MODE - 3), 2000);
+                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.GRAPHICS_MODE - 4) * 72)+'deg)';
                 break;
             }
 
@@ -2737,6 +2725,54 @@
         }
     };
 
+
+    function Terminal(canvas, spritePos) {
+      this.canvas = canvas;
+      this.canvasCtx = canvas.getContext('2d');
+      this.image = N7e.imageSprite;
+      this.y = 5;
+      this.messages = null;
+      this.timer = 0;
+    };
+
+    Terminal.prototype = {
+        init: function () {
+        },
+
+        setMessages: function (messageStr, timer) {
+          this.timer = timer;
+          this.messages = messageStr.toUpperCase().split('').map(ch => {
+            let code = ch.charCodeAt(0);
+            if (code >= 65 && code <= 90) {
+              return 1265 + (code - 65) * 14;
+            }
+            if (code >= 48 && code <= 57) {
+              return 1125 + (code - 48) * 14;
+            }
+            if (ch == '-') {
+              return 1699;
+            }
+            if (ch == ' ') {
+              return 1713;
+            }
+            if (ch == '▻') {
+              return 1671;
+            }
+            if (ch == '♬') {
+              return 1727
+            }
+          });
+        },
+
+        update: function (deltaTime) {
+          if (this.timer > 0) {
+            for (let i = 0, x; x = this.messages[i];i++) {
+              this.canvasCtx.drawImage(this.image, x, 0, 14, 14, 14 + i * 14, 10, 14, 14);
+            }
+            this.timer -= deltaTime;
+          }
+        },
+    };
 
     //******************************************************************************
 
