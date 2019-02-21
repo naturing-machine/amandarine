@@ -432,43 +432,6 @@
           }
         },
 
-
-        /**
-         * Adjust sky light.
-         */
-        adjustSkyGradient: function(ratio) {
-
-          if (N7e.config.GRAPHICS_MODE == 1) {
-            ratio = Math.floor(ratio*10)/10;
-          } else {
-            ratio = Math.floor(ratio*20)/20;
-          }
-
-          if (ratio == 0) {
-            this.gradients.current = this.gradients.sky1;
-          } else if (ratio == 1) {
-            this.gradients.sky1 = this.gradients.current = this.gradients.sky2;
-          } else {
-            this.gradients.current = [];
-            for(let i = 0; i < 6; i++) {
-              this.gradients.current.push(Math.floor(this.gradients.sky1[i] - ratio * (this.gradients.sky1[i] - this.gradients.sky2[i])));
-            }
-          }
-
-          let rgb0x1 = ((1 << 24) + (this.gradients.current[0] << 16) + (this.gradients.current[1] << 8) + this.gradients.current[2]).toString(16).slice(1);
-          let rgb0x2 = ((1 << 24) + (this.gradients.current[3] << 16) + (this.gradients.current[4] << 8) + this.gradients.current[5]).toString(16).slice(1);
-
-          if (N7e.config.GRAPHICS_MODE == 1) {
-            this.skyGradient = "#" + rgb0x1;
-          } else if (this.gradients.rgb0x1 != rgb0x1 || this.gradients.rgb0x2 != rgb0x2) {
-            this.skyGradient = this.canvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
-            this.skyGradient.addColorStop(0, "#" + rgb0x1);
-            this.skyGradient.addColorStop(1, "#" + rgb0x2);
-            this.gradients.rgb0x1 = rgb0x1;
-            this.gradients.rgb0x2 = rgb0x2;
-          }
-        },
-
         /**
          * Game initialiser.
          */
@@ -496,10 +459,6 @@
           this.queueAction(this.defaultAction);
 
           this.containerEl = document.getElementById('main-content');
-          //this.containerEl = document.createElement('div');
-          //this.containerEl.className = N7e.classes.CONTAINER;
-
-//          this.containerEl.style.transform = "rotate("+(Math.random()*5-2.5).toFixed(2)+"deg)";
 
           // Player canvas container.
 
@@ -508,6 +467,15 @@
           this.canvas.width = this.dimensions.WIDTH;
           this.canvas.height = this.dimensions.HEIGHT;
           this.containerEl.appendChild(this.canvas);
+
+          this.skyCanvas = document.createElement('canvas');
+          this.skyCanvas.width = this.dimensions.WIDTH;
+          this.skyCanvas.height = this.dimensions.HEIGHT;
+          this.skyCanvasCtx = this.skyCanvas.getContext('2d');//,{alpha:false}
+
+          this.skyGradientFromValues = [0,0,0,0,0,0];
+          this.skyGradientToValues = [0,0,0,0,0,0];
+          this.skyGradientCurrentValues = [0,0,0,0,0,0];
 
           this.consoleButtons = {
             CONSOLE_LEFT: { x: 104, y: 495, w: 100, h: 100, id:'offline-resources-console-button-left' },
@@ -545,11 +513,8 @@
           this.canvasCtx.fillStyle = '#f7f7f7';
           this.canvasCtx.fill();
           N7e.updateCanvasScaling(this.canvas);
-          this.gradients = {};
 
-          /* Will switch to gradient on starting */
-          this.gradients.sky2 = this.gradients.sky1 = N7e.config.SKY.START;
-          this.adjustSkyGradient(1);
+          this.setSkyGradient(N7e.config.SKY.START, 1);
 
           // Horizon contains clouds, obstacles and the ground.
           this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
@@ -678,8 +643,58 @@
         },
 
         clearCanvas: function () {
-          this.canvasCtx.fillStyle = this.skyGradient;
-          this.canvasCtx.fillRect(0, 0, this.dimensions.WIDTH, this.dimensions.HEIGHT);
+          this.canvasCtx.drawImage(this.skyCanvas, 0, 0);
+        },
+
+        setSkyGradient: function(newValues, duration) {
+
+            /* Create a gradient if the transition was interrupted */
+          if (this.skyGradientTimer < this.skyGradientDuration) {
+            this.skyGradientToValues = this.skyGradientCurrentValues;
+          }
+
+          this.skyGradientFromValues = this.skyGradientToValues;
+          this.skyGradientToValues = newValues;
+
+          this.skyGradientTimer = 0;
+          this.skyGradientDuration = duration;
+          this.lastDrawnSkyTimer = 0;
+          this.drawCounter = 0;
+
+        },
+
+        updateSkyGradient: function(deltaTime) {
+          if (0 == this.skyGradientDuration) {
+            return;
+          }
+
+          this.skyGradientTimer += deltaTime;
+          if (this.skyGradientTimer >= this.skyGradientDuration) {
+            this.skyGradientTimer = this.skyGradientDuration;
+          }
+
+          let ratio = this.skyGradientTimer/this.skyGradientDuration;
+          for(let i = 0; i < 6; i++) {
+            this.skyGradientCurrentValues[i] = Math.floor(this.skyGradientFromValues[i]
+              + ratio * (this.skyGradientToValues[i] - this.skyGradientFromValues[i]));
+          }
+
+          if (ratio == 1 || this.skyGradientTimer - this.lastDrawnSkyTimer > 50) { /* Updating sky at ~ 20fps */
+            this.lastDrawnSkyTimer = this.skyGradientTimer;
+            let gr = this.skyGradientCurrentValues;
+            let gradient = this.skyCanvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
+            let rgb0x1 = ((1 << 24) + (gr[0] << 16) + (gr[1] << 8) + gr[2]).toString(16).slice(1);
+            let rgb0x2 = ((1 << 24) + (gr[3] << 16) + (gr[4] << 8) + gr[5]).toString(16).slice(1);
+            gradient.addColorStop(0, '#' + rgb0x1);
+            gradient.addColorStop(1, '#' + rgb0x2);
+            this.skyCanvasCtx.fillStyle = gradient;
+            this.skyCanvasCtx.fillRect(0, 0, this.dimensions.WIDTH, this.dimensions.HEIGHT);
+            this.drawCounter++;
+            if (ratio == 1) {
+              this.skyGradientDuration = 0;
+            }
+          }
+
         },
 
         /**
@@ -722,17 +737,7 @@
             }
           }
 
-          if (this.skyFadingStartTime) {
-            let delta = now - this.skyFadingStartTime;
-            if (delta > N7e.config.SKY_SHADING_DURATION) {
-              delete this.skyFadingStartTime;
-              this.adjustSkyGradient(1);
-              //this.sepia = 0;
-              //this.canvasCtx.flter = '';
-            } else {
-              this.adjustSkyGradient(delta/N7e.config.SKY_SHADING_DURATION);
-            }
-          }
+          this.updateSkyGradient(deltaTime);
 
           if (this.playing) {
             this.clearCanvas();
@@ -982,8 +987,8 @@
 
                 action.first = true;
                 this.loadSounds();
-                this.gradients.sky2 = N7e.config.SKY.DAY;
-                this.skyFadingStartTime = getTimeStamp();
+
+                this.setSkyGradient(N7e.config.SKY.DAY,3000);
                 this.update();
                 n7e.musics.stop();
                 this.play();
@@ -1074,7 +1079,6 @@
                 break;
             }
 
-            this.adjustSkyGradient(1);
             this.clearCanvas();
             this.horizon.horizonLine.draw();
             this.amdr.update(0, this.currentSpeed);
@@ -1433,30 +1437,8 @@
               this.invertTrigger);
             }
 
-            //FIXME setting sky2 should actually set sky1 to current ratio.
-            // setSky()
-            this.setSky(this.inverted ? N7e().config.SKY.NIGHT : N7e().config.SKY.DAY);
+            this.setSkyGradient(this.inverted ? N7e.config.SKY.NIGHT : N7e.config.SKY.DAY, 3000);
         },
-
-
-        setSky: function (gr) {
-          let v1,v2;
-
-          v1 = parseInt(this.gradients.rgb0x1, 16);
-          v2 = parseInt(this.gradients.rgb0x2, 16);
-
-          this.gradients.sky1 = [
-            (v1 >> 16) & 0xFF,
-            (v1 >> 8) & 0xFF,
-            v1 & 0xFF,
-            (v2 >> 16) & 0xFF,
-            (v2 >> 8) & 0xFF,
-            v2 & 0xFF
-          ];
-          this.gradients.sky2 = gr;
-
-          this.skyFadingStartTime = getTimeStamp();
-        }
     };
 
 
@@ -2533,7 +2515,7 @@
                       if (!action.updated) {
                         n7e.musics.stop();
                         n7e.playSound(N7e().soundFx.SOUND_OGGG,0.3);
-                        n7e.setSky(n7e.config.SKY.SUNSET);
+                        n7e.setSkyGradient(n7e.config.SKY.SUNSET,3000);
 
                         let crashPoint = action.boxes[0].intersection(action.boxes[1]).center();
                         if (crashPoint.x > action.boxes[0].center().x) {
@@ -3344,7 +3326,11 @@
 
           this.canvasCtx.save(); {
             let n7e = N7e();
-            this.canvasCtx.fillStyle = '#' + (this.depth == 0 ? n7e.gradients.rgb0x2 : n7e.gradients.rgb0x1);
+            let gr = n7e.skyGradientCurrentValues;
+            let rgb0x1 = ((1 << 24) + (gr[0] << 16) + (gr[1] << 8) + gr[2]).toString(16).slice(1);
+            let rgb0x2 = ((1 << 24) + (gr[3] << 16) + (gr[4] << 8) + gr[5]).toString(16).slice(1);
+
+            this.canvasCtx.fillStyle = '#' + (this.depth == 0 ? rgb0x2 : rgb0x1);
             this.canvasCtx.beginPath();
             this.canvasCtx.moveTo(this.xPos, this.yPos);
             this.canvasCtx.bezierCurveTo(
