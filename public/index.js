@@ -43,8 +43,10 @@
       this.distanceRan = 0;
 
       this.highestScore = 0;
+      this.halfFarthest = 200;
 
       this.time = 0;
+      this.stoppingTime = 0;
       this.runningTime = 0;
       this.msPerFrame = 1000 / FPS;
       this.currentSpeed = 0;
@@ -741,7 +743,7 @@
               this.gameOverPanel.updateDimensions(this.dimensions.WIDTH);
               this.gameOverPanel.draw(deltaTime);
 
-              let alpha = (3000-this.actions[0].timer)/3000;
+              let alpha = this.actions[0] ? (3000-this.actions[0].timer)/3000 : 0;
               if (alpha < 0) alpha = 0;
               this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
 
@@ -798,12 +800,12 @@
             if (playAchievementSound) {
               this.playSound(this.soundFx.SOUND_SCORE,0.2);
               let d = this.distanceMeter.getActualDistance(this.distanceRan);
-              if (d >= 500 && d < 600) {
-                this.terminal.setMessages('KEEP GOING! ☺',5000);
-              } else if (d >= 1000 && d < 1100) {
-                this.terminal.setMessages('GOOD JOB! ☺',5000);
-              } else if (d >= 2000 && d < 2100) {
-                this.terminal.setMessages('JUST DONT DIE! ☺',5000);
+              if (d >= this.halfFarthest && d < this.halfFarthest+100) {
+                this.terminal.setMessages('KEEP GOING! ☺',6000);
+              } else if (d >= 2 * this.halfFarthest && d < 2 * this.halfFarthest + 100) {
+                this.terminal.setMessages('GOOD JOB! ☺',6000);
+              } else if (d >= 4 * this.halfFarthest && d < 4 * this.halfFarthest + 100) {
+                this.terminal.setMessages('JUST DONT DIE! ☺',6000);
               }
             }
 
@@ -1142,7 +1144,11 @@
             if (N7e.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
             (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
               inputType == AMDR.status.JUMPING)) {
-                this.stop();
+
+                if (this.raqId) {
+                  cancelAnimationFrame(this.raqId);
+                  this.raqId = 0;
+                }
                 this.restart();
               }
           } else if (this.paused && inputType == AMDR.status.JUMPING) {
@@ -1232,7 +1238,11 @@
               this.highestScore = Math.ceil(this.distanceRan);
               this.distanceMeter.setHighScore(this.highestScore);
               let d = this.distanceMeter.getActualDistance(this.highestScore);
-              if (d > 999) {
+              if (d/2 > this.halfFarthest) {
+                this.halfFarthest = Math.round(d/200) * 100;
+              }
+
+              if (d > this.halfFarthest) {
                 this.terminal.setMessages('A NEW HIGH ' + d + '! ☺',5000);
               }
           }
@@ -1242,11 +1252,35 @@
           this.crashedTime = this.time;
         },
 
+        setNeedsUpdate(deltaTime) {
+          if (this.time + deltaTime > this.stoppingTime) {
+            this.stoppingTime = this.time + deltaTime;
+          }
+        },
+
         stop: function () {
+          if (this.isStopping) {
+            return;
+          }
+
+          let stoppingDelta = this.stoppingTime - this.time;
+          if (stoppingDelta > 0) {
+            this.isStopping = true;
+            setTimeout(() => {
+              if (this.isStopping) {
+                this.isStopping = false;
+                this.stoppingTime = 0;
+                this.stop();
+              }
+            }, stoppingDelta);
+            return;
+          }
+
           this.playing = false;
           this.paused = true;
           cancelAnimationFrame(this.raqId);
           this.raqId = 0;
+          this.isStopping = false;
         },
 
         play: function () {
@@ -1262,9 +1296,15 @@
           if (!this.raqId) {
             this.actions = [];
             this.playCount++;
+
             if (this.playCount == 10) {
-              this.terminal.setMessages('Natherine♥You.☺',15000);
+              this.terminal.setMessages('NATHERINE ♥ YOU.☺',10000);
+            } else if (this.playCount == 20) {
+              this.terminal.setMessages('NATHERINE STILL ♥ You.☺',10000);
+            } else if (this.playCount >= 30 && this.playCount % 10 == 0) {
+              this.terminal.setMessages('NATHERINE WILL ALWAYS ♥ You.☺',10000);
             }
+
             this.runningTime = 0;
             this.playing = true;
             this.crashed = false;
@@ -1279,6 +1319,9 @@
             this.invert(true);
             this.update();
             this.gameOverPanel.timer = 0;
+            this.musics.stop();
+            this.isStopping = false;
+            this.stoppingTime = 0;
           }
         },
 
@@ -2619,6 +2662,7 @@
 
               if (action.timer > 3000) {
                 action.priority = -1;
+                n7e.loadMusic('offline-intro-music', n7e.config.PLAY_MUSIC);
                 n7e.stop();
               }
             } break;
@@ -2788,15 +2832,37 @@
       this.y = 5;
       this.messages = null;
       this.timer = 0;
+      this.init();
     };
 
     Terminal.prototype = {
         init: function () {
+          this.opacity = 0;
         },
 
         setMessages: function (messageStr, timer) {
+          N7e().setNeedsUpdate(timer);
+
+          if (!messageStr.length) return;
+
+          let lineWidth = 20; //TODO multi-widths
+          let wordList = messageStr.toString().split(' ');
+          let newList = [wordList[0]];
+          for (let i = 1, word, cur = wordList[0].length + 1 ; word = wordList[i]; i++) {
+            if (cur + word.length > lineWidth) {
+              cur = 0;
+              newList.push('\n');
+            } else {
+              newList.push(' ');
+            }
+            newList.push(word);
+            cur += word.length + 1;
+          }
+
+          messageStr = newList.join('');
+
           this.timer = timer || 2000;
-          this.messages = messageStr.toString().toUpperCase().split('').map(ch => {
+          this.messages = messageStr.toUpperCase().split('').map(ch => {
             let code = ch.charCodeAt(0);
             if (code >= 65 && code <= 90) {
               return 1265 + (code - 65) * 14;
@@ -2804,34 +2870,19 @@
             if (code >= 48 && code <= 57) {
               return 1125 + (code - 48) * 14;
             }
-            if (ch == '.') {
-              return 1629;
+
+            switch (ch) {
+              case '.': return 1629;
+              case '?': return 1657;
+              case '!': return 1657;
+              case '▻': return 1671;
+              case '-': return 1699;
+              case ' ': return 1713;
+              case '♬': return 1727;
+              case '♥': return 1741;
+              case '☺': return 1755;
+              default: return -code;
             }
-            if (ch == '?') {
-              return 1657;
-            }
-            if (ch == '!') {
-              return 1657;
-            }
-            if (ch == '▻') {
-              return 1671;
-            }
-            if (ch == '-') {
-              return 1699;
-            }
-            if (ch == ' ') {
-              return 1713;
-            }
-            if (ch == '♬') {
-              return 1727;
-            }
-            if (ch == '♥') {
-              return 1741;
-            }
-            if (ch == '☺') {
-              return 1755;
-            }
-            return -code;
           });
         },
 
@@ -2843,9 +2894,11 @@
                 l++;
                 continue;
               }
-              this.canvasCtx.drawImage(this.image, x, 0, 14, 18, 14 + cur * 14, 10 + 16*l, 14, 18);
+              this.canvasCtx.drawImage(this.image, x, 0, 14, 18,
+                14 + cur * 14 - 20*(1 - this.opacity), 10 + 16*l, 14, 18);
               cur++;
             }
+            this.canvasCtx.restore();
             this.timer -= deltaTime;
           }
         },
