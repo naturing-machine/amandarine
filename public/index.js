@@ -2870,6 +2870,17 @@
 
         update: function (deltaTime) {
           if (this.timer > 0) {
+
+            if (this.timer > 500) {
+              this.opacity += deltaTime/100;
+            } else {
+              this.opacity -= deltaTime/200;
+            }
+            if (this.opacity > 1) this.opacity = 1;
+            else if (this.opacity < 0) this.opacity = 0;
+
+            this.canvasCtx.save();
+            this.canvasCtx.globalAlpha = this.opacity;
             for (let i = 0, cur = 0, l = 0, x; x = this.messages[i];i++) {
               if (x == -10) {
                 cur = 0;
