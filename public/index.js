@@ -804,14 +804,6 @@
 
             if (playAchievementSound) {
               this.playSound(this.soundFx.SOUND_SCORE,0.2);
-              let d = this.distanceMeter.getActualDistance(this.distanceRan);
-              if (d >= this.halfFarthest && d < this.halfFarthest+100) {
-                this.terminal.setMessages('KEEP GOING! ☺',6000);
-              } else if (d >= 2 * this.halfFarthest && d < 2 * this.halfFarthest + 100) {
-                this.terminal.setMessages('GOOD JOB! ☺',6000);
-              } else if (d >= 4 * this.halfFarthest && d < 4 * this.halfFarthest + 100) {
-                this.terminal.setMessages('JUST DONT DIE! ☺',6000);
-              }
             }
 
             if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
@@ -844,6 +836,12 @@
                 Math.round(this.amdr.xPos + xMap[this.amdr.currentFrame] + 20),
                 Math.round(this.amdr.yPos + yMap[this.amdr.currentFrame] - 47), 75, 54);
             }
+          } else {
+              this.horizon.update(0, 0, false, this.inverted, 1);
+              if (this.gameOverPanel) {
+                this.gameOverPanel.draw();
+              }
+              this.distanceMeter.update(0, Math.ceil(this.distanceRan))
           }
 
           let a = this.actions[0];
@@ -1070,7 +1068,7 @@
                 this.canvas.style.opacity = 0.5;
                 break;
               case 9: // Extreme
-                this.terminal.setMessages('GRASS', 2000);
+                this.terminal.setMessages('NΑTURING', 2000);
                 break;
               default:
                 this.terminal.setMessages('SHADE ▻ '+(n7e.config.GRAPHICS_MODE - 3), 2000);
@@ -2396,7 +2394,23 @@
                       if (action.hasOwnProperty('xPos')) {
                         this.xPos = action.xPos;
                       }
+
+                      action.timer = 0;
+                      action.priority = 1;
+                      this.updateAction(action, deltaTime, speed);
+                      this.update(deltaTime, speed, action);
+
+                      break;
                     case AMDR.status.WAITING:
+                      this.introScriptTimer = 15000;
+                      this.introScript = [
+                        20000,"Hi...",
+                        20000,"Just play already!",
+                        20000,"Didn't know you love the song that much!",
+                        20000,"Liverpool will win. You know.",
+                        20000,'I didnt say "I_love_you" to hear it back. I said it to make sure you knew ♥',
+                      ];
+
                       action.timer = 0;
                       action.priority = 1;
                       this.updateAction(action, deltaTime, speed);
@@ -2479,7 +2493,30 @@
                         this.update(deltaTime, speed);
                         break UPDATE_ACTION_QUEUE;
                       }
+
+                      this.updateAction(action, deltaTime, speed);
+                      this.update(deltaTime, speed);
+                      continue;
+
                     case AMDR.status.WAITING:
+
+                      this.introScriptTimer -= deltaTime;
+                      if (this.introScriptTimer < 0) {
+                        let wait = this.introScript.shift();
+                        let text = this.introScript.shift();
+                        let dur = 5000;
+                        let wc = text.split(' ').length;
+                        if (wc > 5) {
+                          dur = wc * 1500;
+                        }
+
+                        this.introScript.push(wait);
+                        this.introScript.push(text);
+
+                        N7e().terminal.setMessages(text + ' ☺', dur);
+                        this.introScriptTimer = wait;
+                      }
+
                       this.updateAction(action, deltaTime, speed);
                       this.update(deltaTime, speed);
                       continue;
@@ -2833,14 +2870,24 @@
           let wordList = messageStr.toString().split(' ');
           let newList = [wordList[0]];
           for (let i = 1, word, cur = wordList[0].length + 1 ; word = wordList[i]; i++) {
-            if (cur + word.length > lineWidth) {
-              cur = 0;
-              newList.push('\n');
-            } else {
-              newList.push(' ');
-            }
-            newList.push(word);
-            cur += word.length + 1;
+
+            let words = word.split('\n');
+
+            words.forEach((w,index) => {
+              if (cur + w.length > lineWidth) {
+                cur = 0;
+                newList.push('\n');
+              } else if (index){
+                newList.push('\n');
+                cur = 0;
+              } else {
+                newList.push(' ');
+                cur++;
+              }
+              newList.push(w);
+              cur += w.length;
+            });
+
           }
 
           messageStr = newList.join('');
@@ -2860,11 +2907,17 @@
               case '?': return 1657;
               case '!': return 1657;
               case '▻': return 1671;
+              case '/': return 1685;
               case '-': return 1699;
+              case '_':
               case ' ': return 1713;
               case '♬': return 1727;
               case '♥': return 1741;
               case '☺': return 1755;
+              case 'Α': return 1769;
+              case '◅': return 1783;
+              case '"': return 1797;
+              case "'": return 1811;
               default: return -code;
             }
           });
@@ -3080,6 +3133,15 @@
                 this.acheivement = true;
                 this.flashTimer = 0;
                 playSound = true;
+
+                let n7e = N7e();
+                if (distance == n7e.halfFarthest) {
+                  n7e.terminal.setMessages('KEEP GOING! ☺',6000);
+                } else if (distance == 2 * n7e.halfFarthest) {
+                  n7e.terminal.setMessages('GOOD JOB! ☺',6000);
+                } else if (distance == 4 * n7e.halfFarthest) {
+                  n7e.terminal.setMessages('JUST DONT DIE! ☺',6000);
+                }
               }
 
               // Create a string representation of the distance with leading 0.
