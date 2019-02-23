@@ -202,7 +202,7 @@
       HORIZON: { x: 2, y: 104 },
       MOON: { x: 954, y: 0 },
       NATHERINE: { x: 0, y: 0 },
-      RED_DUCK: { x: 2165, y: 4 },
+      RED_DUCK: { x: 2165, y: 0 },
       RESTART: { x: 2, y: 2 },
       TEXT_SPRITE: { x: 1125, y: 0 },
       STAR: { x: 1114, y: 0 }
@@ -2095,11 +2095,14 @@
       {
         type: 'RED_DUCK',
         width: 46,
-        height: 40,
+        height: 42,
         yPos: [
           N7e.defaultDimensions.HEIGHT - 50,
           N7e.defaultDimensions.HEIGHT - 75,
-          N7e.defaultDimensions.HEIGHT - 100
+          N7e.defaultDimensions.HEIGHT - 100,
+          N7e.defaultDimensions.HEIGHT - 125,
+          N7e.defaultDimensions.HEIGHT - 150,
+          N7e.defaultDimensions.HEIGHT - 175,
         ], // Variable height.
         multipleSpeed: 999,
         // minSpeed: 8.5,
@@ -4110,27 +4113,52 @@
          */
         updateObstacles: function (deltaTime, currentSpeed) {
           // Obstacles, move to Horizon layer.
-          for (var i = 0; i < this.obstacles.length; i++) {
+          for (let i = 0; i < this.obstacles.length; i++) {
             var obstacle = this.obstacles[i];
             obstacle.update(deltaTime, currentSpeed);
           }
+          // TODO better sort;
 
           this.obstacles = this.obstacles.filter(obstacle => !obstacle.remove);
 
-          if (this.obstacles.length > 0) {
+          let i = this.obstacles.length;
+          TEST_GAP: if (i) {
+            let obs = this.obstacles[0];
+            let maxGapDist = 0;
+            do { i--;
+              obs = this.obstacles[i];
+              let dist = obs.xPos + obs.width + obs.gap;
+              if (dist <= obs.gap) continue;
+              if (dist > this.dimensions.WIDTH) break TEST_GAP;
+              if (dist > maxGapDist) {
+                maxGapDist = dist;
+              }
+            } while (i);
+
+            if (maxGapDist) {
+              this.addObstacle(currentSpeed);
+            }
+          } else {
+            this.addObstacle(currentSpeed);
+          }
+
+          /* //Old tester
+          if (this.obstacles.length) {
             var lastObstacle = this.obstacles[this.obstacles.length - 1];
 
-            if (lastObstacle && !lastObstacle.followingObstacleCreated &&
-                lastObstacle.isVisible() &&
-                (lastObstacle.xPos + lastObstacle.width + lastObstacle.gap) <
-                this.dimensions.WIDTH) {
-              this.addNewObstacle(currentSpeed);
+            if (lastObstacle
+                && !lastObstacle.followingObstacleCreated
+                && lastObstacle.isVisible()
+                && (lastObstacle.xPos + lastObstacle.width + lastObstacle.gap) <
+                      this.dimensions.WIDTH) {
+              this.addObstacle(currentSpeed);
               lastObstacle.followingObstacleCreated = true;
             }
           } else {
             // Create new obstacles.
-            this.addNewObstacle(currentSpeed);
+            this.addObstacle(currentSpeed);
           }
+          */
         },
 
         removeFirstObstacle: function () {
@@ -4141,7 +4169,7 @@
          * Add a new obstacle.
          * @param {number} currentSpeed
          */
-        addNewObstacle: function (currentSpeed) {
+        addObstacle: function (currentSpeed) {
           var obstacleTypeIndex = getRandomNum(0, Obstacle.types.length - 1);
           var obstacleType = Obstacle.types[obstacleTypeIndex];
 
@@ -4149,13 +4177,50 @@
           // Also check obstacle is available at current speed.
           if (this.duplicateObstacleCheck(obstacleType.type) ||
           currentSpeed < obstacleType.minSpeed) {
-            this.addNewObstacle(currentSpeed);
+            this.addObstacle(currentSpeed);
           } else {
             var obstacleSpritePos = this.spritePos[obstacleType.type];
 
             if (obstacleType.type == 'BICYCLE') {
               N7e().playSound(N7e().soundFx.SOUND_BICYCLE,0.5,false,0,1);
             }
+
+            if (obstacleType.type == 'RED_DUCK') {
+              let yellowDuck = {x:2165, y:42};
+
+              if (!getRandomNum(0,10)) {
+                let speedOffset = getRandomNum(0,1) ? -1.6 : 0.8;
+
+                for (let i = -2; i <= 2; i++) {
+                  let duck = new Obstacle(this.canvasCtx, obstacleType,
+                  obstacleSpritePos, this.dimensions,
+                  this.gapCoefficient, currentSpeed, obstacleType.width)
+
+                  duck.currentFrame = getRandomNum(0, duck.typeConfig.numFrames-1);
+                  duck.yPos = N7e.defaultDimensions.HEIGHT - ((i+5) * 25);
+                  duck.speedOffset = speedOffset;
+
+                  if (speedOffset == 0.8) {
+                    duck.xPos += 30 * Math.abs(i);
+                  } else {
+                    duck.spritePos = yellowDuck;
+                    duck.xPos += 60 + 30 * -Math.abs(i);
+                  }
+
+                  this.obstacles.push(duck);
+
+                }
+              } else {
+                let duck = new Obstacle(this.canvasCtx, obstacleType,
+                obstacleSpritePos, this.dimensions,
+                this.gapCoefficient, currentSpeed, obstacleType.width)
+                if (duck.speedOffset < 0) {
+                  duck.spritePos = yellowDuck;
+                }
+                this.obstacles.push(duck);
+              }
+
+            } else
             this.obstacles.push(new Obstacle(this.canvasCtx, obstacleType,
               obstacleSpritePos, this.dimensions,
               this.gapCoefficient, currentSpeed, obstacleType.width));
