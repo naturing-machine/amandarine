@@ -144,7 +144,7 @@
         DAY: [Math.floor(221*0.8), Math.floor(238*0.8), Math.floor(255*0.9), 238, 238, 255],
         //NIGHT: [68,136,170,102,153,187],
         NIGHT: [68,136,170,84,183,187],
-        START: [200,200,200,200,200,200],
+        START: [251,149,93,251,112,93],
         SUNSET: [69,67,125,255,164,119],
       }
     };
@@ -738,9 +738,9 @@
           }
 
           this.updateSkyGradient(deltaTime);
+          this.clearCanvas();
 
           if (this.playing) {
-            this.clearCanvas();
             this.runningTime += deltaTime;
             var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
 
@@ -833,7 +833,6 @@
               }
             }
           } else if (!this.crashed) {
-            this.clearCanvas();
             this.horizon.update(0, 6, true);
 
             this.showKeyDelta = !!this.showKeyDelta ? this.showKeyDelta : 1;
