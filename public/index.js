@@ -121,6 +121,7 @@
       CRASH_HEIGHT: 32,
       GAMEOVER_CLEAR_TIME: 750,
       GAP_COEFFICIENT: 0.6,
+      GROUND_WIDTH: 200,
       INVERT_FADE_DURATION: 12000,
       INVERT_DISTANCE: 700,
       SKY_SHADING_DURATION: 2000,
@@ -688,12 +689,17 @@
           if (ratio == 1 || this.skyGradientTimer - this.lastDrawnSkyTimer > 50) { /* Updating sky at ~ 20fps */
             this.lastDrawnSkyTimer = this.skyGradientTimer;
             let gr = this.skyGradientCurrentValues;
-            let gradient = this.skyCanvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
             let rgb0x1 = ((1 << 24) + (gr[0] << 16) + (gr[1] << 8) + gr[2]).toString(16).slice(1);
-            let rgb0x2 = ((1 << 24) + (gr[3] << 16) + (gr[4] << 8) + gr[5]).toString(16).slice(1);
-            gradient.addColorStop(0, '#' + rgb0x1);
-            gradient.addColorStop(1, '#' + rgb0x2);
-            this.skyCanvasCtx.fillStyle = gradient;
+
+            if (this.config.GRAPHICS_MODE == 1) {
+              this.skyCanvasCtx.fillStyle = '#' + rgb0x1;
+            } else {
+              let gradient = this.skyCanvasCtx.createLinearGradient(0, 0, 0, this.dimensions.HEIGHT);
+              let rgb0x2 = ((1 << 24) + (gr[3] << 16) + (gr[4] << 8) + gr[5]).toString(16).slice(1);
+              gradient.addColorStop(0, '#' + rgb0x1);
+              gradient.addColorStop(1, '#' + rgb0x2);
+              this.skyCanvasCtx.fillStyle = gradient;
+            }
             this.skyCanvasCtx.fillRect(0, 0, this.dimensions.WIDTH, this.dimensions.HEIGHT);
             this.drawCounter++;
             if (ratio == 1) {
@@ -1064,6 +1070,7 @@
                 break;
               case 1: // Low
                 this.terminal.setMessages('☺ ROCK-BOTTOM', 2000);
+                this.amdr.dust.reset();
                 break;
               case 2: // Grayscale
                 this.terminal.setMessages('GRAYSCALE', 2000);
@@ -1082,6 +1089,7 @@
                 break;
             }
 
+            this.setSkyGradient(this.skyGradientCurrentValues,1);
             this.clearCanvas();
             this.horizon.horizonLine.draw();
             this.amdr.update(0, this.currentSpeed);
@@ -2226,14 +2234,12 @@
       GRAVITY: 9.8,
       FRICTION: 9.8,
       HEIGHT: 40,
-      HEIGHT_DUCK: 25,
       INTRO_DURATION: 400,
       MAX_JUMP_HEIGHT: 30,
       MIN_JUMP_HEIGHT: 30,
       SPRITE_WIDTH: 262,
       START_X_POS: 25,
       WIDTH: 40,
-      WIDTH_DUCK: 40
     };
 
 
@@ -3464,9 +3470,11 @@
               this.xPos + this.width/2, this.yPos-this.height,
             this.xPos + this.width, this.yPos);
             this.canvasCtx.closePath();
-            if (N7e.config.GRAPHICS_MODE == 0) {
-              this.canvasCtx.filter = 'hue-rotate(-25deg)';
+
+            if (N7e.config.GRAPHICS_MODE == 1) {
+              this.canvasCtx.filter = 'brightness(90%) hue-rotate(-25deg)';
             }
+
             this.canvasCtx.fill();
 
             // cache shadow TODO make shadow reusable
@@ -3640,7 +3648,7 @@
 
           // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
           this.canvasCtx.globalAlpha = this.opacity;
-          this.canvasCtx.globalCompositeOperation = 'lighten';
+          //this.canvasCtx.globalCompositeOperation = 'lighten';
 
           let mx,my;
 
@@ -3680,17 +3688,23 @@
           this.canvasCtx.globalAlpha = 1;
           // Stars.
           if (N7e.config.GRAPHICS_MODE != 1 && this.drawStars) {
-            for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-              let alpha = this.opacity * this.stars[i].opacity;
-              let dt = Math.abs(this.stars[i].x - mx) + Math.abs(this.stars[i].y - my) - 50;
+            for (var i = 0, star; star = this.stars[i]; i++) {
+              let twinkle = ((star.x + 2*star.y)%10)/5;
+              twinkle = 0.2
+                + 0.8 * (twinkle > 1.0
+                  ? 2 - twinkle
+                  : twinkle);
+              let alpha = this.opacity * star.opacity * twinkle;
+              let dt = Math.abs(star.x - mx) + Math.abs(star.y - my) - 50;
               if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
 
               this.canvasCtx.globalAlpha = alpha * dt/50;
               //this.canvasCtx.filter = 'hue-rotate('+this.stars[i].hue+'deg)';
               this.canvasCtx.drawImage(N7e.imageSprite,
-                starSourceX, this.stars[i].sourceY, starSize, starSize,
-                Math.ceil(this.stars[i].x), this.stars[i].y,
+                starSourceX, star.sourceY, starSize, starSize,
+                Math.ceil(star.x), star.y,
                 NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
+
             }
           }
 
@@ -3704,6 +3718,7 @@
           this.moonCanvas.width = 16 * frameWidth;
           this.moonCanvas.height = frameHeight
           let ctx = this.moonCanvas.getContext('2d');
+          ctx.filter = 'sepia(1)';
 
           for (let i = 0; i < 15; i++) {
             if (i >= 4 && i < 11 ) {
@@ -3747,15 +3762,15 @@
             }
           }
 
-          ctx.globalAlpha = 0.8;
-          ctx.filter = 'blur('+NightMode.config.MOON_BLUR/8+'px)';
+          ctx.globalAlpha = 1.0;
+          ctx.filter = 'sepia(1) blur('+NightMode.config.MOON_BLUR/8+'px)';
           ctx.drawImage(this.moonCanvas,0,0);
 
-          ctx.filter = 'blur('+NightMode.config.MOON_BLUR/2+'px)';
+          ctx.filter = 'sepia(1) blur('+NightMode.config.MOON_BLUR/2+'px)';
           ctx.drawImage(this.moonCanvas,0,0);
 
           ctx.globalAlpha = 1;
-          ctx.filter = 'blur(2px)';
+          ctx.filter = 'sepia(1) blur(2px)';
           ctx.drawImage(this.moonCanvas,0,0);
 
         },
@@ -3771,7 +3786,7 @@
               x: getRandomNum(segmentSize * i, segmentSize * (i + 1)),
               y: getRandomNum(0, NightMode.config.STAR_MAX_Y),
               opacity: 0.5 + 0.5 * Math.random(),
-              sourceY: N7e.spriteDefinition.STAR.y + NightMode.config.STAR_SIZE * i%4,
+              sourceY: N7e.spriteDefinition.STAR.y + NightMode.config.STAR_SIZE * (i%4),
               //hue: Math.floor(Math.random() * 360),
             };
 
@@ -3864,7 +3879,7 @@
 
           ctx.save();
           ctx.translate(0,25 - N7e.defaultDimensions.HEIGHT);
-          for (let i = 0; i < 200; i++) {
+          for (let i = 0; i < N7e.config.GROUND_WIDTH; i++) {
               this.drawGround(ctx, i);
               ctx.translate(0,25);
           }
@@ -3907,7 +3922,7 @@
                   this.grassMapOffset.push(getRandomNum(0,4));
                   let gr = false;
 
-                  sum = 100;
+                  sum = N7e.config.GROUND_WIDTH/2;
                   do {
                     n = gr ? getRandomNum(3,5) : getRandomNum(0,1);
                     gr = !gr;
@@ -3918,7 +3933,7 @@
                     l.push(n);
                   } while (sum > 0);
 
-                  sum = 100;
+                  sum = N7e.config.GROUND_WIDTH/2;
                   do {
                     n = gr ? getRandomNum(2,8) : getRandomNum(1,2);
                     gr = !gr;
@@ -3953,7 +3968,27 @@
             } else { // Draw stripes
 
   //            canvasCtx.setLineDash([45,55,35,65]);
-              canvasCtx.setLineDash([70,30]);
+                  /* TODO DIRT
+              if (!this.stripes) {
+                this.stripes = [];
+                for (let j = 0; j < 10; j++) {
+                  let str = [10,10,10,10,10,10,10,10,10,10];
+                  for (let i = 0; i < 500; i++) {
+                    let a = getRandomNum(0,9);
+                    let b = getRandomNum(0,9);
+                    let v = getRandomNum(-5,5);
+                    if (str[a] - v > 0 && str[b] + v > 0) {
+                      str[a] -= v;
+                      str[b] += v;
+                    }
+                  }
+                  this.stripes.push(str);
+                }
+              }
+                  */
+
+              canvasCtx.setLineDash([25,25]);
+              //canvasCtx.setLineDash(this.stripes[(i+8)%10]);
               canvasCtx.lineWidth = step;
               canvasCtx.strokeStyle = "rgba(200,200,0,"+(alphaStep/2 * (i+8))+")";
 
@@ -4129,7 +4164,7 @@
          */
         update: function (deltaTime, currentSpeed, updateObstacles, showNightMode, alpha) {
           this.runningTime += deltaTime;
-          this.nightMode.update(showNightMode);
+          this.nightMode.update(showNightMode,deltaTime);
           this.updateClouds(deltaTime, currentSpeed, true);
           this.updateMountains(deltaTime, currentSpeed);
           this.updateClouds(deltaTime, currentSpeed);
