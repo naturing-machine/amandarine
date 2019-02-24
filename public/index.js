@@ -858,9 +858,6 @@
 
           let a = this.actions[0];
           this.amdr.updateActionQueue(this.actions, now, deltaTime, this.currentSpeed);
-
-          this.amdr.update(0, this.currentSpeed);
-
           this.terminal.update(deltaTime);
 
           this.scheduleNextUpdate();
@@ -2434,6 +2431,8 @@
           actionQueue.splice(0, Infinity, ...actionQueue.filter( action => action.priority != -1 ));
 
           let n7e = N7e();
+          let newAction;
+          let newSpeed = speed;
 
           UPDATE_ACTION_QUEUE: {
             for (let i = 0, action; action = actionQueue[i]; i++) {
@@ -2455,7 +2454,7 @@
                       action.timer = 0;
                       action.priority = 1;
                       this.updateAction(action, deltaTime, speed);
-                      this.update(deltaTime, speed, action);
+                      newAction = action;
 
                       break;
                     case AMDR.status.WAITING:
@@ -2477,7 +2476,7 @@
                       action.timer = 0;
                       action.priority = 1;
                       this.updateAction(action, deltaTime, speed);
-                      this.update(deltaTime, speed, action);
+                      newAction = action;
                     default:;
                   }
 
@@ -2507,7 +2506,7 @@
                           this.dust.addPoint(0, 0, -40, -10 * Math.random());
                         }
 
-                        this.update(0, speed, action);
+                        newAction = action;
                       } break;
                     case AMDR.status.SLIDING:
                       {
@@ -2534,7 +2533,8 @@
                         action.friction = 2 * action.fullDistance / (action.fullTime * action.fullTime);
                         action.xPos = this.xPos;
 
-                        this.update(0, sp, action);
+                        newAction = action;
+                        newSpeed = sp;
                       } break;
 
                     // These background-type actions (priority 1 without specific
@@ -2551,14 +2551,13 @@
                         action.duration -= deltaTime;
                         if (action.duration < 0) {
                           action.priority = -1;
+                        } else {
+                          this.updateAction(action, deltaTime, speed);
                         }
-                        this.updateAction(action, deltaTime, speed);
-                        this.update(deltaTime, speed);
                         break UPDATE_ACTION_QUEUE;
                       }
 
                       this.updateAction(action, deltaTime, speed);
-                      this.update(deltaTime, speed);
                       continue;
 
                     case AMDR.status.WAITING:
@@ -2581,7 +2580,6 @@
                       }
 
                       this.updateAction(action, deltaTime, speed);
-                      this.update(deltaTime, speed);
                       continue;
                     default:
                       break UPDATE_ACTION_QUEUE;
@@ -2606,7 +2604,6 @@
                     n7e.defaultAction.priority = 0;
                   }
 
-                  this.update(deltaTime, speed);
                   break UPDATE_ACTION_QUEUE;
                 case 3:
                   switch(action.type) {
@@ -2634,10 +2631,9 @@
                         action.lagging = speed;
                         action.updated = true;
                         this.updateAction(action, deltaTime, speed);
-                        this.update(deltaTime, speed, action);
+                        newAction = action;
                       } else {
                         this.updateAction(action, deltaTime, speed);
-                        this.update(deltaTime, speed);
                       }
 
                       if (action.priority == -1) {
@@ -2652,11 +2648,10 @@
                   break UPDATE_ACTION_QUEUE;
               }
             }
+
           }
 
-          //this.updateAction(deltaTime, speed);
-
-          //this.update(speed, deltaTime);
+          this.update(deltaTime, speed, newAction);
         },
 
         /**
