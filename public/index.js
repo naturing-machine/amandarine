@@ -2598,7 +2598,7 @@
                       n7e.musics.stop(); // shouldn't need
                       n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
                       n7e.playIntro();
-                      n7e.setSpeed(6);
+                      n7e.setSpeed(N7e.config.SPEED);
                       n7e.defaultAction.type = AMDR.status.RUNNING;
                     }
 
