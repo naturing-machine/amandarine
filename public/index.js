@@ -193,7 +193,8 @@
      * @enum {Object}
      */
     N7e.spriteDefinition = {
-      BICYCLE: { x: 0, y: 0 },
+      VELOTA: { x: 0, y: 0 },
+      ROTATA: { x: 0, y: 52 },
       CACTUS_LARGE: { x: 369, y: 0 },
       CACTUS_SMALL: { x: 266, y: 0 },
       CLOUD: { x: 166, y: [1,20,46,61,76,95] },
@@ -202,7 +203,8 @@
       HORIZON: { x: 2, y: 104 },
       MOON: { x: 954, y: 0 },
       NATHERINE: { x: 0, y: 0 },
-      RED_DUCK: { x: 2165, y: 0 },
+      LIVER: { x: 2257, y: 0 },
+      RUBBER: { x: 2257, y: 42 },
       RESTART: { x: 2, y: 2 },
       TEXT_SPRITE: { x: 1125, y: 0 },
       STAR: { x: 1114, y: 0 }
@@ -284,7 +286,11 @@
           Obstacle.types[3].mag = 1;
           */
 
-          Obstacle.types[3].sprite = N7e.imageSpriteBicycle;
+          Obstacle.types.forEach(type => {
+            if (type.type == 'ROTATA' || type.type == 'VELOTA') {
+              type.sprite = N7e.imageSpriteBicycle;
+            }
+          });
           AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling;
           AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrJumping;
           AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding;
@@ -1200,11 +1206,14 @@
          */
         gameOver: function (obstacle) {
           switch(obstacle.typeConfig.type) {
-            case "RED_DUCK":
+            case "LIVER":
+            case "RUBBER":
               this.playSound(this.soundFx.SOUND_QUACK, 0.2, false, 0.2);
               break;
-            case  "BICYCLE":
+            case  "ROTATA":
+            case  "VELOTA":
               this.playSound(this.soundFx.SOUND_CRASH, 0.5);
+              this.playSound(this.soundFx.SOUND_BICYCLE,0.5);
               break;
             default:
               this.playSound(this.soundFx.SOUND_HIT, 1.0, false, 0.2);
@@ -1790,6 +1799,14 @@
     };
 
         CollisionBox.prototype = {
+            flop: function(width) {
+              this.x = width - this.x - this.width;
+            },
+
+            flip: function(height) {
+              this.y = height - this.y - this.height;
+            },
+
             maxX: function () {
               return this.x + this.width;
             },
@@ -1869,7 +1886,6 @@
       this.width = 0;
       this.collisionBoxes = [];
       this.gap = 0;
-      this.speedOffset = 0;
 
       // For animated obstacles.
       this.currentFrame = 0;
@@ -1932,14 +1948,8 @@
               }
 
               // For obstacles that go at a different speed from the horizon.
-              if (this.typeConfig.speedOffset) {
-                this.speedOffset = getRandomNum(0,1)
-                  ? this.typeConfig.speedOffset
-                  : -this.typeConfig.speedOffset;
-              }
-
-              if (this.typeConfig.speedUp) {
-                this.speedOffset += this.typeConfig.speedUp;
+              if (this.typeConfig.speedFactor) {
+                this.speedFactor = this.typeConfig.speedFactor;
               }
 
               this.gap = this.getGap(this.gapCoefficient, speed);
@@ -1953,32 +1963,14 @@
               var sourceHeight = this.typeConfig.height;
 
               // X position in sprite.
-              var sourceX = (sourceWidth * this.size) * (0.5 * (this.size - 1)) +
-              this.spritePos.x;
+              var sourceX = (sourceWidth * this.size) * (0.5 * (this.size - 1))
+                + this.spritePos.x;
 
               // Animation frames.
               if (this.currentFrame > 0) {
-                sourceX += sourceWidth * this.currentFrame;
+                sourceX += this.typeConfig.frames[this.currentFrame];
               }
 
-              /*
-              if (this.typeConfig.type == 'RED_DUCK' && this.speedOffset < 0) {
-                this.canvasCtx.save();
-                this.canvasCtx.filter = 'hue-rotate(20deg)';
-                this.canvasCtx.drawImage(this.typeConfig.sprite || N7e.imageSprite,
-                  sourceX, this.spritePos.y,
-                  sourceWidth * this.size, sourceHeight,
-                  this.xPos, this.yPos,
-                  this.typeConfig.width * this.size, this.typeConfig.height);
-                this.canvasCtx.restore();
-              } else {
-                this.canvasCtx.drawImage(this.typeConfig.sprite || N7e.imageSprite,
-                  sourceX, this.spritePos.y,
-                  sourceWidth * this.size, sourceHeight,
-                  this.xPos, this.yPos,
-                  this.typeConfig.width * this.size, this.typeConfig.height);
-              }
-              */
               this.canvasCtx.drawImage(this.typeConfig.sprite || N7e.imageSprite,
                 sourceX, this.spritePos.y,
                 sourceWidth * this.size, sourceHeight,
@@ -1993,18 +1985,24 @@
              */
             update: function (deltaTime, speed) {
               if (!this.remove) {
+                /*
                 if (this.typeConfig.speedOffset) {
                   speed += this.speedOffset;
+                }
+                */
+                if (this.speedFactor) {
+                  speed += this.speedFactor * speed;
                 }
                 this.xPos -= speed * FPS / 1000 * deltaTime;
 
                 // Update frame
-                if (this.typeConfig.numFrames) {
+                if (this.typeConfig.frames) {
                   this.timer += deltaTime;
                   if (this.timer >= this.typeConfig.frameRate) {
                     this.currentFrame =
-                    this.currentFrame == this.typeConfig.numFrames - 1 ?
-                    0 : this.currentFrame + 1;
+                      this.currentFrame == this.typeConfig.frames.length - 1
+                        ? 0
+                        : this.currentFrame + 1;
                     this.timer = 0;
                   }
                 }
@@ -2071,9 +2069,9 @@
         minGap: 120,
         minSpeed: 0,
         collisionBoxes: [
-          new CollisionBox(0, 14, 10, 54),
-          new CollisionBox(8, 0, 12, 68),
-          new CollisionBox(20, 8, 14, 28)
+          new CollisionBox(0, 7, 5, 27),
+          new CollisionBox(4, 0, 6, 34),
+          new CollisionBox(10, 4, 7, 14)
         ]
       },
       {
@@ -2085,13 +2083,13 @@
         minGap: 120,
         minSpeed: 0,
         collisionBoxes: [
-          new CollisionBox(0, 24, 14, 76),
-          new CollisionBox(16, 0, 14, 98),
-          new CollisionBox(26, 20, 20, 76)
+          new CollisionBox(0, 12, 7, 38),
+          new CollisionBox(8, 0, 14, 49),
+          new CollisionBox(13, 10, 10, 38)
         ]
       },
       {
-        type: 'RED_DUCK',
+        type: 'LIVER',
         width: 46,
         height: 42,
         yPos: [
@@ -2111,29 +2109,82 @@
           new CollisionBox(31, 24, 12, 8),
           new CollisionBox(1, 22, 13, 4)
         ],
-        numFrames: 6,
-        frameRate: 1000 / 18,
-        speedOffset: .8
+        frames: [0,46,92,138,92,46],
+        frameRate: 1000 / 15,
+        //speedOffset: .8
+        speedFactor: 0.25,
       },
       {
-        type: 'BICYCLE',
+        type: 'RUBBER',
+        width: 46,
+        height: 42,
+        yPos: [
+          N7e.defaultDimensions.HEIGHT - 50,
+          N7e.defaultDimensions.HEIGHT - 75,
+          N7e.defaultDimensions.HEIGHT - 100,
+          N7e.defaultDimensions.HEIGHT - 125,
+          N7e.defaultDimensions.HEIGHT - 150,
+          N7e.defaultDimensions.HEIGHT - 175,
+        ], // Variable height.
+        multipleSpeed: 999,
+        // minSpeed: 8.5,
+        minSpeed: 0,
+        minGap: 150,
+        reversed: true,
+        collisionBoxes: [
+          new CollisionBox(15, 18, 16, 16),
+          new CollisionBox(31, 24, 12, 8),
+          new CollisionBox(1, 22, 13, 4)
+        ],
+        frames: [0,46,92,138,92,46],
+        frameRate: 1000 / 15,
+        speedFactor: -0.25,
+      },
+      {
+        type: 'VELOTA',
         width: 52,
         height: 52,
         yPos: N7e.defaultDimensions.HEIGHT - 62,
         multipleSpeed: 999,
         minSpeed: 0,
-        minGap: 150,
+        minGap: 100,
         collisionBoxes: [
           new CollisionBox(17, 3, 17, 20),
           new CollisionBox(4, 23, 20, 27),
           new CollisionBox(24, 30, 23, 20)
         ],
-        numFrames: 8,
+        frames: [0,52,104,156,208,260,312,364],
         frameRate: 1000 / 15,
-        speedOffset: .3,
-        speedUp: 2.5 //FUN FIXME Random a speed from a predefined range.
+        speedFactor: 0.35,
+      },
+      {
+        type: 'ROTATA',
+        width: 52,
+        height: 52,
+        yPos: N7e.defaultDimensions.HEIGHT - 62,
+        multipleSpeed: 999,
+        minSpeed: 0,
+        minGap: 100,
+        reversed: true,
+        collisionBoxes: [
+          new CollisionBox(17, 3, 17, 20),
+          new CollisionBox(4, 23, 20, 27),
+          new CollisionBox(24, 30, 23, 20)
+        ],
+        frames: [0,52,104,156,208,260,312,364],
+        frameRate: 1000 / 15,
+        speedFactor: -0.35,
       }
     ];
+
+    Obstacle.types.forEach(type => {
+      if (type.reversed) {
+        type.collisionBoxes.forEach(box => box.flop(type.width));
+        type.frames.reverse();
+      }
+    });
+
+
 
 
     //******************************************************************************
@@ -4237,35 +4288,33 @@
 
           // Check for multiples of the same type of obstacle.
           // Also check obstacle is available at current speed.
-          if (this.duplicateObstacleCheck(obstacleType.type) ||
-          currentSpeed < obstacleType.minSpeed) {
+          if (this.duplicateObstacleCheck(obstacleType.type)
+            || currentSpeed < obstacleType.minSpeed) {
             this.addObstacle(currentSpeed);
           } else {
             var obstacleSpritePos = this.spritePos[obstacleType.type];
 
-            if (obstacleType.type == 'BICYCLE') {
+            if (obstacleType.type == 'VELOTA') {
               N7e().playSound(N7e().soundFx.SOUND_BICYCLE,0.5,false,0,1);
             }
 
-            if (obstacleType.type == 'RED_DUCK') {
-              let yellowDuck = {x:2165, y:42};
+            if (obstacleType.type == 'LIVER' || obstacleType.type == 'RUBBER') {
 
-              if (!getRandomNum(0,10)) {
-                let speedOffset = getRandomNum(0,1) ? -1.6 : 0.8;
+              if (!getRandomNum(0,5)) {
 
-                for (let i = -2; i <= 2; i++) {
+                // Sweepers
+                for (let i = -2; i <= 2; i+=getRandomNum(1,2)) {
                   let duck = new Obstacle(this.canvasCtx, obstacleType,
                   obstacleSpritePos, this.dimensions,
                   this.gapCoefficient, currentSpeed, obstacleType.width)
 
-                  duck.currentFrame = getRandomNum(0, duck.typeConfig.numFrames-1);
+                  duck.currentFrame = getRandomNum(0, 5);
                   duck.yPos = N7e.defaultDimensions.HEIGHT - ((i+5) * 25);
-                  duck.speedOffset = speedOffset;
 
-                  if (speedOffset == 0.8) {
+                  duck.xPos += i*2
+                  if (obstacleType.type == 'LIVER') {
                     duck.xPos += 30 * Math.abs(i);
                   } else {
-                    duck.spritePos = yellowDuck;
                     duck.xPos += 60 + 30 * -Math.abs(i);
                   }
 
@@ -4276,9 +4325,6 @@
                 let duck = new Obstacle(this.canvasCtx, obstacleType,
                 obstacleSpritePos, this.dimensions,
                 this.gapCoefficient, currentSpeed, obstacleType.width)
-                if (duck.speedOffset < 0) {
-                  duck.spritePos = yellowDuck;
-                }
                 this.obstacles.push(duck);
               }
 
