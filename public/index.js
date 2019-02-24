@@ -270,36 +270,204 @@
          */
         loadImages: function () {
 
-          N7e.imageSprite = document.getElementById('offline-resources-2x');
-          N7e.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running');
-          N7e.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding');
-          N7e.imageSpriteAmdrJumping = document.getElementById('offline-resources-nat-jumping');
-          N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling');
-          N7e.imageSpriteBicycle = document.getElementById('offline-resources-bicycle');
-          N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash');
-          N7e.imageKeysIntroduction = document.getElementById('offline-resources-shortkeys');
-          this.spriteDef = N7e.spriteDefinition;
-
-          /*
-          Obstacle.types[0].mag = 2;
-          Obstacle.types[1].mag = 2;
-          Obstacle.types[2].mag = 2;
-          Obstacle.types[3].mag = 1;
-          */
+          let loadingSpriteList = [
+            N7e.imageSprite = document.getElementById('offline-resources-2x'),
+            AMDR.animFrames.RUNNING.sprite = N7e.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running'),
+            AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding'),
+            AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrJumping = document.getElementById('offline-resources-nat-jumping'),
+            AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling'),
+            AMDR.animFrames.CRASHED.sprite = N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash'),
+            N7e.imageSpriteBicycle = document.getElementById('offline-resources-bicycle'),
+            N7e.imageKeysIntroduction = document.getElementById('offline-resources-shortkeys'),
+          ];
 
           Obstacle.types.forEach(type => {
-            if (type.type == 'ROTATA' || type.type == 'VELOTA') {
-              type.sprite = N7e.imageSpriteBicycle;
-            }
+            type.sprite = type.type == 'ROTATA' || type.type == 'VELOTA'
+              ? N7e.imageSpriteBicycle
+              : N7e.imageSprite;
           });
-          AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling;
-          AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrJumping;
-          AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding;
-          AMDR.animFrames.RUNNING.sprite = N7e.imageSpriteAmdrRunning;
-          AMDR.animFrames.CRASHED.sprite = N7e.imageSpriteAmdrCrashed;
+
+          this.consoleButtons = {
+            CONSOLE_LEFT: { x: 104, y: 495, w: 100, h: 100, id:'offline-resources-console-button-left',
+              handleEvent: function (e) {
+                e.preventDefault();
+                let n7e = N7e();
+                switch(e.type) {
+                  case N7e.events.TOUCHSTART: {
+                    this.dir = 1;
+
+                    if (!n7e.playing) break;
+
+                    let action = n7e.amdr.newAction(n7e.actions, AMDR.status.SLIDING);
+                    action.begin = action.begin || e.timeStamp;
+
+                    if (action && !action.index) {
+                      n7e.activeActions[AMDR.status.SLIDING] = action;
+                      n7e.queueAction(action);
+                    }
+                  } break;
+
+                  case N7e.events.TOUCHEND: {
+                    this.dir = -1;
+
+                    if (!n7e.playing) break;
+
+                    let action = n7e.activeActions[AMDR.status.SLIDING];
+                    if (action && action.priority == 0) {
+                      action.end = e.timeStamp;
+                      action.pressDuration = action.end - action.begin;
+                      if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
+                      action.priority = 1;
+                    }
+
+                  } break;
+                }
+              },
+            },
+            CONSOLE_RIGHT: { x: 596, y: 495, w: 100, h: 100, id:'offline-resources-console-button-right',
+              handleEvent: function (e) {
+                e.preventDefault();
+                let n7e = N7e();
+                switch(e.type) {
+                  case N7e.events.TOUCHSTART: {
+                    this.dir = 1;
+
+                    let action = n7e.amdr.newAction(n7e.actions, AMDR.status.JUMPING);
+                    action.begin = action.begin || e.timeStamp;
+
+                    if (!n7e.playing) {
+                      action.first = true;
+                      n7e.loadSounds();
+
+                      n7e.setSkyGradient(N7e.config.SKY.DAY,3000);
+                      n7e.update();
+                      n7e.musics.stop();
+                      n7e.play();
+                    }
+
+                    if (action && !action.index) {
+                      n7e.activeActions[AMDR.status.JUMPING] = action;
+                      n7e.queueAction(action);
+                    }
+
+                  } break;
+                  case N7e.events.TOUCHEND: {
+                    this.dir = -1;
+
+                    let action = n7e.activeActions[AMDR.status.JUMPING]
+                    if (!action) break;
+
+                    if (n7e.crashed) {
+                      if (getTimeStamp() - n7e.crashedTime >= n7e.config.GAMEOVER_CLEAR_TIME) {
+                        if (n7e.raqId) {
+                          cancelAnimationFrame(n7e.raqId);
+                          n7e.raqId = 0;
+                        }
+                        n7e.restart();
+                      }
+                      break;
+                    }
+
+                    n7e.playing = true;
+
+                    if (action.priority == 0) {
+                      action.end = e.timeStamp;
+                      action.pressDuration = action.end - action.begin;
+                      if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
+                      action.priority = 1;
+                    }
+
+                  } break;
+                }
+              },
+            },
+            CONSOLE_MUSIC: { x: 233, y: 495, w: 66, h: 50, id:'offline-resources-console-button-music',
+              handleEvent: function (e) {
+                switch(e.type) {
+                  case N7e.events.TOUCHSTART:
+                    this.dir = 1;
+                    break;
+                  case N7e.events.TOUCHEND:
+                    this.dir = -1;
+                    N7e().setMusicMode(-1);
+                    break;
+                }
+              },
+            },
+            CONSOLE_GRAPHICS: { x: 233, y: 545, w: 66, h: 50, id: 'offline-resources-console-button-graphics',
+              handleEvent: function (e) {
+                switch(e.type) {
+                  case N7e.events.TOUCHSTART:
+                    this.dir = 1;
+                    break;
+                  case N7e.events.TOUCHEND:
+                    this.dir = -1;
+                    N7e().setGraphicsMode(-1);
+                    break;
+                }
+              },
+            },
+            CONSOLE_RESTART: { x: 501, y: 495, w: 66, h: 50, id:'offline-resources-console-button-restart',
+              handleEvent: function (e) {
+                N7e().terminal.setMessages("COMING SOON", 2000);
+                switch(e.type) {
+                  case N7e.events.TOUCHSTART:
+                    this.dir = 1;
+                    break;
+                  case N7e.events.TOUCHEND:
+                    this.dir = -1;
+                    break;
+                }
+              },
+            },
+            CONSOLE_TROPHY: { x: 501, y: 545, w: 66, h: 50, id:'offline-resources-console-button-trophy',
+              handleEvent: function (e) {
+                N7e().terminal.setMessages("COMING SOON", 2000);
+                switch(e.type) {
+                  case N7e.events.TOUCHSTART:
+                    this.dir = 1;
+                    break;
+                  case N7e.events.TOUCHEND:
+                    this.dir = -1;
+                    break;
+                }
+              },
+            },
+            CONSOLE_N7E: { x: 357, y: 628, w: 18, h: 18, id:'offline-resources-console-button-n7e',
+              handleEvent: function (e) {
+                switch(e.type) {
+                  case N7e.events.TOUCHSTART:
+                    this.dir = 1;
+                    break;
+                  case N7e.events.TOUCHEND:
+                    this.dir = -1;
+                    break;
+                }
+              },
+            },
+            CONSOLE_RESET: { x: 424, y: 628, w: 18, h: 18, id:'offline-resources-console-button-reset',
+              handleEvent: function (e) {
+                switch(e.type) {
+                  case N7e.events.TOUCHSTART:
+                    this.dir = 1;
+                    break;
+                  case N7e.events.TOUCHEND:
+                    this.dir = -1;
+                    break;
+                }
+              },
+            },
+          };
+
+          for( let key in this.consoleButtons ) {
+            let btt = this.consoleButtons[key];
+            loadingSpriteList.push(document.getElementById(btt.id));
+          }
+
+          this.spriteDef = N7e.spriteDefinition;
 
           var loader = {
-            spriteList: [ N7e.imageSprite, N7e.imageSpriteAmdrIdling, N7e.imageSpriteAmdrRunning, N7e.imageSpriteAmdrSliding, N7e.imageSpriteAmdrCrashed, N7e.imageSpriteBicycle, ],
+            spriteList: loadingSpriteList,
             runner: this,
             load: function() {
 
@@ -318,17 +486,70 @@
 
           }
 
-
           loader.load();
+        },
 
+        setMusicMode: function (mode) {
+          //FIXME AMDR should check for the last activity.
+          this.amdr.introScriptTimer = 20000;
+          if (this.config.PLAY_MUSIC) {
+            this.musics.stop();
+            this.config.PLAY_MUSIC = false;
+            this.terminal.setMessages('♬ OFF', 2000);
+          } else {
+            this.config.PLAY_MUSIC = true;
+            this.loadMusic('offline-play-music', this.config.PLAY_MUSIC);
+            this.terminal.setMessages('♬ ON', 2000);
+          }
+        },
+
+        setGraphicsMode: function (mode) {
+          //FIXME
+          this.amdr.introScriptTimer = 20000;
+
+          if (mode == -1) {
+            mode = (this.config.GRAPHICS_MODE+1)%10;
+          }
+
+          this.config.GRAPHICS_MODE = mode;
+          this.canvasCtx.restore();
+          this.canvasCtx.save();
+          this.canvas.style.opacity = 1.0;
+          switch (mode) {
+            case 0: // Normal
+              this.terminal.setMessages('STRIPES', 2000);
+              break;
+            case 1: // Low
+              this.terminal.setMessages('☺ ROCK-BOTTOM', 2000);
+              this.amdr.dust.reset();
+              break;
+            case 2: // Grayscale
+              this.terminal.setMessages('GRAYSCALE', 2000);
+              this.canvasCtx.filter = 'grayscale(1)';
+              break;
+            case 3: // Daylight
+              this.terminal.setMessages('DAYLIGHT', 2000);
+              this.canvas.style.opacity = 0.5;
+              break;
+            case 9: // Extreme
+              this.terminal.setMessages('NΑTURING', 2000);
+              break;
+            default:
+              this.terminal.setMessages('SHADE ▻ '+(this.config.GRAPHICS_MODE - 3), 2000);
+              this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((this.config.GRAPHICS_MODE - 4) * 72)+'deg)';
+              break;
+          }
+
+          this.setSkyGradient(this.skyGradientCurrentValues,1);
+          this.clearCanvas();
+          this.horizon.horizonLine.draw();
+          this.amdr.update(0, this.currentSpeed);
         },
 
         loadMusic: function(name, autoplay) {
           if (!IS_IOS) {
-            let n7e = N7e();
-
-            if (!n7e.musics) {
-              n7e.musics = {
+            if (!this.musics) {
+              this.musics = {
                 songs: {},
                 stop: function() {
                   for (let name in this.songs) {
@@ -342,14 +563,14 @@
               };
             }
 
-            let song = n7e.musics.songs[name];
+            let song = this.musics.songs[name];
             if (!song) {
-              song = n7e.musics.songs[name] = {}
+              song = this.musics.songs[name] = {}
             }
 
             if (autoplay) {
-              for (let name in n7e.musics.songs) {
-                n7e.musics.songs[name].autoplay = false;
+              for (let name in this.musics.songs) {
+                this.musics.songs[name].autoplay = false;
               }
             }
 
@@ -358,7 +579,7 @@
             if (song.data) {
 
               if (!song.audio && song.autoplay) {
-                n7e.musics.stop();
+                this.musics.stop();
                 song.audio = this.playSound(song.data, 0.3);
               }
 
@@ -484,17 +705,6 @@
           this.skyGradientToValues = [0,0,0,0,0,0];
           this.skyGradientCurrentValues = [0,0,0,0,0,0];
 
-          this.consoleButtons = {
-            CONSOLE_LEFT: { x: 104, y: 495, w: 100, h: 100, id:'offline-resources-console-button-left' },
-            CONSOLE_RIGHT: { x: 596, y: 495, w: 100, h: 100, id:'offline-resources-console-button-right' },
-            CONSOLE_MUSIC: { x: 233, y: 495, w: 66, h: 50, id:'offline-resources-console-button-music' },
-            CONSOLE_GRAPHICS: { x: 233, y: 545, w: 66, h: 50, id:'offline-resources-console-button-graphics' },
-            CONSOLE_RESTART: { x: 501, y: 495, w: 66, h: 50, id:'offline-resources-console-button-restart' },
-            CONSOLE_TROPHY: { x: 501, y: 545, w: 66, h: 50, id:'offline-resources-console-button-trophy' },
-            CONSOLE_N7E: { x: 357, y: 628, w: 18, h: 18, id:'offline-resources-console-button-n7e' },
-            CONSOLE_RESET: { x: 424, y: 628, w: 18, h: 18, id:'offline-resources-console-button-reset' },
-          };
-
           for( let key in this.consoleButtons ) {
             let btt = this.consoleButtons[key];
             btt.pressure = 0;
@@ -508,8 +718,10 @@
             btt.canvas.style.position = 'absolute';
             btt.sprite = document.getElementById(btt.id);
             //elm.canvas.className = N7e.classes[key];
-            btt.canvasCtx = btt.canvas.getContext('2d'/*,{alpha:false}*/);
+            btt.canvasCtx = btt.canvas.getContext('2d',{alpha:false});
             this.containerEl.appendChild(btt.canvas);
+            btt.canvas.addEventListener(N7e.events.TOUCHSTART, btt);
+            btt.canvas.addEventListener(N7e.events.TOUCHEND, btt);
           }
 
             // This or we won't recieve
@@ -556,9 +768,11 @@
          * Create the touch controller. A div that covers whole screen.
          */
         createTouchController: function () {
+          /*
           this.touchController = document.createElement('div');
           this.touchController.className = N7e.classes.TOUCH_CONTROLLER;
           this.outerContainerEl.appendChild(this.touchController);
+          */
         },
 
         /**
@@ -893,9 +1107,11 @@
 
           if (IS_MOBILE) {
             // Mobile only touch devices.
+            /*
             this.touchController.addEventListener(N7e.events.TOUCHSTART, this);
             this.touchController.addEventListener(N7e.events.TOUCHEND, this);
             this.containerEl.addEventListener(N7e.events.TOUCHSTART, this);
+            */
           } else {
             // Mouse.
             document.addEventListener(N7e.events.MOUSEDOWN, this);
@@ -911,9 +1127,11 @@
           document.removeEventListener(N7e.events.KEYUP, this);
 
           if (IS_MOBILE) {
+            /*
             this.touchController.removeEventListener(N7e.events.TOUCHSTART, this);
             this.touchController.removeEventListener(N7e.events.TOUCHEND, this);
             this.containerEl.removeEventListener(N7e.events.TOUCHSTART, this);
+            */
           } else {
             document.removeEventListener(N7e.events.MOUSEDOWN, this);
             document.removeEventListener(N7e.events.MOUSEUP, this);
@@ -950,6 +1168,8 @@
 
           let inputType = null;
           if (e.type == N7e.events.TOUCHSTART) {
+            this.terminal.setMessages('ERROR A',20000);
+            /*
             let clientWidth = N7e().touchController.offsetWidth;
             for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
               if (touch.clientX > clientWidth/2) {
@@ -959,6 +1179,7 @@
               }
               break;
             }
+            */
           } else if (N7e.keycodes.JUMP[e.keyCode]) {
             inputType = AMDR.status.JUMPING;
           } else if (N7e.keycodes.SLIDE[e.keyCode]) {
@@ -989,14 +1210,12 @@
               action.begin = action.begin || e.timeStamp;
 
               if (!this.playing) {
-                let n7e = N7e();
-
                 action.first = true;
                 this.loadSounds();
 
                 this.setSkyGradient(N7e.config.SKY.DAY,3000);
                 this.update();
-                n7e.musics.stop();
+                this.musics.stop();
                 this.play();
               }
 
@@ -1022,81 +1241,32 @@
          */
         onKeyUp: function (e) {
 
-          let n7e = N7e();
-
           var keyCode = String(e.keyCode);
 
           if (keyCode == '67') {
             /* Debug collisions */
-
-            n7e.config.SHOW_COLLISION = !n7e.config.SHOW_COLLISION;
+            this.config.SHOW_COLLISION = !this.config.SHOW_COLLISION;
             return;
-
           } else if (keyCode == '77') {
             /* Music toggle */
-
             this.consoleButtons.CONSOLE_MUSIC.dir = -1;
-
-            if (n7e.config.PLAY_MUSIC) {
-              n7e.musics.stop();
-              n7e.config.PLAY_MUSIC = false;
-              this.terminal.setMessages('♬ OFF', 2000);
-            } else {
-              n7e.config.PLAY_MUSIC = true;
-              n7e.loadMusic('offline-play-music', n7e.config.PLAY_MUSIC);
-              this.terminal.setMessages('♬ ON', 2000);
-            }
+            this.setMusicMode(-1);
             return;
-
           } else if (keyCode == '71' || (keyCode <= 57 && keyCode >= 48)) {
-
             /* Graphics Mode switches */
             this.consoleButtons.CONSOLE_GRAPHICS.dir = -1;
             if (keyCode <= 57 && keyCode >= 48) {
-              n7e.config.GRAPHICS_MODE = keyCode - 48;
+              this.setGraphicsMode(keyCode - 48);
             } else {
-              n7e.config.GRAPHICS_MODE = (n7e.config.GRAPHICS_MODE+1)%10;
+              this.setGraphicsMode(-1);
             }
-
-            this.canvasCtx.restore();
-            this.canvasCtx.save();
-            this.canvas.style.opacity = 1.0;
-            switch (n7e.config.GRAPHICS_MODE) {
-              case 0: // Normal
-                this.terminal.setMessages('STRIPES', 2000);
-                break;
-              case 1: // Low
-                this.terminal.setMessages('☺ ROCK-BOTTOM', 2000);
-                this.amdr.dust.reset();
-                break;
-              case 2: // Grayscale
-                this.terminal.setMessages('GRAYSCALE', 2000);
-                this.canvasCtx.filter = 'grayscale(1)';
-                break;
-              case 3: // Daylight
-                this.terminal.setMessages('DAYLIGHT', 2000);
-                this.canvas.style.opacity = 0.5;
-                break;
-              case 9: // Extreme
-                this.terminal.setMessages('NΑTURING', 2000);
-                break;
-              default:
-                this.terminal.setMessages('SHADE ▻ '+(n7e.config.GRAPHICS_MODE - 3), 2000);
-                this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((n7e.config.GRAPHICS_MODE - 4) * 72)+'deg)';
-                break;
-            }
-
-            this.setSkyGradient(this.skyGradientCurrentValues,1);
-            this.clearCanvas();
-            this.horizon.horizonLine.draw();
-            this.amdr.update(0, this.currentSpeed);
-
             return;
-
           }
 
           let inputType;
           if (e.type == N7e.events.TOUCHEND) {
+            this.terminal.setMessages('WILL FIX',5000);
+            /*
             let clientWidth = N7e().touchController.offsetWidth;
             for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
               if (touch.clientX > clientWidth/2) {
@@ -1105,7 +1275,7 @@
                 inputType = AMDR.status.SLIDING;
               }
               break;
-            } //FIXME MOUSE
+            }*/ //FIXME MOUSE
           } else if (N7e.keycodes.JUMP[keyCode] || e.type == N7e.events.MOUSEUP) {
             inputType = AMDR.status.JUMPING;
           } else if (N7e.keycodes.SLIDE[keyCode]) {
@@ -1136,7 +1306,7 @@
             if (action.priority == 0) {
               action.end = e.timeStamp;
               action.pressDuration = action.end - action.begin;
-              if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
+              if (action.pressDuration > this.config.MAX_ACTION_PRESS) action.pressDuration = this.config.MAX_ACTION_PRESS;
               action.priority = 1;
             }
 
@@ -1145,7 +1315,7 @@
             if (action.priority == 0) {
               action.end = e.timeStamp;
               action.pressDuration = action.end - action.begin;
-              if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
+              if (action.pressDuration > this.config.MAX_ACTION_PRESS) action.pressDuration = this.config.MAX_ACTION_PRESS;
               action.priority = 1;
             }
 
@@ -2460,17 +2630,16 @@
                     case AMDR.status.WAITING:
                       this.introScriptTimer = 200;
                       this.introScript = [
-                        20000,"On Da Run\nAmandarine\nBETA 0.89",
+                        20000,"On Da Run\nAmandarine\nVERSION BETA 0.90",
                         20000,"Hi...",
                         20000,"Just play already!",
                         20000,"Didn't know you love the song that much!",
-                        20000,"Liverpool will win. You know.",
+                        20000,"Man U will win ⚽ You know.",
                         20000,'I didnt say "I_love_you" to hear it back. I said it to make sure you knew ♥',
                         20000,'Never give up on something you really want ♥',
                         20000,'You are my sunshine ☼♥',
                         20000,'My love for you is a journey;\nStarting at forever,\nand ending at never. ♥',
                         20000,'Glory in life is not in never failing, but rising each time we fail. ♥'
-
                       ];
 
                       action.timer = 0;
@@ -2660,10 +2829,7 @@
          * @param {number} speed
          */
         updateAction: function (action, deltaTime, speed) {
-          if (!action || action.priority == -1) {
-            console.log('something wrong');
-            return false;
-          }
+          console.assert(action && action.priority != -1, action) ;
 
           let n7e = N7e();
 
@@ -2971,7 +3137,7 @@
               case ' ': return 1713;
               case '♬': return 1727;
               case '♥': return 1741;
-              case '☺': return 1755;
+              case '☺': return 1895;//1755;
               case 'Α': return 1769;
               case '◅': return 1783;
               case '"': return 1797;
@@ -2979,6 +3145,7 @@
               case "☼": return 1825;
               case ',': return 1839;
               case ';': return 1853;
+              case '⚽': return 1881;
               default: return -code;
             }
           });
