@@ -2459,13 +2459,19 @@
 
                       break;
                     case AMDR.status.WAITING:
-                      this.introScriptTimer = 15000;
+                      this.introScriptTimer = 200;
                       this.introScript = [
+                        20000,"On Da Run\nAmandarine\nBETA 0.89",
                         20000,"Hi...",
                         20000,"Just play already!",
                         20000,"Didn't know you love the song that much!",
                         20000,"Liverpool will win. You know.",
                         20000,'I didnt say "I_love_you" to hear it back. I said it to make sure you knew ♥',
+                        20000,'Never give up on something you really want ♥',
+                        20000,'You are my sunshine ☼♥',
+                        20000,'My love for you is a journey;\nStarting at forever,\nand ending at never. ♥',
+                        20000,'Glory in life is not in never failing, but rising each time we fail. ♥'
+
                       ];
 
                       action.timer = 0;
@@ -2561,10 +2567,10 @@
                       if (this.introScriptTimer < 0) {
                         let wait = this.introScript.shift();
                         let text = this.introScript.shift();
-                        let dur = 5000;
+                        let dur = 10000;
                         let wc = text.split(' ').length;
                         if (wc > 5) {
-                          dur = wc * 1500;
+                          dur = wc * 2000;
                         }
 
                         this.introScript.push(wait);
@@ -2975,6 +2981,9 @@
               case '◅': return 1783;
               case '"': return 1797;
               case "'": return 1811;
+              case "☼": return 1825;
+              case ',': return 1839;
+              case ';': return 1853;
               default: return -code;
             }
           });
@@ -3000,7 +3009,7 @@
                 continue;
               }
               this.canvasCtx.drawImage(this.image, x, 0, 14, 18,
-                14 + cur * 14 - 20*(1 - this.opacity), 10 + 16*l, 14, 18);
+                14 + cur * Math.ceil(14*this.opacity) - 20*(1 - this.opacity), 10 + 16*l, 14, 18);
               cur++;
             }
             this.canvasCtx.restore();
