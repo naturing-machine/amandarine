@@ -2438,15 +2438,15 @@
           UPDATE_ACTION_QUEUE: {
             for (let i = 0, action; action = actionQueue[i]; i++) {
               switch(action.priority) {
-                case 0: { /* Prepare action */
+                case 0: { /* Preparing actions */
 
                   switch(action.type) {
                     case AMDR.status.JUMPING:
                       this.drawJumpingGuide(action, now, speed);
-                      break;
+                      continue;
                     case AMDR.status.SLIDING:
                       this.drawSlidingGuide(action, now, speed);
-                      break;
+                      continue;
                     case AMDR.status.RUNNING:
                       if (action.hasOwnProperty('xPos')) {
                         this.xPos = action.xPos;
