@@ -527,7 +527,11 @@
             this.terminal.setMessages('♬ OFF', 2000);
           } else {
             this.config.PLAY_MUSIC = true;
-            this.loadMusic('offline-play-music', this.config.PLAY_MUSIC);
+            if (this.playing) {
+              this.loadMusic('offline-play-music', this.config.PLAY_MUSIC);
+            } else {
+              this.loadMusic('offline-intro-music', this.config.PLAY_MUSIC);
+            }
             this.terminal.setMessages('♬ ON', 2000);
           }
         },
