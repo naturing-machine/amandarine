@@ -235,8 +235,8 @@
      * @enum {Object}
      */
     N7e.keycodes = {
-      JUMP: { '38': 1, '32': 1 },  // Up, spacebar
-      SLIDE: { '39': 1, '40': 1 },  // Right, Down
+      JUMP: { '38': 1, '32': 1, '39': 1 },  // Up, spacebar, Right
+      SLIDE: { '37': 1, '40': 1 },  // Left, Down
       RESTART: { '13': 1 }  // Enter
     };
 
@@ -299,7 +299,7 @@
                     if (!n7e.playing) break;
 
                     let action = n7e.amdr.newAction(n7e.actions, AMDR.status.SLIDING);
-                    action.begin = action.begin || e.timeStamp;
+                    action.begin = action.begin || n7e.time;
 
                     if (action && !action.index) {
                       n7e.activeActions[AMDR.status.SLIDING] = action;
@@ -314,7 +314,7 @@
 
                     let action = n7e.activeActions[AMDR.status.SLIDING];
                     if (action && action.priority == 0) {
-                      action.end = e.timeStamp;
+                      action.end = n7e.time;
                       action.pressDuration = action.end - action.begin;
                       if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
                       action.priority = 1;
@@ -334,7 +334,8 @@
                     this.dir = 1;
 
                     let action = n7e.amdr.newAction(n7e.actions, AMDR.status.JUMPING);
-                    action.begin = action.begin || e.timeStamp;
+                    action.begin = action.begin || n7e.time;
+
 
                     if (!n7e.playing) {
                       action.first = true;
@@ -373,7 +374,7 @@
                     n7e.playing = true;
 
                     if (action.priority == 0) {
-                      action.end = e.timeStamp;
+                      action.end = n7e.time;
                       action.pressDuration = action.end - action.begin;
                       if (action.pressDuration > n7e.config.MAX_ACTION_PRESS) action.pressDuration = n7e.config.MAX_ACTION_PRESS;
                       action.priority = 1;
@@ -762,7 +763,7 @@
           }
 
             // This or we won't recieve
-          this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
+          //this.canvas.addEventListener('touchend',this.onKeyUp.bind(this), false);
 
           this.canvasCtx = this.canvas.getContext('2d');
 
@@ -1244,7 +1245,7 @@
             if (inputType == AMDR.status.JUMPING) {
 
               action = this.amdr.newAction(this.actions, AMDR.status.JUMPING);
-              action.begin = action.begin || e.timeStamp;
+              action.begin = action.begin || this.time;
 
               if (!this.playing) {
                 action.first = true;
@@ -1260,7 +1261,7 @@
               e.preventDefault(); //Test if this is needed.
 
               action = this.amdr.newAction(this.actions, AMDR.status.SLIDING);
-              action.begin = action.begin || e.timeStamp;
+              action.begin = action.begin || this.time;
             }
 
             if (action && !action.index) {
@@ -1344,7 +1345,7 @@
             this.playing = true;
 
             if (action.priority == 0) {
-              action.end = e.timeStamp;
+              action.end = this.time;
               action.pressDuration = action.end - action.begin;
               if (action.pressDuration > this.config.MAX_ACTION_PRESS) action.pressDuration = this.config.MAX_ACTION_PRESS;
               action.priority = 1;
@@ -1353,7 +1354,7 @@
           } else if (action && inputType == AMDR.status.SLIDING) {
 
             if (action.priority == 0) {
-              action.end = e.timeStamp;
+              action.end = this.time;
               action.pressDuration = action.end - action.begin;
               if (action.pressDuration > this.config.MAX_ACTION_PRESS) action.pressDuration = this.config.MAX_ACTION_PRESS;
               action.priority = 1;
@@ -2728,7 +2729,7 @@
                         // Sliding act pretty much like jumping, just going one way forward.
                         //action.pressDuration += N7e.config.MIN_ACTION_PRESS_FACTOR;
 
-                        action.fullDistance = 1.5 * sp * 0.001 * FPS * action.maxPressDuration;
+                        action.fullDistance = sp * 0.001 * FPS * action.maxPressDuration;
                         action.fullTime = action.fullDistance / (sp * FPS);
 
                         if (action.end + action.fullTime * 1000 < now) {
@@ -3072,7 +3073,7 @@
           }
 
           //let distance = speed * 0.001 * FPS * slideDuration;
-          let distance = 1.5 * speed * 0.001 * FPS * slideDuration;
+          let distance = speed * 0.001 * FPS * slideDuration;
 
 
           let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 4;
@@ -3093,7 +3094,7 @@
          */
         reset: function () {
           this.yPos = this.groundYPos;
-          this.xPos = -120;// this.config.START_X_POS;
+          this.xPos = -40;// this.config.START_X_POS;
           this.dust.reset();
           this.action = null;
           N7e().queueAction({
