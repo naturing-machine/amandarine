@@ -329,6 +329,7 @@
                 e.preventDefault();
                 let n7e = N7e();
                 switch(e.type) {
+                  case N7e.events.MOUSEDOWN:
                   case N7e.events.TOUCHSTART: {
                     this.dir = 1;
 
@@ -351,6 +352,7 @@
                     }
 
                   } break;
+                  case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND: {
                     this.dir = -1;
 
@@ -383,10 +385,13 @@
             },
             CONSOLE_MUSIC: { x: 233, y: 495, w: 66, h: 50, id:'offline-resources-console-button-music',
               handleEvent: function (e) {
+                e.preventDefault();
                 switch(e.type) {
+                  case N7e.events.MOUSEDOWN:
                   case N7e.events.TOUCHSTART:
                     this.dir = 1;
                     break;
+                  case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND:
                     this.dir = -1;
                     N7e().setMusicMode(-1);
@@ -396,10 +401,13 @@
             },
             CONSOLE_GRAPHICS: { x: 233, y: 545, w: 66, h: 50, id: 'offline-resources-console-button-graphics',
               handleEvent: function (e) {
+                e.preventDefault();
                 switch(e.type) {
+                  case N7e.events.MOUSEDOWN:
                   case N7e.events.TOUCHSTART:
                     this.dir = 1;
                     break;
+                  case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND:
                     this.dir = -1;
                     N7e().setGraphicsMode(-1);
@@ -409,11 +417,14 @@
             },
             CONSOLE_RESTART: { x: 501, y: 495, w: 66, h: 50, id:'offline-resources-console-button-restart',
               handleEvent: function (e) {
+                e.preventDefault();
                 N7e().terminal.setMessages("COMING SOON", 2000);
                 switch(e.type) {
+                  case N7e.events.MOUSEDOWN:
                   case N7e.events.TOUCHSTART:
                     this.dir = 1;
                     break;
+                  case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND:
                     this.dir = -1;
                     break;
@@ -422,11 +433,14 @@
             },
             CONSOLE_TROPHY: { x: 501, y: 545, w: 66, h: 50, id:'offline-resources-console-button-trophy',
               handleEvent: function (e) {
+                e.preventDefault();
                 N7e().terminal.setMessages("COMING SOON", 2000);
                 switch(e.type) {
+                  case N7e.events.MOUSEDOWN:
                   case N7e.events.TOUCHSTART:
                     this.dir = 1;
                     break;
+                  case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND:
                     this.dir = -1;
                     break;
@@ -435,10 +449,13 @@
             },
             CONSOLE_N7E: { x: 357, y: 628, w: 18, h: 18, id:'offline-resources-console-button-n7e',
               handleEvent: function (e) {
+                e.preventDefault();
                 switch(e.type) {
+                  case N7e.events.MOUSEDOWN:
                   case N7e.events.TOUCHSTART:
                     this.dir = 1;
                     break;
+                  case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND:
                     this.dir = -1;
                     break;
@@ -447,10 +464,13 @@
             },
             CONSOLE_RESET: { x: 424, y: 628, w: 18, h: 18, id:'offline-resources-console-button-reset',
               handleEvent: function (e) {
+                e.preventDefault();
                 switch(e.type) {
+                  case N7e.events.MOUSEDOWN:
                   case N7e.events.TOUCHSTART:
                     this.dir = 1;
                     break;
+                  case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND:
                     this.dir = -1;
                     break;
@@ -720,8 +740,11 @@
             //elm.canvas.className = N7e.classes[key];
             btt.canvasCtx = btt.canvas.getContext('2d',{alpha:false});
             this.containerEl.appendChild(btt.canvas);
+
             btt.canvas.addEventListener(N7e.events.TOUCHSTART, btt);
             btt.canvas.addEventListener(N7e.events.TOUCHEND, btt);
+            btt.canvas.addEventListener(N7e.events.MOUSEDOWN, btt);
+            btt.canvas.addEventListener(N7e.events.MOUSEUP, btt);
           }
 
             // This or we won't recieve
@@ -1299,6 +1322,9 @@
           }
 
           let action = this.activeActions[inputType];
+          if (action) {
+            this.activeActions[inputType] = null;
+          }
 
           if (!this.crashed && action && inputType == AMDR.status.JUMPING) {
             this.playing = true;
