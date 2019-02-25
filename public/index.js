@@ -458,6 +458,15 @@
                   case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND:
                     this.dir = -1;
+                    N7e().amdr.introScriptTimer = 20000;
+                    if (!this.urlList || this.urlList.length == 0) {
+                      this.urlList = [
+                        {name:'IG', url:'https://www.instagram.com/natherine.bnk48official'},
+                        {name:'FACEBOOK', url:'https://www.facebook.com/bnk48official.natherine'},
+                      ]
+                    }
+                    let item = this.urlList.splice(getRandomNum(0,this.urlList.length-1),1)[0];
+                    window.open(item.url, '_blank');
                     break;
                 }
               },
