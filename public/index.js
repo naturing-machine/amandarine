@@ -1514,6 +1514,7 @@
             this.paused = false;
             this.time = getTimeStamp();
             this.update();
+            this.terminal.setMessages("go go go!!",2000);
           }
         },
 
@@ -4687,14 +4688,21 @@
 
 
 function onDocumentLoad() {
-  let request = new XMLHttpRequest();
-  request.open('GET', 'assets/console.png');
-  request.onload = () => {
-    let console = document.getElementById('main-content');
-    console.style.backgroundImage = 'url(assets/console.png)';
+  let image = document.getElementById('offline-resources-console');
+  let game = document.getElementById('main-content');
+
+  let ready = () => {
+    game.style.backgroundImage = 'url('+image.src+')';
     new N7e('.interstitial-wrapper');
+  };
+
+  if (image.complete) {
+    ready();
+  } else {
+    image.addEventListener(N7e.events.LOAD, (e) => {
+      ready();
+    });
   }
-  request.send();
 }
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
