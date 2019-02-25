@@ -548,27 +548,28 @@
           this.canvasCtx.restore();
           this.canvasCtx.save();
           this.canvas.style.opacity = 1.0;
+          let delay = 5000;
           switch (mode) {
             case 0: // Normal
-              this.terminal.setMessages('STRIPES', 2000);
+              this.terminal.setMessages('STRIPES', delay);
               break;
             case 1: // Low
-              this.terminal.setMessages('☺ ROCK-BOTTOM', 2000);
+              this.terminal.setMessages('☺ ROCK-BOTTOM', delay);
               this.amdr.dust.reset();
               break;
             case 2: // Grayscale
-              this.terminal.setMessages('GRAYSCALE', 2000);
+              this.terminal.setMessages('GRAYSCALE', delay);
               this.canvasCtx.filter = 'grayscale(1)';
               break;
             case 3: // Daylight
-              this.terminal.setMessages('DAYLIGHT', 2000);
+              this.terminal.setMessages('DAYLIGHT', delay);
               this.canvas.style.opacity = 0.5;
               break;
             case 9: // Extreme
-              this.terminal.setMessages('NΑTURING', 2000);
+              this.terminal.setMessages('NΑTURING', delay);
               break;
             default:
-              this.terminal.setMessages('SHADE ▻ '+(this.config.GRAPHICS_MODE - 3), 2000);
+              this.terminal.setMessages('SHADE ▻ '+(this.config.GRAPHICS_MODE - 3), delay);
               this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((this.config.GRAPHICS_MODE - 4) * 72)+'deg)';
               break;
           }
@@ -2669,7 +2670,7 @@
                     case AMDR.status.WAITING:
                       this.introScriptTimer = 200;
                       this.introScript = [
-                        20000,"On Da Run\nAmandarine\nVERSION BETA 0.90",
+                        20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.90",
                         20000,"Hi...",
                         20000,"Just play already!",
                         20000,"Didn't know you love the song that much!",
@@ -3176,6 +3177,7 @@
               case ' ': return 1713;
               case '♬': return 1727;
               case '♥': return 1741;
+              case '`': return 1755;
               case '☺': return 1895;//1755;
               case 'Α': return 1769;
               case '◅': return 1783;
@@ -3184,7 +3186,9 @@
               case "☼": return 1825;
               case ',': return 1839;
               case ';': return 1853;
+              case ':': return 1867;
               case '⚽': return 1881;
+              case '#': return 1909;
               default: return -code;
             }
           });
