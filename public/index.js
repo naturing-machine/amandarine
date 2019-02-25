@@ -121,7 +121,7 @@
       CRASH_HEIGHT: 32,
       GAMEOVER_CLEAR_TIME: 750,
       GAP_COEFFICIENT: 0.6,
-      GROUND_WIDTH: 200,
+      GROUND_WIDTH: 100,
       INVERT_FADE_DURATION: 12000,
       INVERT_DISTANCE: 700,
       SKY_SHADING_DURATION: 2000,
@@ -4085,7 +4085,7 @@
           if (!this.groundCanvas) {
             this.groundCanvas = document.createElement('canvas');
             this.groundCanvas.width = N7e.defaultDimensions.WIDTH;
-            this.groundCanvas.height = 25 * 200;
+            this.groundCanvas.height = 25 * N7e.config.GROUND_WIDTH;
           }
           let ctx = this.groundCanvas.getContext('2d');
 
@@ -4248,7 +4248,7 @@
             this.canvasCtx.globalCompositeOperation = 'multiply';
           }
             this.canvasCtx.drawImage(this.groundCanvas,
-                0, (Math.floor(this.xPos[0] + 600) % 200) * 25 + 2,
+                0, (Math.floor(this.xPos[0] + 600) % N7e.config.GROUND_WIDTH) * 25 + 2,
                 N7e.defaultDimensions.WIDTH, 22,
                 0, N7e.defaultDimensions.HEIGHT - 22,
                 N7e.defaultDimensions.WIDTH, 22);
