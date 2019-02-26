@@ -2687,7 +2687,8 @@
                         20000,'Never give up on something you really want ♥',
                         20000,'You are my sunshine ☼♥',
                         20000,'My love for you is a journey;\nStarting at forever,\nand ending at never. ♥',
-                        20000,'Glory in life is not in never failing, but rising each time we fail. ♥'
+                        20000,'Glory in life is not in never failing, but rising each time we fail. ♥',
+                        20000,'Love this project?\nDonate_Thai_Redcross_➕!\nSee the bottom right for details.',
                       ];
 
                       action.timer = 0;
@@ -2784,10 +2785,10 @@
                       if (this.introScriptTimer < 0) {
                         let wait = this.introScript.shift();
                         let text = this.introScript.shift();
-                        let dur = 10000;
+                        let dur = 6000;
                         let wc = text.split(' ').length;
                         if (wc > 5) {
-                          dur = wc * 2000;
+                          dur = wc * 1200;
                         }
 
                         this.introScript.push(wait);
@@ -3141,16 +3142,16 @@
           this.opacity = 0;
         },
 
-        setMessages: function (messageStr, timer) {
-          N7e().setNeedsUpdate(timer);
-
+        setMessages: function (messageStr, timer, opt_lineWidth) {
+          //N7e().setNeedsUpdate(timer);
           if (!messageStr.length) return;
 
-          let lineWidth = 20; //TODO multi-widths
+          let lineWidth = opt_lineWidth || 20; //TODO multi-widths
           let wordList = messageStr.toString().split(' ');
           let newList = [wordList[0]];
-          for (let i = 1, word, cur = wordList[0].length + 1 ; word = wordList[i]; i++) {
 
+          for (let i = 1, cur = wordList[0].length + 1 ; i < wordList.length ; i++) {
+            let word = wordList[i];
             let words = word.split('\n');
 
             words.forEach((w,index) => {
@@ -3184,7 +3185,7 @@
 
             switch (ch) {
               case '.': return 1629;
-              case '?': return 1657;
+              case '?': return 1643;
               case '!': return 1657;
               case '▻': return 1671;
               case '/': return 1685;
@@ -3205,9 +3206,11 @@
               case ':': return 1867;
               case '⚽': return 1881;
               case '#': return 1909;
+              case '➕': return 1923;
               default: return -code;
             }
           });
+
         },
 
         update: function (deltaTime) {
@@ -3423,7 +3426,7 @@
 
                 let n7e = N7e();
                 if (distance == n7e.halfFarthest) {
-                  n7e.terminal.setMessages('KEEP GOING! ☺',6000);
+                  n7e.terminal.setMessages('KEEP RUNNING! ☺',6000);
                 } else if (distance == 2 * n7e.halfFarthest) {
                   n7e.terminal.setMessages('GOOD JOB! ☺',6000);
                 } else if (distance == 4 * n7e.halfFarthest) {
