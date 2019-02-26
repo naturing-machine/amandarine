@@ -1093,7 +1093,7 @@
 
             this.showKeyDelta = !!this.showKeyDelta ? this.showKeyDelta : 1;
             this.showKeyDelta += deltaTime;
-            if (this.showKeyDelta > 2000){
+            if (!IS_MOBILE && this.showKeyDelta > 2000){
               let xMap = [2,1,-2,-3,-2,1], yMap = [1,0,-2,-2,-2,0];
               this.canvasCtx.drawImage(N7e.imageKeysIntroduction,
                 0, 0, 75, 54,
@@ -1136,22 +1136,14 @@
         },
 
         /**
-         * Bind relevant key / mouse / touch listeners.
+         * Bind relevant key / mouse.
          */
         startListening: function () {
           // Keys.
           document.addEventListener(N7e.events.KEYDOWN, this);
           document.addEventListener(N7e.events.KEYUP, this);
 
-          if (IS_MOBILE) {
-            // Mobile only touch devices.
-            /*
-            this.touchController.addEventListener(N7e.events.TOUCHSTART, this);
-            this.touchController.addEventListener(N7e.events.TOUCHEND, this);
-            this.containerEl.addEventListener(N7e.events.TOUCHSTART, this);
-            */
-          } else {
-            // Mouse.
+          if (!IS_MOBILE) {
             document.addEventListener(N7e.events.MOUSEDOWN, this);
             document.addEventListener(N7e.events.MOUSEUP, this);
           }
@@ -1164,13 +1156,7 @@
           document.removeEventListener(N7e.events.KEYDOWN, this);
           document.removeEventListener(N7e.events.KEYUP, this);
 
-          if (IS_MOBILE) {
-            /*
-            this.touchController.removeEventListener(N7e.events.TOUCHSTART, this);
-            this.touchController.removeEventListener(N7e.events.TOUCHEND, this);
-            this.containerEl.removeEventListener(N7e.events.TOUCHSTART, this);
-            */
-          } else {
+          if (!IS_MOBILE) {
             document.removeEventListener(N7e.events.MOUSEDOWN, this);
             document.removeEventListener(N7e.events.MOUSEUP, this);
           }
@@ -1205,23 +1191,12 @@
           }
 
           let inputType = null;
-          if (e.type == N7e.events.TOUCHSTART) {
-            this.terminal.setMessages('ERROR A',20000);
-            /*
-            let clientWidth = N7e().touchController.offsetWidth;
-            for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
-              if (touch.clientX > clientWidth/2) {
-                inputType = AMDR.status.JUMPING;
-              } else {
-                inputType = AMDR.status.SLIDING;
-              }
-              break;
-            }
-            */
-          } else if (N7e.keycodes.JUMP[e.keyCode]) {
+          if (N7e.keycodes.JUMP[e.keyCode]) {
             inputType = AMDR.status.JUMPING;
           } else if (N7e.keycodes.SLIDE[e.keyCode]) {
             inputType = AMDR.status.SLIDING;
+          } else if (e.type == N7e.events.MOUSEDOWN) {
+            inputType = e.button == 0 ? AMDR.status.JUMPING : AMDR.status.SLIDING;
           }
 
           switch(inputType) {
@@ -1302,22 +1277,12 @@
           }
 
           let inputType;
-          if (e.type == N7e.events.TOUCHEND) {
-            this.terminal.setMessages('WILL FIX',5000);
-            /*
-            let clientWidth = N7e().touchController.offsetWidth;
-            for (let i = 0, touch; touch = e.changedTouches[i]; i++) {
-              if (touch.clientX > clientWidth/2) {
-                inputType = AMDR.status.JUMPING;
-              } else {
-                inputType = AMDR.status.SLIDING;
-              }
-              break;
-            }*/ //FIXME MOUSE
-          } else if (N7e.keycodes.JUMP[keyCode] || e.type == N7e.events.MOUSEUP) {
+          if (N7e.keycodes.JUMP[keyCode]) {
             inputType = AMDR.status.JUMPING;
           } else if (N7e.keycodes.SLIDE[keyCode]) {
             inputType = AMDR.status.SLIDING;
+          } else if (e.type == N7e.events.MOUSEUP) {
+            inputType = e.button == 0 ? AMDR.status.JUMPING : AMDR.status.SLIDING;
           }
 
           if (this.actions.length && this.actions[0].story) {
