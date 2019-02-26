@@ -2678,7 +2678,7 @@
                     case AMDR.status.WAITING:
                       this.introScriptTimer = 200;
                       this.introScript = [
-                        20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.90",
+                        20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.92",
                         20000,"Hi...",
                         20000,"Just play already!",
                         20000,"Didn't know you love the song that much!",
@@ -4726,4 +4726,8 @@ function onDocumentLoad() {
   }
 }
 
+document.addEventListener('contextmenu', e => {
+  var path = event.path || (e.composedPath && e.composedPath());
+  if (path[0].className != "runner-canvas") e.preventDefault();
+});
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
