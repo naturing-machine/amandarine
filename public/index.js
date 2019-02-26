@@ -112,7 +112,7 @@
      * @enum {number}
      */
     N7e.config = {
-      ACCELERATION: 0.0005,
+      ACCELERATION: 0.00025,
       BG_CLOUD_SPEED: 0.2,
       BOTTOM_PAD: 10,
       CLEAR_TIME: 3000,
@@ -2472,13 +2472,14 @@
         msPerFrame: Infinity
       },
       JUMPING: {
-        frames: [0,20,40,40,40],
-        msPerFrame: 1000 / 3
+        frames: [0,20,40,60,60],
+        msPerFrame: 1000 / 4,
+        //extended: true // this will need a duration to be defined.
       },
       SLIDING: {
         frames: [0, 20, 40, 20],
         //frames: [264, 323],
-        msPerFrame: 1000 / 24
+        msPerFrame: 1000 / 12
       }
     };
 
@@ -2517,19 +2518,23 @@
          * @param {!number} deltaTime
          * @param {AMDR.status} status Optional status to switch to.
          */
-        update: function (deltaTime, speed, opt_status) {
+        update: function (deltaTime, speed, opt_action) {
           this.timer = (this.timer || 0) +  deltaTime;
           let n7e = N7e();
 
           // Update the status.
-          if (opt_status) {
-            this.status = opt_status.type;
+          if (opt_action) {
+            this.status = opt_action.type;
             this.currentFrame = 0;
-            this.msPerFrame = AMDR.animFrames[opt_status.type].msPerFrame;
-            this.currentAnimFrames = AMDR.animFrames[opt_status.type].frames;
 
-            this.currentSprite = AMDR.animFrames[opt_status.type].sprite;
-            if (opt_status.type == AMDR.status.CRASHED && opt_status.dir == 1) {
+            this.msPerFrame = opt_action.msPerFrame
+              ? opt_action.msPerFrame
+              : AMDR.animFrames[opt_action.type].msPerFrame;
+
+            this.currentAnimFrames = AMDR.animFrames[opt_action.type].frames;
+
+            this.currentSprite = AMDR.animFrames[opt_action.type].sprite;
+            if (opt_action.type == AMDR.status.CRASHED && opt_action.dir == 1) {
               this.currentFrame = 1;
             }
           }
@@ -2542,18 +2547,17 @@
           */
 
           /* Don't draw crash state to observe the effective collision boxes */
-          if (!n7e.config.SHOW_COLLISION || (opt_status && opt_status.type != AMDR.status.CRASHED)) {
+          if (!n7e.config.SHOW_COLLISION || (opt_action && opt_action.type != AMDR.status.CRASHED)) {
             this.draw(this.currentAnimFrames[this.currentFrame], 0);
           }
 
           // Update the frame position.
           if (this.timer >= this.msPerFrame) {
-
             this.currentFrame = this.currentFrame ==
               this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
             this.timer = 0;
-
           }
+
           if (n7e.config.GRAPHICS_MODE != 1) this.dust.update(deltaTime);
         },
 
@@ -2667,6 +2671,7 @@
                         // It seems more ergonomically natural to simply add the minimum than to clip the value.
                         action.top = action.maxPressDuration / 1000;
                         action.halfTime = Math.sqrt(2000 * action.maxPressDuration / AMDR.config.GRAVITY);
+                        action.msPerFrame = action.halfTime * 2 / 4;
 
                         if (action.end + action.halfTime * 2 < now) {
                           action.priority = -1;
@@ -2838,6 +2843,20 @@
         updateAction: function (action, deltaTime, speed) {
           console.assert(action && action.priority != -1, action) ;
 
+          let adjustX = () => {
+            if (this.xPos < this.config.START_X_POS) {
+              this.xPos += 0.1 * speed * (FPS / 1000) * deltaTime;
+              if (this.xPos > this.config.START_X_POS) {
+                this.xPos = this.config.START_X_POS;
+              }
+            } else if (this.xPos > this.config.START_X_POS) {
+              this.xPos -= 0.1 * speed * (FPS / 1000) * deltaTime;
+              if (this.xPos < this.config.START_X_POS) {
+                this.xPos = this.config.START_X_POS;
+              }
+            }
+          };
+
           let n7e = N7e();
 
           action.timer += deltaTime;
@@ -2845,23 +2864,15 @@
             case AMDR.status.WAITING:
               break;
             case AMDR.status.RUNNING: {
-              if (this.xPos < this.config.START_X_POS) {
-                this.xPos += 0.2 * speed * (FPS / 1000) * deltaTime;
-                if (this.xPos > this.config.START_X_POS) {
-                  this.xPos = this.config.START_X_POS;
-                }
-              } else if (this.xPos > this.config.START_X_POS) {
-                this.xPos -= 0.2 * speed * (FPS / 1000) * deltaTime;
-                if (this.xPos < this.config.START_X_POS) {
-                  this.xPos = this.config.START_X_POS;
-                }
-              }
+              adjustX();
             } break;
             case AMDR.status.JUMPING: {
               let timer = action.halfTime - action.timer;
-              let dY = action.top * n7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR * timer * timer;
 
-              this.yPos = this.groundYPos - dY;
+              adjustX();
+              this.yPos = this.groundYPos
+                + ( this.config.GRAVITY_FACTOR * timer * timer
+                    - action.top * n7e.config.SCALE_FACTOR );
 
               if (timer < -action.halfTime) {
                 n7e.playSound(n7e.soundFx.SOUND_DROP,0.6 * action.pressDuration/n7e.config.MAX_ACTION_PRESS);
@@ -2901,9 +2912,10 @@
             } break;
             case AMDR.status.CRASHED: {
               let timer = action.halfTime - action.timer;
-              let dY = action.top * n7e.config.SCALE_FACTOR - this.config.GRAVITY_FACTOR/4 * timer * timer;
 
-              this.yPos = action.yCrashed - dY;
+              this.yPos = action.yCrashed
+                + ( this.config.GRAVITY_FACTOR/4 * timer * timer
+                    - action.top * n7e.config.SCALE_FACTOR );
               this.xPos += deltaTime/10 * action.dir;
 
               let lagging = action.lagging * (3000-action.timer)/3000;
@@ -4531,8 +4543,11 @@
                   if (obstacleType.type == 'LIVER') {
                     duck.xPos += 30 * Math.abs(i);
                   } else {
-                    duck.xPos += 60 + 30 * -Math.abs(i);
+                    duck.xPos += 70 + 30 * -Math.abs(i);
                   }
+                  duck.xPos += getRandomNum(-10,10);
+                  duck.yPos += getRandomNum(-5,0);
+                  duck.speedFactor *= (0.8 + Math.random() * 0.2);
 
                   this.obstacles.push(duck);
 
