@@ -147,7 +147,24 @@
         NIGHT: [68,136,170,84,183,187],
         START: [251,149,93,251,112,93],
         SUNSET: [69,67,125,255,164,119],
-      }
+      },
+      NATHERINE_LYRICS: [
+        700   ,"          ♬ Natherine ♬",
+        3300  ,"      she is all they claim",
+        6000  ,"      With her eyes of night",
+        7800  ,"   and lips as bright as flame",
+        11400 ,"            Natherine",
+        13600 ,"        when she dances by",
+        16600 ,"Senoritas stare and caballeros sigh",
+        22000 ,"          And I've seen",
+        24600 ,"       toasts to Natherine",
+        27300 ,"       Raised in every bar",
+        29200 ,"       across the Argentine",
+        32700 ," Yes, she has them all on the run,",
+        35600 ,"And their hearts belong to just one",
+        38400 ,"      Their hearts belong to",
+        40000 ,"          ♬ Natherine ♬",
+      ],
     };
 
     function shapeSpeedDuration(speed, duration) {
@@ -483,6 +500,8 @@
                   case N7e.events.MOUSEUP:
                   case N7e.events.TOUCHEND:
                     this.dir = -1;
+                    N7e().musics.stop();
+                    N7e().config = N7e.config;
                     break;
                 }
               },
@@ -581,12 +600,13 @@
           this.amdr.update(0, this.currentSpeed);
         },
 
-        loadMusic: function(name, autoplay) {
+        loadMusic: function(name, autoplay, lyrics) {
           if (!IS_IOS) {
             if (!this.musics) {
               this.musics = {
                 songs: {},
                 stop: function() {
+                  this.currentSong = null;
                   for (let name in this.songs) {
                     if (this.songs[name].audio) {
                       this.songs[name].autoplay = false;
@@ -615,7 +635,12 @@
 
               if (!song.audio && song.autoplay) {
                 this.musics.stop();
+
                 song.audio = this.playSound(song.data, 0.3);
+                song.startTime = this.audioContext.currentTime;
+                if (lyrics)
+                  song.lyrics = lyrics.slice(0);
+                this.currentSong = song;
               }
 
             } else if (!song.hasOwnProperty('progress')) {
@@ -1111,6 +1136,18 @@
           let a = this.actions[0];
           this.amdr.updateActionQueue(this.actions, now, deltaTime, this.currentSpeed);
           this.terminal.update(deltaTime);
+
+          if ( this.highestScore > 1500) {
+            this.playLyrics = true;
+          }
+
+          if (this.playLyrics && this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length) {
+            let time = this.audioContext.currentTime - this.currentSong.startTime;
+            if (time * 1000 >= this.currentSong.lyrics[0]) {
+              this.currentSong.lyrics.shift();
+              this.terminal.setMessages('\n\n\n\n\n\n\n\n\n\n    ' + this.currentSong.lyrics.shift(), 5000, 200);
+            }
+          }
 
           this.scheduleNextUpdate();
         },
@@ -2926,7 +2963,7 @@
 
               if (action.timer > 3000) {
                 action.priority = -1;
-                n7e.loadMusic('offline-intro-music', n7e.config.PLAY_MUSIC);
+                n7e.loadMusic('offline-intro-music', n7e.config.PLAY_MUSIC, N7e.config.NATHERINE_LYRICS);
                 n7e.stop();
               }
             } break;
