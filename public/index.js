@@ -20,6 +20,7 @@
      * @constructor
      * @export
      */
+
     function N7e(outerContainerId, opt_config) {
       // Singleton
       if (N7e.instance_) {
@@ -1038,7 +1039,7 @@
               this.gameOverPanel.draw(deltaTime);
 
               let alpha = this.actions[0] ? (3000-this.actions[0].timer)/3000 : 0;
-              if (alpha < 0) alpha = 0;
+                if (alpha < 0) alpha = 0;
               this.horizon.update(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
 
               if (alpha > 0.95) {
@@ -1121,9 +1122,8 @@
             if (!IS_MOBILE && this.showKeyDelta > 2000){
               let xMap = [2,1,-2,-3,-2,1], yMap = [1,0,-2,-2,-2,0];
               this.canvasCtx.drawImage(N7e.imageKeysIntroduction,
-                0, 0, 75, 54,
                 Math.round(this.amdr.xPos + xMap[this.amdr.currentFrame] + 20),
-                Math.round(this.amdr.yPos + yMap[this.amdr.currentFrame] - 47), 75, 54);
+                Math.round(this.amdr.yPos + yMap[this.amdr.currentFrame] - 47));
             }
           } else {
               this.horizon.update(0, 0, false, this.inverted, 1);
@@ -1136,10 +1136,6 @@
           let a = this.actions[0];
           this.amdr.updateActionQueue(this.actions, now, deltaTime, this.currentSpeed);
           this.terminal.update(deltaTime);
-
-          if ( this.highestScore > 1500) {
-            this.playLyrics = true;
-          }
 
           if (this.playLyrics && this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length) {
             let time = this.audioContext.currentTime - this.currentSong.startTime;
@@ -1228,12 +1224,12 @@
           }
 
           let inputType = null;
-          if (N7e.keycodes.JUMP[e.keyCode]) {
+          if (e.code == 'ShiftRight' || N7e.keycodes.JUMP[e.keyCode]) {
             inputType = AMDR.status.JUMPING;
-          } else if (N7e.keycodes.SLIDE[e.keyCode]) {
+          } else if (e.code == 'ShiftLeft' || N7e.keycodes.SLIDE[e.keyCode]) {
             inputType = AMDR.status.SLIDING;
           } else if (e.type == N7e.events.MOUSEDOWN) {
-            inputType = e.button == 0 ? AMDR.status.JUMPING : AMDR.status.SLIDING;
+            inputType = e.button == 0 ? AMDR.status.SLIDING : AMDR.status.JUMPING;
           }
 
           switch(inputType) {
@@ -1314,9 +1310,9 @@
           }
 
           let inputType;
-          if (N7e.keycodes.JUMP[keyCode]) {
+          if (e.code == 'ShiftRight' || N7e.keycodes.JUMP[keyCode]) {
             inputType = AMDR.status.JUMPING;
-          } else if (N7e.keycodes.SLIDE[keyCode]) {
+          } else if (e.code == 'ShiftLeft' || N7e.keycodes.SLIDE[keyCode]) {
             inputType = AMDR.status.SLIDING;
           } else if (e.type == N7e.events.MOUSEUP) {
             inputType = e.button == 0 ? AMDR.status.JUMPING : AMDR.status.SLIDING;
@@ -1473,6 +1469,7 @@
               if (d > this.halfFarthest) {
                 this.terminal.setMessages('A NEW HIGH ' + d + '! ☺',5000);
               }
+              if (d > 1000) this.playLyrics = true;
           }
 
           // Reset the time clock.
@@ -1525,13 +1522,18 @@
           if (!this.raqId) {
             this.actions = [];
             this.playCount++;
+            this.playLyrics = false;
 
             if (this.playCount == 10) {
               this.terminal.setMessages('NATHERINE ♥ YOU.☺',10000);
             } else if (this.playCount == 20) {
               this.terminal.setMessages('NATHERINE STILL ♥ You.☺',10000);
-            } else if (this.playCount >= 30 && this.playCount % 10 == 0) {
+            } else if (this.playCount == 30) {
               this.terminal.setMessages('NATHERINE WILL ALWAYS ♥ You.☺',10000);
+            } else if (this.playCount % 10 == 0) {
+              this.terminal.setMessages('Love the game?\nPlease_Make_a_Donation\nTO_Thai_Redcross_➕',8000);
+            } else {
+              this.terminal.setMessages('▻▻▻',1000);
             }
 
             this.runningTime = 0;
@@ -1633,15 +1635,15 @@
               },
               fadeCount: 10,
               fade: function() {
+
                 if (this._gain.gain.value > 0) {
                   this._gain.gain.value -= 0.02;
                   if (this._gain.gain.value < 0) {
                     this.node.stop();
                     return;
                   }
-
                   setTimeout(() => { this.fade(); }, 50);
-                  }
+                }
 
               },
             };
@@ -1799,7 +1801,7 @@
           deltaTime = deltaTime ? deltaTime : 1;
           this.timer += deltaTime;
           let dist = this.timer/100;
-          if (dist > 1) dist = 1;
+            if (dist > 1) dist = 1;
 
           var dimensions = GameOverPanel.dimensions;
 
@@ -2682,7 +2684,7 @@
                         20000,"Hi...",
                         20000,"Just play already!",
                         20000,"Didn't know you love the song that much!",
-                        20000,"Man U will win ⚽ You know.",
+                        20000,"Man U will win ⚽\nYou know.",
                         20000,'I didnt say "I_love_you" to hear it back. I said it to make sure you knew ♥',
                         20000,'Never give up on something you really want ♥',
                         20000,'You are my sunshine ☼♥',
@@ -2928,7 +2930,7 @@
               action.distance += increment;
 
               let it = action.fullTime - action.timer/1000;
-              if (it < 0) it = 0;
+                if (it < 0) it = 0;
               let distance = action.fullDistance - 1/2 * it * it * action.friction - action.distance;
 
               this.xPos = action.xPos + distance;
@@ -2956,11 +2958,8 @@
                     - action.top * n7e.config.SCALE_FACTOR );
               this.xPos += deltaTime/10 * action.dir;
 
-              let lagging = action.lagging * (3000-action.timer)/3000;
-              if (lagging < 0) {
-                lagging = 0;
-              }
-              n7e.setSpeed(lagging);
+              // Drag the scene slower on crashing.
+              n7e.setSpeed(Math.max(0, action.lagging * (3000-action.timer)/3000));
 
               if (action.timer > 3000) {
                 action.priority = -1;
@@ -3017,7 +3016,7 @@
               let last = now - action.end;
               shiftLeft = increment * last / DRAW_STEP;
               fadeOut = (fallDuration - last) / fallDuration;
-              if (fadeOut < 0) fadeOut = 0;
+                if (fadeOut < 0) fadeOut = 0;
             }
 
             let unit = fallDuration * 2 / DRAW_STEP;
@@ -3040,7 +3039,7 @@
 
             now = (now/10)%40;
             let alpha = fadeOut * (fallDuration-150)/200;
-            if (alpha > 1) alpha = 1;
+              if (alpha > 1) alpha = 1;
 
             this.canvasCtx.lineCap = 'round';
             this.canvasCtx.setLineDash([0,20]);
@@ -3216,13 +3215,17 @@
         update: function (deltaTime) {
           if (this.timer > 0) {
 
-            if (this.timer > 500) {
-              this.opacity += deltaTime/100;
-            } else {
-              this.opacity -= deltaTime/200;
-            }
-            if (this.opacity > 1) this.opacity = 1;
-            else if (this.opacity < 0) this.opacity = 0;
+            if (this.timer > 500) this.opacity += deltaTime/100;
+            else this.opacity -= deltaTime/200;
+              if (this.opacity > 1) this.opacity = 1;
+              else if (this.opacity < 0) this.opacity = 0;
+
+            this.opacity +=
+              this.timer > 500
+              ? deltaTime / 100
+              : -deltaTime / 200;
+                if (this.opacity < 0) this.opacity = 0;
+                else if (this.opacity > 1) this.opacity = 1;
 
             this.canvasCtx.save();
             this.canvasCtx.globalAlpha = this.opacity;
@@ -3790,12 +3793,12 @@
       this.xPos = containerWidth - 50;
       this.yPos = 50;
 //      this.nextPhase = NightMode.phases.length - 1;
-      this.nextPhase = 7;
+      this.nextPhase = getRandomNum(0,6);
       this.currentPhase = this.nextPhase;
       this.opacity = 0;
       this.containerWidth = containerWidth;
       this.stars = [];
-      this.drawStars = false;
+      this.showStars = false;
       this.generateMoonCache();
       this.placeStars();
     };
@@ -3828,38 +3831,39 @@
          */
         update: function (activated, delta) {
           // Moon phase.
-          if (activated && this.opacity == 0) {
+          if (activated && 0 == this.opacity) {
             this.currentPhase = this.nextPhase;
             this.nextPhase++;
 
-            if (this.nextPhase >= 15) {
+            if (16 == this.nextPhase) {
               this.nextPhase = 0;
             }
           }
 
           // Fade in / out.
-          if (activated && (this.opacity < 1 || this.opacity == 0)) {
-            this.opacity += NightMode.config.FADE_SPEED;
-          } else if (this.opacity > 0) {
-            this.opacity -= NightMode.config.FADE_SPEED;
-          }
+
+          this.opacity +=
+            ( activated
+            ? NightMode.config.FADE_SPEED
+            :-NightMode.config.FADE_SPEED );
+              if (this.opacity < 0) this.opacity = 0;
+              else if (this.opacity > 1) this.opacity = 1;
 
           // Set moon positioning.
-          if (this.opacity > 0) {
+          if (this.opacity) {
             this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
 
             // Update stars.
-            if (N7e.config.GRAPHICS_MODE != 1 && this.drawStars) {
+            if (N7e.config.GRAPHICS_MODE != 1 && this.showStars) {
               for (var i = 0, star; star = this.stars[i]; i++) {
                 star.x = this.updateXPos(star.x, NightMode.config.STAR_SPEED);
               }
             }
             this.draw();
           } else {
-            this.opacity = 0;
             this.placeStars();
           }
-          this.drawStars = true;
+          this.showStars = true;
         },
 
         updateXPos: function (currentPos, speed) {
@@ -3881,7 +3885,6 @@
 
           // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
           this.canvasCtx.globalAlpha = this.opacity;
-          //this.canvasCtx.globalCompositeOperation = 'lighten';
 
           let mx,my;
 
@@ -3903,11 +3906,11 @@
           } else {
             mx = Math.ceil(this.xPos);
             my = this.yPos;
-            var moonSourceWidth = this.currentPhase == 3
+            var moonSourceWidth = this.currentPhase%7 == 3
               ? NightMode.config.WIDTH * 2
               : NightMode.config.WIDTH;
             var moonSourceHeight = NightMode.config.HEIGHT;
-            var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
+            var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase%7];
             var moonOutputWidth = moonSourceWidth;
 
             this.canvasCtx.drawImage(N7e.imageSprite, moonSourceX,
@@ -3920,7 +3923,7 @@
 
           this.canvasCtx.globalAlpha = 1;
           // Stars.
-          if (N7e.config.GRAPHICS_MODE != 1 && this.drawStars) {
+          if (N7e.config.GRAPHICS_MODE != 1 && this.showStars) {
             for (var i = 0, star; star = this.stars[i]; i++) {
               let twinkle = ((star.x + 2*star.y)%10)/5;
               twinkle = 0.2
@@ -3929,7 +3932,7 @@
                   : twinkle);
               let alpha = this.opacity * star.opacity * twinkle;
               let dt = Math.abs(star.x - mx) + Math.abs(star.y - my) - 50;
-              if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
+                if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
 
               this.canvasCtx.globalAlpha = alpha * dt/50;
               //this.canvasCtx.filter = 'hue-rotate('+this.stars[i].hue+'deg)';
