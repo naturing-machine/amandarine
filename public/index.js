@@ -3088,18 +3088,13 @@
             slideDuration = n7e.config.SLIDE_FACTOR * shapeSpeedDuration(speed, slideDuration);
           }
 
-          //let distance = speed * 0.001 * FPS * slideDuration;
           let distance = speed * 0.001 * FPS * slideDuration;
-
-
           let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 4;
 
           this.canvasCtx.save();
-          this.canvasCtx.globalAlpha = 0.50 * alpha;
-          this.canvasCtx.filter = 'grayscale(1)';
-          this.canvasCtx.globalCompositeOperation = 'hard-light';
+          this.canvasCtx.globalAlpha = alpha;
           this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
-              AMDR.animFrames.SLIDING.frames[frame]*2, 0, 40, 40,
+              AMDR.animFrames.SLIDING.frames[frame]*2, 40, 40, 40,
               Math.floor(baseX + distance), this.groundYPos,
               this.config.WIDTH, this.config.HEIGHT);
           this.canvasCtx.restore();
@@ -3835,10 +3830,10 @@
           // Moon phase.
           if (activated && 0 == this.opacity) {
             this.currentPhase = this.nextPhase;
-            this.nextPhase++;
+            this.nextPhase--;
 
-            if (16 == this.nextPhase) {
-              this.nextPhase = 0;
+            if (-1 == this.nextPhase) {
+              this.nextPhase = 15;
             }
           }
 
