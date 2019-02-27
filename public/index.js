@@ -1515,16 +1515,22 @@
             this.playCount++;
             this.playLyrics = false;
 
-            if (this.playCount == 10) {
-              this.terminal.setMessages('NATHERINE ♥ YOU.☺',10000);
-            } else if (this.playCount == 20) {
-              this.terminal.setMessages('NATHERINE STILL ♥ You.☺',10000);
-            } else if (this.playCount == 30) {
-              this.terminal.setMessages('NATHERINE WILL ALWAYS ♥ You.☺',10000);
-            } else if (this.playCount % 10 == 0) {
-              this.terminal.setMessages('Love the game?\nPlease_Make_a_Donation\nTO_Thai_Redcross_➕',8000);
-            } else {
-              this.terminal.setMessages('▻▻▻',1000);
+            switch(this.playCount) {
+              case 10:
+                this.terminal.setMessages('NATHERINE ♥ YOU.☺',10000);
+                break;
+              case 20:
+                this.terminal.setMessages('NATHERINE STILL ♥ You.☺',10000);
+                break;
+              case 30:
+                this.terminal.setMessages('NATHERINE WILL ALWAYS ♥ You.☺',10000);
+                break;
+              default:
+              if (this.playCount % 10 == 0) {
+                this.terminal.setMessages('Love the game?\nPlease_Make_a_Donation\nTO_Thai_Redcross_➕',8000);
+              } else {
+                this.terminal.setMessages('▻▻▻',1000);
+              }
             }
 
             this.runningTime = 0;
@@ -2673,7 +2679,7 @@
                     case AMDR.status.WAITING:
                       this.introScriptTimer = 200;
                       this.introScript = [
-                        20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.92",
+                        20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.93",
                         20000,"Hi...",
                         20000,"Just play already!",
                         20000,"Didn't know you love the song that much!",
