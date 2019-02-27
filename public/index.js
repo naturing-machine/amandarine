@@ -3219,7 +3219,7 @@
 
             this.opacity +=
               this.timer > 500
-              ? deltaTime / 100
+              ? deltaTime / 200
               : -deltaTime / 200;
                 if (this.opacity < 0) this.opacity = 0;
                 else if (this.opacity > 1) this.opacity = 1;
