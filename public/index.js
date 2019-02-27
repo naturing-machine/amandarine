@@ -354,15 +354,8 @@
                     let action = n7e.amdr.newAction(n7e.actions, AMDR.status.JUMPING);
                     action.begin = action.begin || n7e.time;
 
-
                     if (!n7e.playing) {
-                      action.first = true;
-                      n7e.loadSounds();
-
-                      n7e.setSkyGradient(N7e.config.SKY.DAY,3000);
-                      n7e.update();
-                      n7e.musics.stop();
-                      n7e.play();
+                      action.start = true;
                     }
 
                     if (action && !action.index) {
@@ -1134,7 +1127,7 @@
           }
 
           let a = this.actions[0];
-          this.amdr.updateActionQueue(this.actions, now, deltaTime, this.currentSpeed);
+          this.amdr.updateActionQueue(this, now, deltaTime, this.currentSpeed);
           this.terminal.update(deltaTime);
 
           if (this.playLyrics && this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length) {
@@ -1242,12 +1235,8 @@
             default:;
           }
 
-          if (this.actions.length && this.actions[0].story) {
-            inputType = null;
-            return;
-          }
-
-          if (!this.crashed) {
+          // Block all input-based actions after a crash or in story mode.
+          if (!this.crashed && (0 == this.actions.length || !this.actions[0].story)) {
 
             let action;
             if (inputType == AMDR.status.JUMPING) {
@@ -1256,13 +1245,8 @@
               action.begin = action.begin || this.time;
 
               if (!this.playing) {
-                action.first = true;
-                this.loadSounds();
-
-                this.setSkyGradient(N7e.config.SKY.DAY,3000);
-                this.update();
-                this.musics.stop();
-                this.play();
+                action.start = true;
+                //this.update();
               }
 
             } else if (this.playing && inputType == AMDR.status.SLIDING) {
@@ -1276,9 +1260,7 @@
               this.activeActions[inputType] = action;
               this.queueAction(action);
             }
-
           }
-
         },
 
         /**
@@ -1340,7 +1322,11 @@
           }
 
           if (!this.crashed && action && inputType == AMDR.status.JUMPING) {
-            this.playing = true;
+
+            if (action.start) {
+              this.setSpeed(this.config.SPEED);
+              this.play();
+            }
 
             if (action.priority == 0) {
               action.end = this.time;
@@ -1380,6 +1366,11 @@
         },
 
         queueAction: function (action) {
+          if (action.start) {
+            this.musics.stop();
+            this.loadSounds();
+          }
+
           this.actionIndex++;
           action.index = this.actionIndex;
           this.actions.push(action);
@@ -1513,7 +1504,7 @@
             this.playing = true;
             this.paused = false;
             this.time = getTimeStamp();
-            this.update();
+            //this.update();
             this.terminal.setMessages("go go go!!",2000);
           }
         },
@@ -2635,6 +2626,7 @@
        -1: Zombie, a released task.
        ***/
 
+        // This method aim to filter the gathering actions to only be one of its kind.
         newAction: function(actionQueue, type) {
           for (let i = 0, action; action = actionQueue[i]; i++){
             if (action.type == type && action.priority == 0) {
@@ -2644,18 +2636,19 @@
           return {type:type, priority:0};
         },
 
-        updateActionQueue: function (actionQueue, now, deltaTime, speed) {
-          actionQueue.sort((a,b) => a.priority == b.priority
+        updateActionQueue: function (n7e, now, deltaTime, speed) {
+
+          // Sort & filter main action queue.
+          n7e.actions.sort((a,b) => a.priority == b.priority
             ? a.index - b.index
             : b.priority - a.priority);
-          actionQueue.splice(0, Infinity, ...actionQueue.filter( action => action.priority != -1 ));
+          n7e.actions = n7e.actions.filter( action => action.priority != -1 );
 
-          let n7e = N7e();
           let newAction;
           let newSpeed = speed;
 
           UPDATE_ACTION_QUEUE: {
-            for (let i = 0, action; action = actionQueue[i]; i++) {
+            for (let i = 0, action; action = n7e.actions[i]; i++) {
               switch(action.priority) {
                 case 0: { /* Preparing actions */
 
@@ -2728,6 +2721,10 @@
                         }
 
                         newAction = action;
+
+                        if (action.start) {
+                          n7e.setSkyGradient(N7e.config.SKY.DAY,3000);
+                        }
                       } break;
                     case AMDR.status.SLIDING:
                       {
@@ -2813,8 +2810,8 @@
                   if (action.priority == -1) {
 
                     // At the end of the first action, the actual game begins.
-                    if (action.first) {
-                      n7e.musics.stop(); // shouldn't need
+                    if (action.start) {
+                      n7e.musics.stop(); // FIXME shouldn't need, better try to prevent music from starting after key down.
                       n7e.loadMusic('offline-play-music', N7e.config.PLAY_MUSIC);
                       n7e.playIntro();
                       n7e.setSpeed(N7e.config.SPEED);
@@ -2858,7 +2855,7 @@
                       }
 
                       if (action.priority == -1) {
-                        actionQueue.length = 0;
+                        n7e.actions.length = 0;
                       }
                     } break UPDATE_ACTION_QUEUE;
                     default:;
@@ -2869,7 +2866,6 @@
                   break UPDATE_ACTION_QUEUE;
               }
             }
-
           }
 
           this.update(deltaTime, speed, newAction);
@@ -3110,13 +3106,13 @@
           this.yPos = this.groundYPos;
           this.xPos = -40;// this.config.START_X_POS;
           this.dust.reset();
-          this.action = null;
+
           N7e().queueAction({
             begin: getTimeStamp(),
             type: AMDR.status.SLIDING,
             pressDuration: N7e.config.MAX_ACTION_PRESS,
             priority: 1,
-            first: true,
+            start: true,
             speed: 7.2,
             maxPressDuration: 1500,
           });
