@@ -2425,6 +2425,9 @@
       this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * N7e().config.SCALE_FACTOR;
       // Current status.
       //this.status = AMDR.status.WAITING;
+
+      this.slidingGuideIntensity = 0;
+      this.jumpingGuideIntensity = 0;
       this.dust = new Particles(canvas, this.xPos, this.yPos, AMDR.config.DUST_DURATION);
 
       this.init();
@@ -2649,6 +2652,12 @@
           let newAction;
           let newSpeed = speed;
 
+          let gsi = this.slidingGuideIntensity;
+          let gji = this.jumpingGuideIntensity;
+
+          this.slidingGuideIntensity = 0;
+          this.jumpingGuideIntensity = 0;
+
           UPDATE_ACTION_QUEUE: {
             for (let i = 0, action; action = n7e.actions[i]; i++) {
               switch(action.priority) {
@@ -2656,9 +2665,11 @@
 
                   switch(action.type) {
                     case AMDR.status.JUMPING:
+                      this.guideJumpIntensity = Math.min(1,gji+deltaTime/200);
                       this.drawJumpingGuide(action, now, speed);
                       continue;
                     case AMDR.status.SLIDING:
+                      this.guideSlideIntensity = Math.min(1,gsi+deltaTime/200);
                       this.drawSlidingGuide(action, now, speed);
                       continue;
                     case AMDR.status.RUNNING:
@@ -3001,7 +3012,7 @@
 
           this.canvasCtx.save(); {
             this.canvasCtx.beginPath();
-            this.canvasCtx.strokeStyle = "#000000";
+            this.canvasCtx.strokeStyle = "white";
 
             let baseX = this.xPos + 12;
             let baseY = this.groundYPos + 35;
@@ -3041,17 +3052,9 @@
 
             this.canvasCtx.lineCap = 'round';
             this.canvasCtx.setLineDash([0,20]);
-
-            /*
-            this.canvasCtx.lineWidth = 1;
-            this.canvasCtx.lineDashOffset = now+5;
-            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
-            this.canvasCtx.stroke();
-            */
-
+            this.canvasCtx.globalAlpha = this.guideJumpIntensity * alpha;
             this.canvasCtx.lineWidth = alpha*5;
             this.canvasCtx.lineDashOffset = now;
-            this.canvasCtx.strokeStyle = "rgba(255,255,255,"+alpha.toFixed(1)+")";
             this.canvasCtx.stroke();
           } this.canvasCtx.restore();
         },
@@ -3062,7 +3065,6 @@
          * @param {number} now
          */
         drawSlidingGuide: function (action, now, speed) {
-
           let n7e = N7e();
 
           let slideDuration;
@@ -3085,14 +3087,17 @@
           }
 
           let distance = speed * 0.001 * FPS * slideDuration;
-          let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 4;
+          let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 3;
 
           this.canvasCtx.save();
-          this.canvasCtx.globalAlpha = alpha;
-          this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
-              AMDR.animFrames.SLIDING.frames[frame]*2, 40, 40, 40,
-              Math.floor(baseX + distance), this.groundYPos,
-              this.config.WIDTH, this.config.HEIGHT);
+          for (let i = 0, div = 1; i < 5; i++,div*=2) {
+            this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/div;
+            this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
+                AMDR.animFrames.SLIDING.frames[(frame+i)%3]*2, 40, 40, 40,
+                Math.floor(baseX + distance - i * 30 *alpha), this.groundYPos,
+                this.config.WIDTH, this.config.HEIGHT);
+          }
+
           this.canvasCtx.restore();
         },
 
