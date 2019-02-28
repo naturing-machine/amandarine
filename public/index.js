@@ -191,7 +191,6 @@
       CANVAS: 'runner-canvas',
       CONTAINER: 'runner-container',
       CRASHED: 'crashed',
-      ICON: 'icon-offline',
       INVERTED: 'inverted',
       SNACKBAR: 'snackbar',
       SNACKBAR_SHOW: 'snackbar-show',
@@ -718,9 +717,6 @@
          * Game initialiser.
          */
         init: function () {
-          // Hide the static icon.
-          document.querySelector('.' + N7e.classes.ICON).style.visibility =
-          'hidden';
 
           this.adjustDimensions();
           this.setSpeed();
