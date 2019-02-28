@@ -15,20 +15,19 @@
     'use strict';
     /**
      * Amandarine runner.
-     * @param {string} outerContainerId Outer containing element id.
      * @param {Object} opt_config
      * @constructor
      * @export
      */
 
-    function N7e(outerContainerId, opt_config) {
+    function N7e(opt_config) {
       // Singleton
       if (N7e.instance_) {
         return N7e.instance_;
       }
       N7e.instance_ = this;
 
-      this.outerContainerEl = document.querySelector(outerContainerId);
+      this.outerContainerEl = document.getElementById('n7e-on-da-run');
       this.containerEl = null;
 
       this.config = opt_config || N7e.config;
@@ -216,15 +215,15 @@
       CACTUS_LARGE: { x: 369, y: 0 },
       CACTUS_SMALL: { x: 266, y: 0 },
       CLOUD: { x: 166, y: [1,20,46,61,76,95] },
-      CRASH: { x: 800, y: 35},
+      CRASH: { x: 37, y: 40},
       DUST: { x: 776, y: 2 },
       HORIZON: { x: 2, y: 104 },
       MOON: { x: 954, y: 0 },
       NATHERINE: { x: 0, y: 0 },
-      LIVER: { x: 2257, y: 0 },
-      RUBBER: { x: 2257, y: 42 },
-      RESTART: { x: 2, y: 2 },
-      TEXT_SPRITE: { x: 1125, y: 0 },
+      LIVER: { x: 0, y: 0 },
+      RUBBER: { x: 0, y: 38 },
+      RESTART: { x: 0, y: 40 },
+      TEXT_SPRITE: { x: 0, y: 0 },
       STAR: { x: 1114, y: 0 }
     };
 
@@ -288,20 +287,31 @@
         loadImages: function () {
 
           let loadingSpriteList = [
-            N7e.imageSprite = document.getElementById('offline-resources-2x'),
+            N7e.imageSprite = document.getElementById('offline-resources-on-da-run'),
+            N7e.imageKeysIntroduction = document.getElementById('offline-resources-shortkeys'),
+            N7e.imageGUI = document.getElementById('offline-resources-gui'),
+            N7e.imageSpriteBicycles = document.getElementById('offline-resources-bicycles'),
+            N7e.imageSpriteDucks = document.getElementById('offline-resources-ducks'),
             AMDR.animFrames.RUNNING.sprite = N7e.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running'),
             AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding'),
             AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrJumping = document.getElementById('offline-resources-nat-jumping'),
             AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling'),
             AMDR.animFrames.CRASHED.sprite = N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash'),
-            N7e.imageSpriteBicycle = document.getElementById('offline-resources-bicycle'),
-            N7e.imageKeysIntroduction = document.getElementById('offline-resources-shortkeys'),
           ];
 
           Obstacle.types.forEach(type => {
-            type.sprite = type.type == 'ROTATA' || type.type == 'VELOTA'
-              ? N7e.imageSpriteBicycle
-              : N7e.imageSprite;
+            switch (type.type) {
+              case 'ROTATA':
+              case 'VELOTA':
+                type.sprite = N7e.imageSpriteBicycles;
+                break;
+              case 'LIVER':
+              case 'RUBBER':
+                type.sprite = N7e.imageSpriteDucks;
+                break;
+              default:
+                type.sprite = N7e.imageSprite;
+            }
           });
 
           this.consoleButtons = {
@@ -1033,7 +1043,7 @@
 
               if (alpha > 0.95) {
                 let crashPoint = this.actions[0].boxes[0].intersection(this.actions[0].boxes[1]).center();
-                this.canvasCtx.drawImage(N7e.imageSprite,
+                this.canvasCtx.drawImage(N7e.imageGUI,
                     N7e.spriteDefinition.CRASH.x,
                     N7e.spriteDefinition.CRASH.y,
                     this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
@@ -1766,7 +1776,7 @@
      */
     GameOverPanel.dimensions = {
       TEXT_X: 0,
-      TEXT_Y: 18,
+      TEXT_Y: 14,
       TEXT_WIDTH: 86,
       TEXT_HEIGHT: 26,
       RESTART_WIDTH: 38,
@@ -1819,25 +1829,25 @@
           textSourceX += this.textImgPos.x;
           textSourceY += this.textImgPos.y;
 
-          // Game over text from sprite.
+          // OGG
           this.canvasCtx.save();
           this.canvasCtx.globalAlpha = dist;
-          this.canvasCtx.drawImage(N7e.imageSprite,
+          this.canvasCtx.drawImage(N7e.imageGUI,
               textSourceX, textSourceY, textSourceWidth, textSourceHeight,
               textTargetX, textTargetY + 20*(1-dist),
               textTargetWidth, textTargetHeight * dist);
 
           // Restart button.
-          this.canvasCtx.drawImage(N7e.imageSprite,
+          this.canvasCtx.drawImage(N7e.imageGUI,
               this.restartImgPos.x, this.restartImgPos.y,
               restartSourceWidth, restartSourceHeight,
               restartTargetX + (1-dist) * dimensions.RESTART_WIDTH/2,
               restartTargetY + (1-dist) * dimensions.RESTART_HEIGHT/2,
               dimensions.RESTART_WIDTH * dist, dimensions.RESTART_HEIGHT * dist);
-          this.canvasCtx.drawImage(N7e.imageSprite,
-              this.restartImgPos.x, this.restartImgPos.y + 33,
+          this.canvasCtx.drawImage(N7e.imageGUI,
+              this.restartImgPos.x, this.restartImgPos.y + 34,
               restartSourceWidth, restartSourceHeight,
-              restartTargetX, restartTargetY + 8,
+              restartTargetX, restartTargetY,
               dimensions.RESTART_WIDTH, dimensions.RESTART_HEIGHT);
           this.canvasCtx.restore();
         }
@@ -2305,7 +2315,7 @@
       {
         type: 'LIVER',
         width: 46,
-        height: 42,
+        height: 38,
         yPos: [
           N7e.defaultDimensions.HEIGHT - 50,
           N7e.defaultDimensions.HEIGHT - 75,
@@ -2331,7 +2341,7 @@
       {
         type: 'RUBBER',
         width: 46,
-        height: 42,
+        height: 38,
         yPos: [
           N7e.defaultDimensions.HEIGHT - 50,
           N7e.defaultDimensions.HEIGHT - 75,
@@ -2654,7 +2664,6 @@
 
           let gsi = this.slidingGuideIntensity;
           let gji = this.jumpingGuideIntensity;
-
           this.slidingGuideIntensity = 0;
           this.jumpingGuideIntensity = 0;
 
@@ -2665,11 +2674,11 @@
 
                   switch(action.type) {
                     case AMDR.status.JUMPING:
-                      this.guideJumpIntensity = Math.min(1,gji+deltaTime/200);
+                      this.jumpingGuideIntensity = Math.min(1,gji+deltaTime/200);
                       this.drawJumpingGuide(action, now, speed);
                       continue;
                     case AMDR.status.SLIDING:
-                      this.guideSlideIntensity = Math.min(1,gsi+deltaTime/200);
+                      this.slidingGuideIntensity = Math.min(1,gsi+deltaTime/200);
                       this.drawSlidingGuide(action, now, speed);
                       continue;
                     case AMDR.status.RUNNING:
@@ -2691,11 +2700,11 @@
                         20000,"Just play already!",
                         20000,"Didn't know you love the song that much!",
                         20000,"Man U will win ⚽\nYou know.",
-                        20000,'I didnt say "I_love_you" to hear it back. I said it to make sure you knew ♥',
+                        20000,'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.♥',
                         20000,'Never give up on something you really want ♥',
                         20000,'You are my sunshine ☼♥',
-                        20000,'My love for you is a journey;\nStarting at forever,\nand ending at never. ♥',
-                        20000,'Glory in life is not in never failing, but rising each time we fail. ♥',
+                        20000,'My love for you is a journey;\nStarting at forever,\nand ending at never.♥',
+                        20000,'Glory in life is not in never failing,but rising each time we fail.♥',
                         20000,'Love this project?\nDonate_Thai_Redcross_➕!\nSee the bottom right for details.',
                       ];
 
@@ -3090,13 +3099,23 @@
           let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 3;
 
           this.canvasCtx.save();
-          for (let i = 0, div = 1; i < 5; i++,div*=2) {
+
+          for (let i = 0, len = n7e.config.GRAPHICS_MODE == 1 ? 1 : 4, div = 1, s = 0, sd = Math.abs((now/100)%4 - 2);
+              i < len; i++, div*= 2, s+=sd) {
             this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/div;
             this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
-                AMDR.animFrames.SLIDING.frames[(frame+i)%3]*2, 40, 40, 40,
-                Math.floor(baseX + distance - i * 30 *alpha), this.groundYPos,
-                this.config.WIDTH, this.config.HEIGHT);
+              AMDR.animFrames.SLIDING.frames[(frame+i)%3]*2, 40, 40, 40,
+              Math.floor(baseX + distance - i * 30 *alpha) - s*s, this.groundYPos,
+              this.config.WIDTH, this.config.HEIGHT);
           }
+
+          /*
+          this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha;
+          this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
+              AMDR.animFrames.SLIDING.frames[frame%3]*2, 40, 40, 40,
+              Math.floor(baseX + distance) , this.groundYPos,
+              this.config.WIDTH, this.config.HEIGHT);
+              */
 
           this.canvasCtx.restore();
         },
@@ -3127,7 +3146,7 @@
     function Terminal(canvas, spritePos) {
       this.canvas = canvas;
       this.canvasCtx = canvas.getContext('2d');
-      this.image = N7e.imageSprite;
+      this.image = N7e.imageGUI;
       this.y = 5;
       this.messages = null;
       this.timer = 0;
@@ -3174,36 +3193,36 @@
           this.messages = messageStr.toUpperCase().split('').map(ch => {
             let code = ch.charCodeAt(0);
             if (code >= 65 && code <= 90) {
-              return 1265 + (code - 65) * 14;
+              return 140 + (code - 65) * 14;
             }
             if (code >= 48 && code <= 57) {
-              return 1125 + (code - 48) * 14;
+              return (code - 48) * 14;
             }
 
             switch (ch) {
-              case '.': return 1629;
-              case '?': return 1643;
-              case '!': return 1657;
-              case '▻': return 1671;
-              case '/': return 1685;
-              case '-': return 1699;
+              case '.': return 504;
+              case '?': return 518;
+              case '!': return 532;
+              case '▻': return 546;
+              case '/': return 560;
+              case '-': return 574;
               case '_':
-              case ' ': return 1713;
-              case '♬': return 1727;
-              case '♥': return 1741;
-              case '`': return 1755;
-              case '☺': return 1895;//1755;
-              case 'Α': return 1769;
-              case '◅': return 1783;
-              case '"': return 1797;
-              case "'": return 1811;
-              case "☼": return 1825;
-              case ',': return 1839;
-              case ';': return 1853;
-              case ':': return 1867;
-              case '⚽': return 1881;
-              case '#': return 1909;
-              case '➕': return 1923;
+              case ' ': return 588;
+              case '♬': return 602;
+              case '♥': return 616;
+              case '`': return 630;//face
+              case 'Α': return 644;
+              case '◅': return 658;
+              case '"': return 672;
+              case "'": return 686;
+              case "☼": return 700;
+              case ',': return 714;
+              case ';': return 720;
+              case ':': return 742;
+              case '⚽': return 756;
+              case '☺': return 770;
+              case '#': return 784;
+              case '➕': return 798;
               default: return -code;
             }
           });
@@ -3255,7 +3274,7 @@
     function DistanceMeter(canvas, spritePos, canvasWidth) {
       this.canvas = canvas;
       this.canvasCtx = canvas.getContext('2d');
-      this.image = N7e.imageSprite;
+      this.image = N7e.imageGUI;
       this.spritePos = spritePos;
       this.x = 0;
       this.y = 5;
@@ -4587,7 +4606,7 @@
                     duck.xPos += 70 + 30 * -Math.abs(i);
                   }
                   duck.xPos += getRandomNum(-10,10);
-                  duck.yPos += getRandomNum(-5,0);
+                  duck.yPos += getRandomNum(-2,2);
                   duck.speedFactor *= (0.8 + Math.random() * 0.2);
 
                   this.obstacles.push(duck);
@@ -4715,7 +4734,7 @@ function onDocumentLoad() {
 
   let ready = () => {
     game.style.backgroundImage = 'url('+image.src+')';
-    new N7e('.interstitial-wrapper');
+    new N7e();
   };
 
   if (image.complete) {
