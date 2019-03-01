@@ -43,7 +43,11 @@
       this.distanceRan = 0;
 
       this.highestScore = 0;
-      this.halfFarthest = 200;
+      this.achievements = [
+        200, 'KEEP RUNNING!☺',
+        400, 'GOOD JOB!☺',
+        800, 'JUST DONT DIE!☺',
+      ];
 
       this.time = 0;
       this.stoppingTime = 0;
@@ -292,11 +296,11 @@
             N7e.imageGUI = document.getElementById('offline-resources-gui'),
             N7e.imageSpriteBicycles = document.getElementById('offline-resources-bicycles'),
             N7e.imageSpriteDucks = document.getElementById('offline-resources-ducks'),
-            AMDR.animFrames.RUNNING.sprite = N7e.imageSpriteAmdrRunning = document.getElementById('offline-resources-nat-running'),
-            AMDR.animFrames.SLIDING.sprite = N7e.imageSpriteAmdrSliding = document.getElementById('offline-resources-nat-sliding'),
-            AMDR.animFrames.JUMPING.sprite = N7e.imageSpriteAmdrJumping = document.getElementById('offline-resources-nat-jumping'),
-            AMDR.animFrames.WAITING.sprite = N7e.imageSpriteAmdrIdling = document.getElementById('offline-resources-nat-idling'),
-            AMDR.animFrames.CRASHED.sprite = N7e.imageSpriteAmdrCrashed = document.getElementById('offline-resources-nat-crash'),
+            AMDR.animFrames.RUNNING.sprite = document.getElementById('offline-resources-nat-running'),
+            AMDR.animFrames.SLIDING.sprite = document.getElementById('offline-resources-nat-sliding'),
+            AMDR.animFrames.JUMPING.sprite = document.getElementById('offline-resources-nat-jumping'),
+            AMDR.animFrames.WAITING.sprite = document.getElementById('offline-resources-nat-idling'),
+            AMDR.animFrames.CRASHED.sprite = document.getElementById('offline-resources-nat-crash'),
           ];
 
           Obstacle.types.forEach(type => {
@@ -1087,13 +1091,18 @@
               this.gameOver(obstacle);
             }
 
-            var playAchievementSound;
-             playAchievementSound = this.distanceMeter.update(deltaTime,
+            let playAchievementSound = this.distanceMeter.update(deltaTime,
               Math.ceil(this.distanceRan));
 
             if (playAchievementSound) {
               this.playSound(this.soundFx.SOUND_SCORE,0.2);
+
+              if (playAchievementSound >= this.achievements[0]) {
+                this.achievements.shift();
+                this.terminal.setMessages(this.achievements.shift(),6000);
+              }
             }
+
 
             if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
               this.invertTimer = 0;
@@ -1456,17 +1465,28 @@
 
           // Update the high score.
           if (this.distanceRan > this.highestScore) {
-              this.highestScore = Math.ceil(this.distanceRan);
-              this.distanceMeter.setHighScore(this.highestScore);
-              let d = this.distanceMeter.getActualDistance(this.highestScore);
-              if (d/2 > this.halfFarthest) {
-                this.halfFarthest = Math.round(d/200) * 100;
-              }
+            this.highestScore = Math.ceil(this.distanceRan);
+            this.distanceMeter.setHighScore(this.highestScore);
+            let d = this.distanceMeter.getActualDistance(this.highestScore);
 
-              if (d > this.halfFarthest) {
-                this.terminal.setMessages('A NEW HIGH ' + d + '! ☺',5000);
-              }
+            if (d < 600) {
+              this.achievements = [
+                200, 'KEEP RUNNING!☺',
+                400, 'GOOD JOB!☺',
+                800, 'JUST DONT DIE!☺',
+              ];
+            } else {
+              this.terminal.setMessages('A NEW HIGH ' + d + '! ☺',5000);
               if (d > 1000) this.playLyrics = true;
+
+              d = d/2 - d/2%100;
+              this.achievements = [
+                d, 'KEEP RUNNING!☺',
+                d*2, 'GOOD JOB!☺',
+                d*3, 'JUST DONT DIE!☺',
+                d*4, '...☺',
+              ];
+            }
           }
 
           // Reset the time clock.
@@ -1847,7 +1867,7 @@
           this.canvasCtx.drawImage(N7e.imageGUI,
               this.restartImgPos.x, this.restartImgPos.y + 34,
               restartSourceWidth, restartSourceHeight,
-              restartTargetX, restartTargetY,
+              restartTargetX, restartTargetY + 8,
               dimensions.RESTART_WIDTH, dimensions.RESTART_HEIGHT);
           this.canvasCtx.restore();
         }
@@ -2695,7 +2715,7 @@
                     case AMDR.status.WAITING:
                       this.introScriptTimer = 200;
                       this.introScript = [
-                        20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.93",
+                        20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.94",
                         20000,"Hi...",
                         20000,"Just play already!",
                         20000,"Didn't know you love the song that much!",
@@ -3103,7 +3123,7 @@
           for (let i = 0, len = n7e.config.GRAPHICS_MODE == 1 ? 1 : 4, div = 1, s = 0, sd = Math.abs((now/100)%4 - 2);
               i < len; i++, div*= 2, s+=sd) {
             this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/div;
-            this.canvasCtx.drawImage(N7e.imageSpriteAmdrSliding,
+            this.canvasCtx.drawImage(AMDR.animFrames.SLIDING.sprite,
               AMDR.animFrames.SLIDING.frames[(frame+i)%3]*2, 40, 40, 40,
               Math.floor(baseX + distance - i * 30 *alpha) - s*s, this.groundYPos,
               this.config.WIDTH, this.config.HEIGHT);
@@ -3442,16 +3462,7 @@
                 // Flash score and play sound.
                 this.acheivement = true;
                 this.flashTimer = 0;
-                playSound = true;
-
-                let n7e = N7e();
-                if (distance == n7e.halfFarthest) {
-                  n7e.terminal.setMessages('KEEP RUNNING! ☺',6000);
-                } else if (distance == 2 * n7e.halfFarthest) {
-                  n7e.terminal.setMessages('GOOD JOB! ☺',6000);
-                } else if (distance == 4 * n7e.halfFarthest) {
-                  n7e.terminal.setMessages('JUST DONT DIE! ☺',6000);
-                }
+                playSound = distance;
               }
 
               // Create a string representation of the distance with leading 0.
