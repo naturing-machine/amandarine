@@ -10,6 +10,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file AND if possible, in the Public Domain.
 
+/*
+  N7e : global application service
+  OnDaRun : the class of the runner game
+  ODR : application instance of OnDaRun
+*/
+
 import { LitElement, html, css } from 'lit-element';
 
 var DEFAULT_WIDTH = 600;
@@ -17,7 +23,8 @@ var FPS = 60;
 var IS_IOS = /iPad|iPhone|iPod/.test(window.navigator.platform);
 var IS_MOBILE = /Android/.test(window.navigator.userAgent) || IS_IOS;
 var IS_TOUCH_ENABLED = 'ontouchstart' in window;
-var ODR = null;
+
+var N7e = {};
 
 function shapeSpeedDuration(speed, duration) {
   let minPress = ODR.config.MIN_ACTION_PRESS + ODR.config.MIN_ACTION_PRESS_FACTOR*speed;
@@ -46,16 +53,16 @@ function createAdjustedCollisionBox(box, adjustment) {
     box.height);
 };
 
-function checkForCollision(obstacle, amdr, opt_canvasCtx) {
-  var obstacleBoxXPos = N7e.defaultDimensions.WIDTH + obstacle.xPos;
+function checkForCollision(obstacle, amandarine, opt_canvasCtx) {
+  var obstacleBoxXPos = OnDaRun.defaultDimensions.WIDTH + obstacle.xPos;
 
   // Adjustments are made to the bounding box as there is a 1 pixel white
   // border around Amandarine and obstacles.
-  var amdrBox = new CollisionBox(
-    amdr.xPos + 1,
-    amdr.yPos + 1,
-    amdr.config.WIDTH - 2,
-    amdr.config.HEIGHT - 2);
+  var amandarineBox = new CollisionBox(
+    amandarine.xPos + 1,
+    amandarine.yPos + 1,
+    amandarine.config.WIDTH - 2,
+    amandarine.config.HEIGHT - 2);
 
   var obstacleBox = new CollisionBox(
     obstacle.xPos + 1,
@@ -65,20 +72,20 @@ function checkForCollision(obstacle, amdr, opt_canvasCtx) {
 
   // Debug outer box
   if (opt_canvasCtx) {
-    drawCollisionBoxes(opt_canvasCtx, amdrBox, obstacleBox);
+    drawCollisionBoxes(opt_canvasCtx, amandarineBox, obstacleBox);
   }
 
   // Simple outer bounds check.
-  if (amdrBox.intersects(obstacleBox)) {
+  if (amandarineBox.intersects(obstacleBox)) {
     var collisionBoxes = obstacle.collisionBoxes;
-    var amdrCollisionBoxes = amdr.getCollisionBoxes();
+    var amandarineCollisionBoxes = amandarine.getCollisionBoxes();
 
     // Detailed axis aligned box check.
-    for (var t = 0; t < amdrCollisionBoxes.length; t++) {
+    for (var t = 0; t < amandarineCollisionBoxes.length; t++) {
       for (var i = 0; i < collisionBoxes.length; i++) {
         // Adjust the box to actual positions.
         var adjAmdrBox =
-          createAdjustedCollisionBox(amdrCollisionBoxes[t], amdrBox);
+          createAdjustedCollisionBox(amandarineCollisionBoxes[t], amandarineBox);
         var adjObstacleBox =
           createAdjustedCollisionBox(collisionBoxes[i], obstacleBox);
         var crashed = adjAmdrBox.intersects(adjObstacleBox);
@@ -156,6 +163,35 @@ class CollisionBox {
       : aBox.y + aBox.height - ret.y;
 
     return ret;
+  }
+}
+
+class User {
+  constructor(opt_providerName) {
+    let redirect = true;
+    switch(opt_providerName) {
+      case "google": {
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(
+          function() {
+            var provider = new firebase.auth.GoogleAuthProvider();
+            if (redirect) {
+              return firebase.auth().signInWithRedirect(provider);
+            } else {
+              return firebase.auth().signInWithPopup(provider);
+            }
+          })
+          .catch(function(error) {
+            var errorCode = error.code;
+            var errorMessage = error.message;
+            console.log("Error", error);
+          }
+        );
+
+      } break;
+
+     default:
+       break;
+    }
   }
 }
 
@@ -250,7 +286,7 @@ class Obstacle {
       this.typeConfig.width * this.size, this.typeConfig.height);
   }
 
-  progress(deltaTime, speed) {
+  enact(deltaTime, speed) {
     if (!this.remove) {
       /*
       if (this.typeConfig.speedOffset) {
@@ -320,7 +356,7 @@ class Particles {
     for(let i = 0, point; point = this.points[i]; i++) {
       let ratio = (this.life - point.life) / this.life;
       let x = this.xPos + point.x + 40 + point.w * ratio;
-      let y = this.yPos + point.y + N7e.defaultDimensions.HEIGHT-25 + point.h * ratio;
+      let y = this.yPos + point.y + OnDaRun.defaultDimensions.HEIGHT-25 + point.h * ratio;
       this.canvasCtx.drawImage(ODR.spriteScene,
         776 + 22 * Math.floor(8 * ratio), 2,
         22, 22,
@@ -329,7 +365,7 @@ class Particles {
     }
   }
 
-  progress(aging) {
+  enact(aging) {
     this.points = this.points.filter( point => {
       point.life -= aging;
       return point.life > 0;
@@ -390,7 +426,7 @@ class Cloud {
     } this.canvasCtx.restore();
   }
 
-  progress(speed) {
+  enact(speed) {
     if (!this.remove) {
       this.xPos -= speed + speed * this.opacity;
       this.draw();
@@ -422,7 +458,7 @@ class Mountain {
   }
 
   init() {
-    this.height = getRandomNum(N7e.defaultDimensions.HEIGHT/8, N7e.defaultDimensions.HEIGHT/2);
+    this.height = getRandomNum(OnDaRun.defaultDimensions.HEIGHT/8, OnDaRun.defaultDimensions.HEIGHT/2);
     if (this.depth == 0) this.height * 0.7;
 
     this.width = Math.floor(this.height * (2 + Math.random() * 3));
@@ -494,7 +530,7 @@ class Mountain {
     }
   }
 
-  progress(speed) {
+  enact(speed) {
     if (!this.remove) {
       this.xPos -= speed;
       this.draw();
@@ -529,7 +565,7 @@ class NightMode {
     this.placeStars();
   }
 
-  progress(activated, delta) {
+  enact(activated, delta) {
     // Moon phase.
     if (activated && 0 == this.opacity) {
       this.currentPhase = this.nextPhase;
@@ -551,12 +587,12 @@ class NightMode {
 
     // Set moon positioning.
     if (this.opacity) {
-      this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
+      this.xPos = this.adjustXPos(this.xPos, NightMode.config.MOON_SPEED);
 
       // Update stars.
       if (ODR.config.GRAPHICS_MODE != 1 && this.showStars) {
         for (var i = 0, star; star = this.stars[i]; i++) {
-          star.x = this.updateXPos(star.x, NightMode.config.STAR_SPEED);
+          star.x = this.adjustXPos(star.x, NightMode.config.STAR_SPEED);
         }
       }
       this.draw();
@@ -566,7 +602,7 @@ class NightMode {
     this.showStars = true;
   }
 
-  updateXPos(currentPos, speed) {
+  adjustXPos(currentPos, speed) {
     if (currentPos < -NightMode.config.WIDTH) {
       currentPos = this.containerWidth;
     } else {
@@ -577,11 +613,10 @@ class NightMode {
 
   draw() {
     var starSize = NightMode.config.STAR_SIZE;
-    var starSourceX = N7e.spriteDefinition.STAR.x;
+    var starSourceX = OnDaRun.spriteDefinition.STAR.x;
 
     this.canvasCtx.save();
 
-    // Moon. Draw the moon first to prevent any flickering due to spending too much time drawing stars.
     this.canvasCtx.globalAlpha = this.opacity;
 
     let mx,my;
@@ -591,7 +626,7 @@ class NightMode {
       yShift *= yShift;
       let fw = 2 * (NightMode.config.WIDTH + NightMode.config.MOON_BLUR);
       let fh = NightMode.config.HEIGHT + NightMode.config.MOON_BLUR * 2;
-      mx = Math.ceil(this.xPos/N7e.defaultDimensions.WIDTH * (N7e.defaultDimensions.WIDTH+fw*2) - fw - NightMode.config.MOON_BLUR);
+      mx = Math.ceil(this.xPos/OnDaRun.defaultDimensions.WIDTH * (OnDaRun.defaultDimensions.WIDTH+fw*2) - fw - NightMode.config.MOON_BLUR);
       my = yShift + this.yPos - NightMode.config.MOON_BLUR;
 
       this.canvasCtx.drawImage(this.moonCanvas,
@@ -718,7 +753,7 @@ class NightMode {
         x: getRandomNum(segmentSize * i, segmentSize * (i + 1)),
         y: getRandomNum(0, NightMode.config.STAR_MAX_Y),
         opacity: 0.5 + 0.5 * Math.random(),
-        sourceY: N7e.spriteDefinition.STAR.y + NightMode.config.STAR_SIZE * (i%4),
+        sourceY: OnDaRun.spriteDefinition.STAR.y + NightMode.config.STAR_SIZE * (i%4),
         //hue: Math.floor(Math.random() * 360),
       };
 
@@ -730,7 +765,7 @@ class NightMode {
 
   reset() {
     //this.nextPhase = 0;
-    this.progress(false);
+    this.enact(false);
   }
 }
 
@@ -773,16 +808,16 @@ class HorizonLine {
   generateGroundCache() {
     if (!this.groundCanvas) {
       this.groundCanvas = document.createElement('canvas');
-      this.groundCanvas.width = N7e.defaultDimensions.WIDTH;
+      this.groundCanvas.width = OnDaRun.defaultDimensions.WIDTH;
       this.groundCanvas.height = 25 * ODR.config.GROUND_WIDTH;
     }
     let ctx = this.groundCanvas.getContext('2d');
 
-    ctx.clearRect(0, 0, N7e.defaultDimensions.WIDTH, this.groundCanvas.height);
+    ctx.clearRect(0, 0, OnDaRun.defaultDimensions.WIDTH, this.groundCanvas.height);
     this.grMode = ODR.config.GRAPHICS_MODE;
 
     ctx.save();
-    ctx.translate(0,25 - N7e.defaultDimensions.HEIGHT);
+    ctx.translate(0,25 - OnDaRun.defaultDimensions.HEIGHT);
     for (let i = 0; i < ODR.config.GROUND_WIDTH; i++) {
         this.drawGround(ctx, i);
         ctx.translate(0,25);
@@ -800,11 +835,11 @@ class HorizonLine {
       pwStep = Math.pow(scale, step),
       y = this.yPos + 12,
       i = -8,
-      alphaStep = 0.15 * step / (N7e.defaultDimensions.HEIGHT - y),
+      alphaStep = 0.15 * step / (OnDaRun.defaultDimensions.HEIGHT - y),
       pw = Math.pow(scale,i),
       width = HorizonLine.dimensions.WIDTH;
 
-          y + i < N7e.defaultDimensions.HEIGHT + this.canvasCtx.lineWidth;
+          y + i < OnDaRun.defaultDimensions.HEIGHT + this.canvasCtx.lineWidth;
 
               i += step, pw *= pwStep ) {
 
@@ -815,7 +850,7 @@ class HorizonLine {
 //            this.canvasCtx.transform(pw,0,0,1,0,0);
 
       // Draw grasses
-      if (ODR.config.GRAPHICS_MODE == 9) {
+      if (ODR.config.GRAPHICS_MODE == 4) {
         if (!this.grassMap) {
           this.grassMap = [];
           this.grassMapOffset = [];
@@ -935,16 +970,16 @@ class HorizonLine {
     }
       this.canvasCtx.drawImage(this.groundCanvas,
           0, (Math.floor(this.xPos[0] + 600) % ODR.config.GROUND_WIDTH) * 25 + 2,
-          N7e.defaultDimensions.WIDTH, 22,
-          0, N7e.defaultDimensions.HEIGHT - 22,
-          N7e.defaultDimensions.WIDTH, 22);
+          OnDaRun.defaultDimensions.WIDTH, 22,
+          0, OnDaRun.defaultDimensions.HEIGHT - 22,
+          OnDaRun.defaultDimensions.WIDTH, 22);
 
     if (ODR.config.GRAPHICS_MODE == 0) {
       this.canvasCtx.restore();
     }
   }
 
-  updateXPos(pos, increment) {
+  adjustXPos(pos, increment) {
     var line1 = pos;
     var line2 = pos == 0 ? 1 : 0;
 
@@ -958,13 +993,13 @@ class HorizonLine {
     }
   }
 
-  progress(deltaTime, speed) {
+  enact(deltaTime, speed) {
     var increment = speed * FPS / 1000 * deltaTime;
 
     if (this.xPos[0] <= 0) {
-      this.updateXPos(0, increment);
+      this.adjustXPos(0, increment);
     } else {
-      this.updateXPos(1, increment);
+      this.adjustXPos(1, increment);
     }
     this.draw();
   }
@@ -1013,36 +1048,36 @@ class Horizon {
     this.mountains = [];
   }
 
-  progress(deltaTime, currentSpeed, updateObstacles, showNightMode, alpha) {
+  enact(deltaTime, currentSpeed, enactObstacles, showNightMode, alpha) {
     this.runningTime += deltaTime;
-    this.nightMode.progress(showNightMode,deltaTime);
-    this.updateClouds(deltaTime, currentSpeed, true);
-    this.updateMountains(deltaTime, currentSpeed);
-    this.updateClouds(deltaTime, currentSpeed);
-    this.horizonLine.progress(deltaTime, currentSpeed);
+    this.nightMode.enact(showNightMode,deltaTime);
+    this.enactClouds(deltaTime, currentSpeed, true);
+    this.enactMountains(deltaTime, currentSpeed);
+    this.enactClouds(deltaTime, currentSpeed);
+    this.horizonLine.enact(deltaTime, currentSpeed);
 
-    if (updateObstacles) {
+    if (enactObstacles) {
       if (alpha == 1) {
-        this.updateObstacles(deltaTime, currentSpeed);
+        this.enactObstacles(deltaTime, currentSpeed);
       } else {
         this.canvasCtx.save();
         this.canvasCtx.globalAlpha = alpha;
-        this.updateObstacles(deltaTime, currentSpeed);
+        this.enactObstacles(deltaTime, currentSpeed);
         this.canvasCtx.restore();
       }
     }
   }
 
-  updateClouds(deltaTime, speed, background) {
+  enactClouds(deltaTime, speed, background) {
     var cloudSpeed = this.cloudSpeed / 1000 * deltaTime * speed;
     var numClouds = this.clouds.length;
 
     if (numClouds) {
       for (var i = numClouds - 1; i >= 0; i--) {
         if (background && this.clouds[i].opacity < 0.5) {
-          this.clouds[i].progress(cloudSpeed);
+          this.clouds[i].enact(cloudSpeed);
         } else if (!background && this.clouds[i].opacity >= 0.5) {
-          this.clouds[i].progress(cloudSpeed);
+          this.clouds[i].enact(cloudSpeed);
         }
       }
 
@@ -1066,7 +1101,7 @@ class Horizon {
     }
   }
 
-  updateMountains(deltaTime, speed) {
+  enactMountains(deltaTime, speed) {
     var mountainSpeed = this.mountainSpeed / 1000 * deltaTime * speed;
     var numMountains = this.mountains.length;
 
@@ -1074,7 +1109,7 @@ class Horizon {
       for (let j = 0; j < 2; j++) {
         for (let i = numMountains - 1; i >= 0; i--) {
           if (this.mountains[i].depth == j) {
-            this.mountains[i].progress(mountainSpeed * (j ? 1.1 : 1));
+            this.mountains[i].enact(mountainSpeed * (j ? 1.1 : 1));
           }
         }
       }
@@ -1100,11 +1135,11 @@ class Horizon {
     }
   }
 
-  updateObstacles(deltaTime, currentSpeed) {
+  enactObstacles(deltaTime, currentSpeed) {
     // Obstacles, move to Horizon layer.
     for (let i = 0; i < this.obstacles.length; i++) {
       var obstacle = this.obstacles[i];
-      obstacle.progress(deltaTime, currentSpeed);
+      obstacle.enact(deltaTime, currentSpeed);
     }
     // TODO better sort;
 
@@ -1181,7 +1216,7 @@ class Horizon {
             this.gapCoefficient, currentSpeed, obstacleType.width)
 
             duck.currentFrame = getRandomNum(0, 5);
-            duck.yPos = N7e.defaultDimensions.HEIGHT - ((i+5) * 25);
+            duck.yPos = OnDaRun.defaultDimensions.HEIGHT - ((i+5) * 25);
 
             duck.xPos += i*2
             if (obstacleType.type == 'LIVER') {
@@ -1301,7 +1336,7 @@ Horizon.config = {
   MAX_CLOUDS: 8
 };
 
-class AMDR {
+class Amandarine {
   constructor (canvas, spritePos) {
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
@@ -1315,26 +1350,26 @@ class AMDR {
     this.animStartTime = 0;
     this.timer = 0;
     this.msPerFrame = 1000 / FPS;
-    this.config = AMDR.config;
-    this.config.GRAVITY_FACTOR = 0.0000005 * AMDR.config.GRAVITY * ODR.config.SCALE_FACTOR;
+    this.config = Amandarine.config;
+    this.config.GRAVITY_FACTOR = 0.0000005 * Amandarine.config.GRAVITY * ODR.config.SCALE_FACTOR;
     // Current status.
-    //this.status = AMDR.status.WAITING;
+    //this.status = Amandarine.status.WAITING;
 
     this.slidingGuideIntensity = 0;
     this.jumpingGuideIntensity = 0;
-    this.dust = new Particles(canvas, this.xPos, this.yPos, AMDR.config.DUST_DURATION);
+    this.dust = new Particles(canvas, this.xPos, this.yPos, Amandarine.config.DUST_DURATION);
 
     this.init();
   }
 
   init() {
-    this.groundYPos = N7e.defaultDimensions.HEIGHT - this.config.HEIGHT -
+    this.groundYPos = OnDaRun.defaultDimensions.HEIGHT - this.config.HEIGHT -
       ODR.config.BOTTOM_PAD;
     this.yPos = this.groundYPos;
     this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT;
 
-    this.currentAnimFrames = AMDR.animFrames.WAITING.frames;
-    this.currentSprite = AMDR.animFrames.WAITING.sprite;
+    this.currentAnimFrames = Amandarine.animFrames.WAITING.frames;
+    this.currentSprite = Amandarine.animFrames.WAITING.sprite;
     this.currentFrame = 0;
 
     this.draw(0, 0);
@@ -1342,16 +1377,16 @@ class AMDR {
 
   getCollisionBoxes() {
     switch (this.status) {
-      case AMDR.status.SLIDING:
-        return AMDR.collisionBoxes.SLIDING
+      case Amandarine.status.SLIDING:
+        return Amandarine.collisionBoxes.SLIDING
 
-      case AMDR.status.RUNNING:
+      case Amandarine.status.RUNNING:
       default:
-        return AMDR.collisionBoxes.RUNNING;
+        return Amandarine.collisionBoxes.RUNNING;
     }
   }
 
-  progress(deltaTime, speed, opt_action) {
+  enact(deltaTime, speed, opt_action) {
     this.timer = (this.timer || 0) +  deltaTime;
 
     // Update the status.
@@ -1361,12 +1396,12 @@ class AMDR {
 
       this.msPerFrame = opt_action.msPerFrame
         ? opt_action.msPerFrame
-        : AMDR.animFrames[opt_action.type].msPerFrame;
+        : Amandarine.animFrames[opt_action.type].msPerFrame;
 
-      this.currentAnimFrames = AMDR.animFrames[opt_action.type].frames;
+      this.currentAnimFrames = Amandarine.animFrames[opt_action.type].frames;
 
-      this.currentSprite = AMDR.animFrames[opt_action.type].sprite;
-      if (opt_action.type == AMDR.status.CRASHED && opt_action.dir == 1) {
+      this.currentSprite = Amandarine.animFrames[opt_action.type].sprite;
+      if (opt_action.type == Amandarine.status.CRASHED && opt_action.dir == 1) {
         this.currentFrame = 1;
       }
     }
@@ -1379,7 +1414,7 @@ class AMDR {
     */
 
     /* Don't draw crash state to observe the effective collision boxes */
-    if (!ODR.config.SHOW_COLLISION || (opt_action && opt_action.type != AMDR.status.CRASHED)) {
+    if (!ODR.config.SHOW_COLLISION || (opt_action && opt_action.type != Amandarine.status.CRASHED)) {
       this.draw(this.currentAnimFrames[this.currentFrame], 0);
     }
 
@@ -1390,7 +1425,7 @@ class AMDR {
       this.timer = 0;
     }
 
-    if (ODR.config.GRAPHICS_MODE != 1) this.dust.progress(deltaTime);
+    if (ODR.config.GRAPHICS_MODE != 1) this.dust.enact(deltaTime);
   }
 
   draw(x, y) {
@@ -1430,10 +1465,14 @@ class AMDR {
         return action;
       }
     }
-    return {type:type, priority:0};
+
+    return type == Amandarine.status.JUMPING
+      || type == Amandarine.status.SLIDING
+        ? {type: type, priority: 0, control: true}
+        : {type: type, priority: 0};
   }
 
-  progressActionQueue(now, deltaTime, speed) {
+  handleActionQueue(now, deltaTime, speed) {
 
     // Sort & filter main action queue.
     ODR.actions.sort((a,b) => a.priority == b.priority
@@ -1449,35 +1488,35 @@ class AMDR {
     this.slidingGuideIntensity = 0;
     this.jumpingGuideIntensity = 0;
 
-    UPDATE_ACTION_QUEUE: {
+    HANDLE_ACTION_QUEUE: {
       for (let i = 0, action; action = ODR.actions[i]; i++) {
         switch(action.priority) {
-          case 0: { /* Preparing actions */
+          case 0: { /* priority : Preparing actions */
 
             switch(action.type) {
-              case AMDR.status.JUMPING:
+              case Amandarine.status.JUMPING:
                 this.jumpingGuideIntensity = Math.min(1,gji+deltaTime/200);
                 this.drawJumpingGuide(action, now, speed);
                 continue;
-              case AMDR.status.SLIDING:
+              case Amandarine.status.SLIDING:
                 this.slidingGuideIntensity = Math.min(1,gsi+deltaTime/200);
                 this.drawSlidingGuide(action, now, speed);
                 continue;
-              case AMDR.status.RUNNING:
+              case Amandarine.status.RUNNING:
                 if (action.hasOwnProperty('xPos')) {
                   this.xPos = action.xPos;
                 }
 
                 action.timer = 0;
                 action.priority = 1;
-                this.progressAction(action, deltaTime, speed);
+                this.enactAction(action, deltaTime, speed);
                 newAction = action;
 
                 break;
-              case AMDR.status.WAITING:
+              case Amandarine.status.WAITING:
                 this.introScriptTimer = 200;
                 this.introScript = [
-                  20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.94",
+                  20000,"On Da Run!\nAmandarine\n\nVERSION BETA 0.95",
                   20000,"Hi...",
                   20000,"Just play already!",
                   20000,"Didn't know you love the song that much!",
@@ -1492,22 +1531,31 @@ class AMDR {
 
                 action.timer = 0;
                 action.priority = 1;
-                this.progressAction(action, deltaTime, speed);
+                this.enactAction(action, deltaTime, speed);
                 newAction = action;
               default:;
             }
 
-            break UPDATE_ACTION_QUEUE;
+            break HANDLE_ACTION_QUEUE;
           }
 
-          case 1:  /* Initialise action */
+          case 1:  /* priority : Initialise action */
             switch(action.type) {
-              case AMDR.status.JUMPING:
-                {
+              case Amandarine.status.JUMPING:
+                if (ODR.crashed) {
+                  if (getTimeStamp() - ODR.crashedTime >= ODR.config.GAMEOVER_CLEAR_TIME) {
+                    if (ODR.raqId) {
+                      cancelAnimationFrame(ODR.raqId);
+                      ODR.raqId = 0;
+                    }
+                    ODR.restart();
+                  }
+                  break HANDLE_ACTION_QUEUE;
+                } else {
                   action.maxPressDuration = shapeSpeedDuration(speed, action.pressDuration);
                   // It seems more ergonomically natural to simply add the minimum than to clip the value.
                   action.top = action.maxPressDuration / 1000;
-                  action.halfTime = Math.sqrt(2000 * action.maxPressDuration / AMDR.config.GRAVITY);
+                  action.halfTime = Math.sqrt(2000 * action.maxPressDuration / Amandarine.config.GRAVITY);
                   action.msPerFrame = action.halfTime * 2 / 4;
 
                   if (action.end + action.halfTime * 2 < now) {
@@ -1530,7 +1578,7 @@ class AMDR {
                     ODR.setSkyGradient(ODR.config.SKY.DAY,3000);
                   }
                 } break;
-              case AMDR.status.SLIDING:
+              case Amandarine.status.SLIDING:
                 {
                   let sp = action.speed || speed + 0.2;
 
@@ -1562,7 +1610,7 @@ class AMDR {
               // These background-type actions (priority 1 without specific
               // duration) below will 'continue' through the action queue
               // to proceed with the active preparing action (priority 0).
-              case AMDR.status.RUNNING:
+              case Amandarine.status.RUNNING:
                 if (action.speed) {
                   let sp = speed + action.speed;
                   let increment = sp * FPS / 1000 * deltaTime;
@@ -1574,15 +1622,15 @@ class AMDR {
                   if (action.duration < 0) {
                     action.priority = -1;
                   } else {
-                    this.progressAction(action, deltaTime, speed);
+                    this.enactAction(action, deltaTime, speed);
                   }
-                  break UPDATE_ACTION_QUEUE;
+                  break HANDLE_ACTION_QUEUE;
                 }
 
-                this.progressAction(action, deltaTime, speed);
+                this.enactAction(action, deltaTime, speed);
                 continue;
 
-              case AMDR.status.WAITING:
+              case Amandarine.status.WAITING:
 
                 this.introScriptTimer -= deltaTime;
                 if (this.introScriptTimer < 0) {
@@ -1601,15 +1649,20 @@ class AMDR {
                   this.introScriptTimer = wait;
                 }
 
-                this.progressAction(action, deltaTime, speed);
+                let xMap = [2,1,-2,-3,-2,1], yMap = [1,0,-2,-2,-2,0];
+                ODR.canvasCtx.drawImage(ODR.spriteGUI, 0, 96, 105, 54,
+                  Math.round(this.xPos + xMap[this.currentFrame] + 20),
+                  Math.round(this.yPos + yMap[this.currentFrame] - 47), 105, 54);
+
+                this.enactAction(action, deltaTime, speed);
                 continue;
               default:
-                break UPDATE_ACTION_QUEUE;
+                break HANDLE_ACTION_QUEUE;
             }
             action.priority = 2;
             // All 1s will progress into 2s
-          case 2:
-            this.progressAction(action, deltaTime, speed);
+          case 2: /* priority */
+            this.enactAction(action, deltaTime, speed);
 
             if (action.priority == -1) {
 
@@ -1619,21 +1672,21 @@ class AMDR {
                 ODR.loadMusic('offline-play-music', ODR.config.PLAY_MUSIC);
                 ODR.playIntro();
                 ODR.setSpeed(ODR.config.SPEED);
-                ODR.defaultAction.type = AMDR.status.RUNNING;
+                ODR.defaultAction.type = Amandarine.status.RUNNING;
               }
 
               // To get default action updated.
               ODR.defaultAction.priority = 0;
             }
 
-            break UPDATE_ACTION_QUEUE;
-          case 3:
+            break HANDLE_ACTION_QUEUE;
+          case 3: /* priority */
             switch(action.type) {
-              case AMDR.status.PAUSED:
+              case Amandarine.status.PAUSED:
                 //NYI
-                break UPDATE_ACTION_QUEUE;
-              case AMDR.status.CRASHED: {
-                if (!action.updated) {
+                break HANDLE_ACTION_QUEUE;
+              case Amandarine.status.CRASHED: {
+                if (!action.enacted) {
                   ODR.musics.stop();
                   ODR.playSound(ODR.soundFx.SOUND_OGGG,0.3);
                   ODR.setSkyGradient(ODR.config.SKY.SUNSET,3000);
@@ -1647,35 +1700,35 @@ class AMDR {
 
                   action.duration = 200;
                   action.top = action.duration / 1000;
-                  action.halfTime = Math.sqrt(2000 * action.duration / AMDR.config.GRAVITY);
+                  action.halfTime = Math.sqrt(2000 * action.duration / Amandarine.config.GRAVITY);
                   action.timer = 0;
                   action.yCrashed = this.yPos;
                   action.lagging = speed;
-                  action.updated = true;
-                  this.progressAction(action, deltaTime, speed);
+                  action.enacted = true;
+                  this.enactAction(action, deltaTime, speed);
                   newAction = action;
                 } else {
-                  this.progressAction(action, deltaTime, speed);
+                  this.enactAction(action, deltaTime, speed);
                 }
 
                 if (action.priority == -1) {
                   ODR.actions.length = 0;
                 }
-              } break UPDATE_ACTION_QUEUE;
+              } break HANDLE_ACTION_QUEUE;
               default:;
             }
 
-          default:
-            this.progressAction(action, deltaTime, speed);
-            break UPDATE_ACTION_QUEUE;
+          default: /*priority*/
+            this.enactAction(action, deltaTime, speed);
+            break HANDLE_ACTION_QUEUE;
         }
       }
     }
 
-    this.progress(deltaTime, speed, newAction);
+    this.enact(deltaTime, speed, newAction);
   }
 
-  progressAction(action, deltaTime, speed) {
+  enactAction(action, deltaTime, speed) {
     console.assert(action && action.priority != -1, action) ;
 
     let adjustX = () => {
@@ -1694,12 +1747,12 @@ class AMDR {
 
     action.timer += deltaTime;
     switch (action.type) {
-      case AMDR.status.WAITING:
+      case Amandarine.status.WAITING:
         break;
-      case AMDR.status.RUNNING: {
+      case Amandarine.status.RUNNING: {
         adjustX();
       } break;
-      case AMDR.status.JUMPING: {
+      case Amandarine.status.JUMPING: {
         let timer = action.halfTime - action.timer;
 
         adjustX();
@@ -1717,7 +1770,7 @@ class AMDR {
           }
         }
       } break;
-      case AMDR.status.SLIDING: {
+      case Amandarine.status.SLIDING: {
         var increment = speed * FPS / 1000 * deltaTime;
 
         action.distance += increment;
@@ -1730,7 +1783,7 @@ class AMDR {
         //Sliding animation
 
         if (ODR.config.GRAPHICS_MODE != 1
-            && this.status == AMDR.status.SLIDING
+            && this.status == Amandarine.status.SLIDING
             & this.dust.points.length < action.timer / 30) {
           this.dust.xPos = this.xPos - 24;
           let dsp = (action.speed ? action.speed : speed) / 6;
@@ -1743,7 +1796,7 @@ class AMDR {
 //                this.xPos = this.config.START_X_POS;
         }
       } break;
-      case AMDR.status.CRASHED: {
+      case Amandarine.status.CRASHED: {
         let timer = action.halfTime - action.timer;
 
         this.yPos = action.yCrashed
@@ -1783,7 +1836,7 @@ class AMDR {
       pressDuration = shapeSpeedDuration(speed, pressDuration);
     }
 
-    let fallDuration = Math.sqrt(2000 * pressDuration / AMDR.config.GRAVITY);
+    let fallDuration = Math.sqrt(2000 * pressDuration / Amandarine.config.GRAVITY);
 
     let jumpTop = pressDuration / 1000;
 
@@ -1806,7 +1859,7 @@ class AMDR {
       }
 
       let unit = fallDuration * 2 / DRAW_STEP;
-      let gravityFactor = 0.0000005 * AMDR.config.GRAVITY;
+      let gravityFactor = 0.0000005 * Amandarine.config.GRAVITY;
       this.canvasCtx.moveTo(
         baseX + unit*increment - shiftLeft,
         baseY - (jumpTop - (gravityFactor * fallDuration * fallDuration)) * ODR.config.SCALE_FACTOR
@@ -1858,23 +1911,23 @@ class AMDR {
     }
 
     let distance = speed * 0.001 * FPS * slideDuration;
-    let frame = Math.floor(now / AMDR.animFrames.SLIDING.msPerFrame) % 3;
+    let frame = Math.floor(now / Amandarine.animFrames.SLIDING.msPerFrame) % 3;
 
     this.canvasCtx.save();
 
     for (let i = 0, len = ODR.config.GRAPHICS_MODE == 1 ? 1 : 4, div = 1, s = 0, sd = Math.abs((now/100)%4 - 2);
         i < len; i++, div*= 2, s+=sd) {
       this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/div;
-      this.canvasCtx.drawImage(AMDR.animFrames.SLIDING.sprite,
-        AMDR.animFrames.SLIDING.frames[(frame+i)%3]*2, 40, 40, 40,
+      this.canvasCtx.drawImage(Amandarine.animFrames.SLIDING.sprite,
+        Amandarine.animFrames.SLIDING.frames[(frame+i)%3]*2, 40, 40, 40,
         Math.floor(baseX + distance - i * 30 *alpha) - s*s, this.groundYPos,
         this.config.WIDTH, this.config.HEIGHT);
     }
 
     /*
     this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha;
-    this.canvasCtx.drawImage(AMDR.animFrames.SLIDING.sprite,
-        AMDR.animFrames.SLIDING.frames[frame%3]*2, 40, 40, 40,
+    this.canvasCtx.drawImage(Amandarine.animFrames.SLIDING.sprite,
+        Amandarine.animFrames.SLIDING.frames[frame%3]*2, 40, 40, 40,
         Math.floor(baseX + distance) , this.groundYPos,
         this.config.WIDTH, this.config.HEIGHT);
         */
@@ -1889,7 +1942,7 @@ class AMDR {
 
     ODR.queueAction({
       begin: getTimeStamp(),
-      type: AMDR.status.SLIDING,
+      type: Amandarine.status.SLIDING,
       pressDuration: ODR.config.MAX_ACTION_PRESS,
       priority: 1,
       start: true,
@@ -1900,7 +1953,7 @@ class AMDR {
   }
 }
 
-AMDR.config = {
+Amandarine.config = {
   DUST_DURATION: 600,
   GRAVITY: 9.8,
   FRICTION: 9.8,
@@ -1913,7 +1966,7 @@ AMDR.config = {
   WIDTH: 40,
 };
 
-AMDR.collisionBoxes = {
+Amandarine.collisionBoxes = {
   SLIDING: [
     new CollisionBox(11, 12, 15, 12),
     new CollisionBox(11, 25, 17, 12),
@@ -1925,7 +1978,7 @@ AMDR.collisionBoxes = {
   ]
 };
 
-AMDR.status = {
+Amandarine.status = {
   CRASHED: 'CRASHED',
   SLIDING: 'SLIDING',
   JUMPING: 'JUMPING',
@@ -1933,7 +1986,7 @@ AMDR.status = {
   WAITING: 'WAITING'
 };
 
-AMDR.animFrames = {
+Amandarine.animFrames = {
   WAITING: {
     frames: [0, 20, 40, 60, 80, 100],
     msPerFrame: 1000 / 6
@@ -1957,26 +2010,16 @@ AMDR.animFrames = {
   }
 };
 
-class Terminal {
-  constructor(canvas, spritePos) {
-    this.canvas = canvas;
-    this.canvasCtx = canvas.getContext('2d');
-    this.image = ODR.spriteGUI;
-    this.y = 5;
-    this.messages = null;
-    this.timer = 0;
-    this.init();
+class Text {
+  constructor(width) {
+    this.width = width;
+    this.glyphs = [];
   }
 
-  init() {
-    this.opacity = 0;
-  }
-
-  setMessages(messageStr, timer, opt_lineWidth) {
-    //ODR.setNeedsUpdate(timer);
+  setText(messageStr) {
     if (!messageStr.length) return;
-
-    let lineWidth = opt_lineWidth || 20; //TODO multi-widths
+ //TODO multi-widths,multi-offsets
+    let lineWidth = this.width || 20;
     let wordList = messageStr.toString().split(' ');
     let newList = [wordList[0]];
 
@@ -2003,8 +2046,7 @@ class Terminal {
 
     messageStr = newList.join('');
 
-    this.timer = timer || 2000;
-    this.messages = messageStr.toUpperCase().split('').map(ch => {
+    this.glyphs = messageStr.toUpperCase().split('').map(ch => {
       let code = ch.charCodeAt(0);
       if (code >= 65 && code <= 90) {
         return 140 + (code - 65) * 14;
@@ -2037,13 +2079,60 @@ class Terminal {
         case '☺': return 770;
         case '#': return 784;
         case '➕': return 798;
+        case '⮡': return 812;
+        case '⮧': return 826;
+        case '+': return 840;
         default: return -code;
       }
     });
-
   }
 
-  progress(deltaTime) {
+  draw(canvasCtx, offsetX, offsetY, glyphW, glyphH, image) {
+    glyphW = glyphW || 14;
+    glyphH = glyphH || 20;
+    image = image || ODR.spriteGUI;
+    for (let i = 0, cur = 0, l = 0; i < this.glyphs.length; i++) {
+      let x = this.glyphs[i];
+      if (x == -10) {
+        cur = 0;
+        l++;
+        continue;
+      }
+      canvasCtx.drawImage(image,
+        x, 0, 14, 14,
+        offsetX + cur * glyphW,
+        offsetY + glyphH * l,
+          14, 14);
+      cur++;
+    }
+  }
+
+  drawText(messageStr, canvasCtx, offsetX, offsetY, glyphW, glyphH, image) {
+    this.setText(messageStr);
+    this.draw(canvasCtx, offsetX, offsetY, glyphW, glyphH, image);
+  }
+}
+
+class Terminal {
+  constructor(canvas, spritePos) {
+    this.canvas = canvas;
+    this.canvasCtx = canvas.getContext('2d');
+    this.y = 5;
+    this.timer = 0;
+    this.init();
+    this.text = new Text(20);
+  }
+
+  init() {
+    this.opacity = 0;
+  }
+
+  setMessages(messageStr, timer, opt_lineWidth) {
+    this.timer = timer || 2000;
+    this.text.setText(messageStr);
+  }
+
+  enact(deltaTime) {
     if (this.timer > 0) {
 
       if (this.timer > 500) this.opacity += deltaTime/100;
@@ -2060,16 +2149,7 @@ class Terminal {
 
       this.canvasCtx.save();
       this.canvasCtx.globalAlpha = this.opacity;
-      for (let i = 0, cur = 0, l = 0, x; x = this.messages[i];i++) {
-        if (x == -10) {
-          cur = 0;
-          l++;
-          continue;
-        }
-        this.canvasCtx.drawImage(this.image, x, 0, 14, 18,
-          14 + cur * Math.ceil(14*this.opacity) - 20*(1 - this.opacity), 10 + 16*l, 14, 18);
-        cur++;
-      }
+      this.text.draw(this.canvasCtx, 14 - 20*(1 - this.opacity), 10, Math.ceil(14*this.opacity), Math.ceil(16*this.opacity));
       this.canvasCtx.restore();
       this.timer -= deltaTime;
     }
@@ -2160,7 +2240,7 @@ class DistanceMeter {
     return distance ? Math.round(distance * this.config.COEFFICIENT) : 0;
   }
 
-  progress(deltaTime, distance) {
+  enact(deltaTime, distance) {
     var paint = true;
     var playSound = false;
 
@@ -2241,7 +2321,7 @@ class DistanceMeter {
   }
 
   reset() {
-    this.progress(0);
+    this.enact(0);
     this.acheivement = false;
   }
 }
@@ -2259,6 +2339,106 @@ DistanceMeter.config = {
   FLASH_DURATION: 1000 / 4,
   FLASH_ITERATIONS: 3
 };
+
+class Menu {
+  constructor(canvas, menu) {
+    this.canvas = canvas;
+    this.canvasCtx  = canvas.getContext('2d');
+    this.menu = menu;
+    this.actions = [];
+    this.displayEntry = this.menu.currentEntry = this.menu.currentEntry  || 0;
+    this.menu.buttons = [null,null];
+  }
+
+  queueAction(action) {
+    if (action.priority == 0) {
+      if (action.type == Amandarine.status.JUMPING) {
+        this.menu.buttons[1] = action;
+      } else if (action.type == Amandarine.status.SLIDING) {
+        this.menu.buttons[0] = action;
+      }
+    }
+  }
+
+  enact(deltaTime) {
+    if (Menu.playSound) {
+      Menu.playSound = null;
+    }
+    let countHold = 0;
+    for (let i = 0; i < 2; i++) {
+      let action = this.menu.buttons[i];
+      if (action && action.priority == 0) {
+        countHold ++;
+      } else if (action && action.priority == 1) {
+        ODR.playSound(ODR.soundFx.SOUND_BLIP, 0.3);
+        switch (action.type) {
+          case Amandarine.status.JUMPING:
+            this.menu.currentEntry++;
+            if (this.menu.currentEntry >= this.menu.entries.length)
+              this.menu.currentEntry = 0;
+          break;
+          case Amandarine.status.SLIDING:
+            this.menu.currentEntry--;
+            if (this.menu.currentEntry < 0)
+              this.menu.currentEntry = this.menu.entries.length - 1;
+          break;
+        }
+        action.priority = -1;
+        this.menu.buttons[i] = null;
+      }
+    }
+
+    if (countHold == 2) {
+      this.menu.buttons = [null,null];
+      let entry = this.menu.entries[this.menu.currentEntry];
+      if (entry.disabled) {
+        ODR.playSound(ODR.soundFx.SOUND_HIT, 0.8);
+      } else {
+        ODR.playSound(ODR.soundFx.SOUND_SCORE, 0.3);
+        return this.menu.enter(this.menu.currentEntry, entry);
+      }
+    }
+
+    this.canvasCtx.fillStyle = "#0008";
+    this.canvasCtx.fillRect(0,0,this.canvas.width,this.canvas.height);
+
+    if (this.displayEntry < this.menu.currentEntry) {
+      this.displayEntry += 0.1 * (FPS / 500) * deltaTime;
+      if (this.displayEntry > this.menu.currentEntry) {
+        this.displayEntry = this.menu.currentEntry;
+      }
+    } else if (this.displayEntry > this.menu.currentEntry) {
+      this.displayEntry -= 0.1 * (FPS / 500) * deltaTime;
+      if (this.displayEntry < this.menu.currentEntry) {
+        this.displayEntry = this.menu.currentEntry;
+      }
+    }
+
+    this.canvasCtx.save();
+    for (let i = 0; i < this.menu.entries.length; i++) {
+      let entry = this.menu.entries[i];
+      let dir = '▻ ';
+      if (entry.title) {
+        if (entry.exit) dir = '◅ ';
+        entry = entry.title;
+      }
+      let xxx = Math.abs(this.displayEntry - i);
+      this.canvasCtx.globalAlpha = Math.max(0.1,(4 - xxx)/4);
+      new Text(600/14).drawText(
+        (i == this.menu.currentEntry ? dir:'  ') + entry,
+        this.canvasCtx,
+        20 + 7 * Math.round((2 * xxx * xxx)/7),
+        90 + 7 * Math.round((i-this.displayEntry)*3));
+    }
+    this.canvasCtx.restore();
+
+    new Text(600/14).drawText(this.menu.title,this.canvasCtx,300-(this.menu.title.length*7),10);
+    let pressmsg = 'press both ⮡+⮧ to select';
+    new Text(600/14).drawText(pressmsg,this.canvasCtx,300-(pressmsg.length*7),180);
+
+    return this;
+  }
+}
 
 class GameOverPanel {
   constructor(canvas, textImgPos, restartImgPos, dimensions) {
@@ -2333,7 +2513,7 @@ GameOverPanel.dimensions = {
   RESTART_HEIGHT: 28
 };
 
-class N7e extends LitElement {
+class OnDaRun extends LitElement {
   static get styles() {
     return css`
     :host {
@@ -2347,7 +2527,7 @@ class N7e extends LitElement {
       height: 800px;
       padding: 0;
       opacity: 0;
-      background-image: url(asset/console.png);
+      background-image: url(assets/console/console.png);
     }
 
     canvas {
@@ -2367,7 +2547,7 @@ class N7e extends LitElement {
       top: 495px;
       width: 100px;
       height: 100px;
-      background-image: url(assets/console-left.png);
+      background-image: url(assets/console/console-left.png);
     }
 
     #console-right {
@@ -2375,7 +2555,7 @@ class N7e extends LitElement {
       top: 495px;
       width: 100px;
       height: 100px;
-      background-image: url(assets/console-right.png);
+      background-image: url(assets/console/console-right.png);
     }
 
     #console-a {
@@ -2383,7 +2563,7 @@ class N7e extends LitElement {
       top: 495px;
       width: 66px;
       height: 50px;
-      background-image: url(assets/console-a.png);
+      background-image: url(assets/console/console-a.png);
     }
 
     #console-b {
@@ -2391,7 +2571,7 @@ class N7e extends LitElement {
       top: 545px;
       width: 66px;
       height: 50px;
-      background-image: url(assets/console-b.png);
+      background-image: url(assets/console/console-b.png);
     }
 
     #console-c {
@@ -2399,7 +2579,7 @@ class N7e extends LitElement {
       top: 495px;
       width: 66px;
       height: 50px;
-      background-image: url(assets/console-c.png);
+      background-image: url(assets/console/console-c.png);
     }
 
     #console-d {
@@ -2407,7 +2587,7 @@ class N7e extends LitElement {
       top: 545px;
       width: 66px;
       height: 50px;
-      background-image: url(assets/console-d.png);
+      background-image: url(assets/console/console-d.png);
     }
 
     #console-n7e {
@@ -2415,7 +2595,7 @@ class N7e extends LitElement {
       top: 628px;
       width: 18px;
       height: 18px;
-      background-image: url(assets/console-n7e.png);
+      background-image: url(assets/console/console-n7e.png);
     }
 
     #console-reset {
@@ -2423,7 +2603,7 @@ class N7e extends LitElement {
       top: 628px;
       width: 18px;
       height: 18px;
-      background-image: url(assets/console-reset.png);
+      background-image: url(assets/console/console-reset.png);
     }
 
     `;
@@ -2431,11 +2611,10 @@ class N7e extends LitElement {
 
   static get properties() {
     return {
+      /*
       spriteScene: { type: Object },
       spriteGUI: { type: Object },
-      spriteBicycles: { type: Object },
-      spriteDucks: { type: Object },
-      spriteN7e: { type: Object },
+      */
     };
   }
 
@@ -2455,11 +2634,31 @@ class N7e extends LitElement {
 
   constructor() {
     super();
-    ODR = this;
-    //window['ODR'] = this;
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        console.log(user);
+        N7e.user = new User();
+        /*
+        var displayName = user.displayName;
+        var email = user.email;
+        var emailVerified = user.emailVerified;
+        var photoURL = user.photoURL;
+        var isAnonymous = user.isAnonymous;
+        var uid = user.uid;
+        var providerData = user.providerData;
+        */
+      } else {
+        console.log('no user');
+      }
+    });
 
-    this.config = JSON.parse(JSON.stringify(N7e.Configurations));
-    this.dimensions = N7e.defaultDimensions;
+
+    //ODR = this;
+    window['ODR'] = this;
+
+    this.dimensions = OnDaRun.defaultDimensions;
+    this.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
+    this.menu = null;
 
     this.canvas = null;
     this.canvasCtx = null;
@@ -2474,26 +2673,26 @@ class N7e extends LitElement {
         handleEvent: function (e) {
           e.preventDefault();
           switch(e.type) {
-            case N7e.events.TOUCHSTART: {
+            case OnDaRun.events.MOUSEDOWN:
+            case OnDaRun.events.TOUCHSTART: {
               this.dir = 1;
 
-              if (!ODR.playing) break;
+              //if (!ODR.playing) break; FIXME sliding shadow while waiting.
 
-              let action = ODR.amdr.newAction(ODR.actions, AMDR.status.SLIDING);
+              let action = ODR.amandarine.newAction(ODR.actions, Amandarine.status.SLIDING);
               action.begin = action.begin || ODR.time;
 
               if (action && !action.index) {
-                ODR.activeActions[AMDR.status.SLIDING] = action;
+                ODR.activeActions[Amandarine.status.SLIDING] = action;
                 ODR.queueAction(action);
               }
             } break;
 
-            case N7e.events.TOUCHEND: {
+            case OnDaRun.events.MOUSEUP:
+            case OnDaRun.events.TOUCHEND: {
               this.dir = -1;
 
-              if (!ODR.playing) break;
-
-              let action = ODR.activeActions[AMDR.status.SLIDING];
+              let action = ODR.activeActions[Amandarine.status.SLIDING];
               if (action && action.priority == 0) {
                 action.end = ODR.time;
                 action.pressDuration = action.end - action.begin;
@@ -2509,11 +2708,11 @@ class N7e extends LitElement {
         handleEvent: function (e) {
           e.preventDefault();
           switch(e.type) {
-            case N7e.events.MOUSEDOWN:
-            case N7e.events.TOUCHSTART: {
+            case OnDaRun.events.MOUSEDOWN:
+            case OnDaRun.events.TOUCHSTART: {
               this.dir = 1;
 
-              let action = ODR.amdr.newAction(ODR.actions, AMDR.status.JUMPING);
+              let action = ODR.amandarine.newAction(ODR.actions, Amandarine.status.JUMPING);
               action.begin = action.begin || ODR.time;
 
               if (!ODR.playing) {
@@ -2521,30 +2720,17 @@ class N7e extends LitElement {
               }
 
               if (action && !action.index) {
-                ODR.activeActions[AMDR.status.JUMPING] = action;
+                ODR.activeActions[Amandarine.status.JUMPING] = action;
                 ODR.queueAction(action);
               }
 
             } break;
-            case N7e.events.MOUSEUP:
-            case N7e.events.TOUCHEND: {
+            case OnDaRun.events.MOUSEUP:
+            case OnDaRun.events.TOUCHEND: {
               this.dir = -1;
 
-              let action = ODR.activeActions[AMDR.status.JUMPING]
+              let action = ODR.activeActions[Amandarine.status.JUMPING]
               if (!action) break;
-
-              if (ODR.crashed) {
-                if (getTimeStamp() - ODR.crashedTime >= ODR.config.GAMEOVER_CLEAR_TIME) {
-                  if (ODR.raqId) {
-                    cancelAnimationFrame(ODR.raqId);
-                    ODR.raqId = 0;
-                  }
-                  ODR.restart();
-                }
-                break;
-              }
-
-              ODR.playing = true;
 
               if (action.priority == 0) {
                 action.end = ODR.time;
@@ -2561,12 +2747,12 @@ class N7e extends LitElement {
         handleEvent: function (e) {
           e.preventDefault();
           switch(e.type) {
-            case N7e.events.MOUSEDOWN:
-            case N7e.events.TOUCHSTART:
+            case OnDaRun.events.MOUSEDOWN:
+            case OnDaRun.events.TOUCHSTART:
               this.dir = 1;
               break;
-            case N7e.events.MOUSEUP:
-            case N7e.events.TOUCHEND:
+            case OnDaRun.events.MOUSEUP:
+            case OnDaRun.events.TOUCHEND:
               this.dir = -1;
               ODR.setMusicMode(-1);
               break;
@@ -2577,12 +2763,12 @@ class N7e extends LitElement {
         handleEvent: function (e) {
           e.preventDefault();
           switch(e.type) {
-            case N7e.events.MOUSEDOWN:
-            case N7e.events.TOUCHSTART:
+            case OnDaRun.events.MOUSEDOWN:
+            case OnDaRun.events.TOUCHSTART:
               this.dir = 1;
               break;
-            case N7e.events.MOUSEUP:
-            case N7e.events.TOUCHEND:
+            case OnDaRun.events.MOUSEUP:
+            case OnDaRun.events.TOUCHEND:
               this.dir = -1;
               ODR.setGraphicsMode(-1);
               break;
@@ -2594,12 +2780,12 @@ class N7e extends LitElement {
           e.preventDefault();
           ODR.terminal.setMessages("COMING SOON", 2000);
           switch(e.type) {
-            case N7e.events.MOUSEDOWN:
-            case N7e.events.TOUCHSTART:
+            case OnDaRun.events.MOUSEDOWN:
+            case OnDaRun.events.TOUCHSTART:
               this.dir = 1;
               break;
-            case N7e.events.MOUSEUP:
-            case N7e.events.TOUCHEND:
+            case OnDaRun.events.MOUSEUP:
+            case OnDaRun.events.TOUCHEND:
               this.dir = -1;
               break;
           }
@@ -2608,15 +2794,67 @@ class N7e extends LitElement {
       CONSOLE_D: { x: 501, y: 545, w: 66, h: 50, id:'console-d',
         handleEvent: function (e) {
           e.preventDefault();
-          ODR.terminal.setMessages("COMING SOON", 2000);
           switch(e.type) {
-            case N7e.events.MOUSEDOWN:
-            case N7e.events.TOUCHSTART:
+            case OnDaRun.events.MOUSEDOWN:
+            case OnDaRun.events.TOUCHSTART:
               this.dir = 1;
               break;
-            case N7e.events.MOUSEUP:
-            case N7e.events.TOUCHEND:
+            case OnDaRun.events.MOUSEUP:
+            case OnDaRun.events.TOUCHEND:
               this.dir = -1;
+
+              if (!ODR.menu) {
+                ODR.musics.stop();
+                let mainMenu = ODR.menu = N7e.user
+                  ? new Menu(ODR.canvas, {
+                    title: 'do you want to sign out?',
+                    entries: [
+                      'yes',
+                      {title:'no',exit:true}
+                    ],
+                    currentEntry: 1,
+                    enter: (confirm,confirmation) => {
+                      if (confirmation.exit) {
+                        return null;
+                      } else {
+                        firebase.auth().signOut();
+                        N7e.user = null;
+                      }
+                    },
+                  })
+                  : new Menu(ODR.canvas, {
+                  title: 'Link profile',
+                  entries: [
+                    {title:'facebook : disabled',disabled:true},
+                    {title:'twitter : disabled',disabled:true},
+                    'google',
+                    {title:'exit',exit:true}
+                  ],
+                  enter: (entryIndex,choice) => {
+
+                    if (choice.exit) return null;
+                    return new Menu(ODR.canvas, {
+                      title: 'do you want to link ' + choice + '?',
+                      entries: [
+                        'yes',
+                        {title:'no',exit:true}
+                      ],
+                      currentEntry: 1,
+                      enter: (confirm,confirmation) => {
+                        if (confirmation.exit) {
+                          return mainMenu;
+                        } else {
+                          N7e.user = new User(choice);
+                        }
+                      },
+                    });
+
+                  },
+                });
+              } else {
+                ODR.menu = null;
+              }
+
               break;
           }
         },
@@ -2625,14 +2863,14 @@ class N7e extends LitElement {
         handleEvent: function (e) {
           e.preventDefault();
           switch(e.type) {
-            case N7e.events.MOUSEDOWN:
-            case N7e.events.TOUCHSTART:
+            case OnDaRun.events.MOUSEDOWN:
+            case OnDaRun.events.TOUCHSTART:
               this.dir = 1;
               break;
-            case N7e.events.MOUSEUP:
-            case N7e.events.TOUCHEND:
+            case OnDaRun.events.MOUSEUP:
+            case OnDaRun.events.TOUCHEND:
               this.dir = -1;
-              ODR.amdr.introScriptTimer = 20000;
+              ODR.amandarine.introScriptTimer = 20000;
               if (!this.urlList || this.urlList.length == 0) {
                 this.urlList = [
                   {name:'IG', url:'https://www.instagram.com/natherine.bnk48official'},
@@ -2649,22 +2887,22 @@ class N7e extends LitElement {
         handleEvent: function (e) {
           e.preventDefault();
           switch(e.type) {
-            case N7e.events.MOUSEDOWN:
-            case N7e.events.TOUCHSTART:
+            case OnDaRun.events.MOUSEDOWN:
+            case OnDaRun.events.TOUCHSTART:
               this.dir = 1;
               break;
-            case N7e.events.MOUSEUP:
-            case N7e.events.TOUCHEND:
+            case OnDaRun.events.MOUSEUP:
+            case OnDaRun.events.TOUCHEND:
               this.dir = -1;
               ODR.musics.stop();
-              ODR.config = JSON.parse(JSON.stringify(N7e.Configurations));
+              ODR.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
               break;
           }
         },
       },
     };
 
-    this.amdr = null;
+    this.amandarine = null;
     this.distanceMeter = null;
     this.distanceRan = 0;
     this.highestScore = 0;
@@ -2698,7 +2936,7 @@ class N7e extends LitElement {
 
     /* Load and set console image */
     let consoleImage = new Image();
-    consoleImage.src = 'assets/console.png';
+    consoleImage.src = 'assets/console/console.png';
     this.style.backgroundImage = 'url('+consoleImage.src+')';
 
     consoleImage.addEventListener('load', (e) => {
@@ -2716,19 +2954,19 @@ class N7e extends LitElement {
     };
 
     this.spriteGUI = addSprite('userinterface');
-    this.spriteDef = N7e.spriteDefinition;
+    this.spriteDef = OnDaRun.spriteDefinition;
 
     this.spriteScene = addSprite('scene');
 
-    AMDR.animFrames.RUNNING.sprite = addSprite('nat/running');
-    AMDR.animFrames.SLIDING.sprite = addSprite('nat/sliding');
-    AMDR.animFrames.JUMPING.sprite = addSprite('nat/jumping');
-    AMDR.animFrames.WAITING.sprite = addSprite('nat/idle');
-    AMDR.animFrames.CRASHED.sprite = addSprite('nat/crash');
+    Amandarine.animFrames.RUNNING.sprite = addSprite('nat/running');
+    Amandarine.animFrames.SLIDING.sprite = addSprite('nat/sliding');
+    Amandarine.animFrames.JUMPING.sprite = addSprite('nat/jumping');
+    Amandarine.animFrames.WAITING.sprite = addSprite('nat/idle');
+    Amandarine.animFrames.CRASHED.sprite = addSprite('nat/crash');
 
     for (let key in this.consoleButtons) {
       let btt = this.consoleButtons[key];
-      btt.sprite = addSprite(btt.id);
+      btt.sprite = addSprite('console/'+btt.id);
     }
 
     let bicyclesSprite = addSprite('biking');
@@ -2755,6 +2993,7 @@ class N7e extends LitElement {
       if (completion < loadingList.length)
         return;
 
+      this.loadSounds();
       this.init();
     };
 
@@ -2784,10 +3023,10 @@ class N7e extends LitElement {
       btt.canvasCtx = btt.canvas.getContext('2d',{alpha:false});
       btt.canvasCtx.drawImage(btt.sprite,0,0);
 
-      btt.canvas.addEventListener(N7e.events.TOUCHSTART, btt);
-      btt.canvas.addEventListener(N7e.events.TOUCHEND, btt);
-      btt.canvas.addEventListener(N7e.events.MOUSEDOWN, btt);
-      btt.canvas.addEventListener(N7e.events.MOUSEUP, btt);
+      btt.canvas.addEventListener(OnDaRun.events.TOUCHSTART, btt);
+      btt.canvas.addEventListener(OnDaRun.events.TOUCHEND, btt);
+      btt.canvas.addEventListener(OnDaRun.events.MOUSEDOWN, btt);
+      btt.canvas.addEventListener(OnDaRun.events.MOUSEUP, btt);
     }
 
     this.canvas = this.shadowRoot.getElementById('console-screen');
@@ -2804,7 +3043,7 @@ class N7e extends LitElement {
     this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
       this.config.GAP_COEFFICIENT);
 
-    this.amdr = new AMDR(this.canvas, this.spriteDef.NATHERINE);
+    this.amandarine = new Amandarine(this.canvas, this.spriteDef.NATHERINE);
 
     this.distanceMeter = new DistanceMeter(this.canvas,
       this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
@@ -2817,15 +3056,15 @@ class N7e extends LitElement {
     this.terminal = new Terminal(this.canvas, this.spriteDef.TEXT_SPRITE);
 
     this.startListening();
-    this.progress();
+    this.enact();
 
     this.actionIndex = 0;
     this.defaultAction = {
-      type: AMDR.status.WAITING,
+      type: Amandarine.status.WAITING,
       priority: 0,
     };
     this.queueAction({
-      type: AMDR.status.RUNNING,
+      type: Amandarine.status.RUNNING,
       priority: 0,
       speed: 1,
       xPos: -80,
@@ -2837,20 +3076,9 @@ class N7e extends LitElement {
     this.canvasCtx = this.canvas.getContext('2d');
 
     this.clearCanvas();
-    this.horizon.progress(0, this.currentSpeed, true);
-    this.amdr.progress(this.currentSpeed, 0);
+    this.horizon.enact(0, this.currentSpeed, true);
+    this.amandarine.enact(this.currentSpeed, 0);
     this.style.opacity = 1;
-  }
-
-  queueAction(action) {
-    if (action.start) {
-      this.musics.stop();
-      this.loadSounds();
-    }
-
-    this.actionIndex++;
-    action.index = this.actionIndex;
-    this.actions.push(action);
   }
 
   setSpeed(opt_speed) {
@@ -2859,8 +3087,8 @@ class N7e extends LitElement {
 
   /***/
   setMusicMode(mode) {
-    //FIXME AMDR should check for the last activity.
-    this.amdr.introScriptTimer = 20000;
+    //FIXME Amandarine should check for the last activity.
+    this.amandarine.introScriptTimer = 20000;
     if (this.config.PLAY_MUSIC) {
       this.musics.stop();
       this.config.PLAY_MUSIC = false;
@@ -2877,10 +3105,14 @@ class N7e extends LitElement {
   }
 
   setGraphicsMode(mode) {
-    this.amdr.introScriptTimer = 20000;
+    this.amandarine.introScriptTimer = 20000;
 
     if (mode == -1) {
-      mode = (this.config.GRAPHICS_MODE+1)%10;
+      mode = (this.config.GRAPHICS_MODE+1)%5;
+    }
+
+    if (ODR.menu) {
+      ODR.menu = null;
     }
 
     this.config.GRAPHICS_MODE = mode;
@@ -2893,30 +3125,50 @@ class N7e extends LitElement {
         this.terminal.setMessages('STRIPES', delay);
         break;
       case 1: // Low
-        this.terminal.setMessages('☺ ROCK-BOTTOM', delay);
-        this.amdr.dust.reset();
+        this.terminal.setMessages('ROCK-BOTTOM', delay);
+        this.amandarine.dust.reset();
         break;
-      case 2: // Grayscale
-        this.terminal.setMessages('GRAYSCALE', delay);
-        this.canvasCtx.filter = 'grayscale(1)';
-        break;
-      case 3: // Daylight
+      case 2: // Daylight
         this.terminal.setMessages('DAYLIGHT', delay);
         this.canvas.style.opacity = 0.5;
         break;
-      case 9: // Extreme
+      case 3:
+        let mainMenu = ODR.menu = new Menu(ODR.canvas, {
+          title: 'graphics settings',
+          entries: [
+            'not yet implemented',
+            'not yet implemented',
+            'not yet implemented',
+            'not yet implemented',
+            'not yet implemented',
+            'not yet implemented',
+            'not yet implemented!!',
+            {title:'exit',exit:true}
+          ],
+          enter: (entryIndex,choice) => {
+            return null;
+          },
+        });
+        break;
+      case 4: // Naturing
         this.terminal.setMessages('NΑTURING', delay);
         break;
+      /*
+        this.terminal.setMessages('GRAYSCALE', delay);
+        this.canvasCtx.filter = 'grayscale(1)';
+        */
       default:
+      /*
         this.terminal.setMessages('SHADE ▻ '+(this.config.GRAPHICS_MODE - 3), delay);
         this.canvasCtx.filter = 'sepia(1) hue-rotate('+Math.floor((this.config.GRAPHICS_MODE - 4) * 72)+'deg)';
+        */
         break;
     }
 
     this.setSkyGradient(this.skyGradientCurrentValues,1);
     this.clearCanvas();
     this.horizon.horizonLine.draw();
-    this.amdr.progress(0, this.currentSpeed);
+    this.amandarine.enact(0, this.currentSpeed);
   }
 
   loadMusic(name, autoplay, lyrics) {
@@ -2995,9 +3247,9 @@ class N7e extends LitElement {
       var resourceTemplate =
       document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
 
-      for (var sound in N7e.sounds) {
+      for (var sound in OnDaRun.sounds) {
         var soundSrc =
-        resourceTemplate.getElementById(N7e.sounds[sound]).src;
+        resourceTemplate.getElementById(OnDaRun.sounds[sound]).src;
         soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
         let len = (soundSrc.length / 4) * 3;
         let str = atob(soundSrc);
@@ -3094,7 +3346,7 @@ class N7e extends LitElement {
   playIntro() {
     if (!this.activated && !this.crashed) {
       this.playingIntro = true;
-      this.amdr.playingIntro = true;
+      this.amandarine.playingIntro = true;
 
       // CSS animation definition.
 
@@ -3112,17 +3364,17 @@ class N7e extends LitElement {
   startGame() {
     this.runningTime = 0;
     this.playingIntro = false;
-    this.amdr.playingIntro = false;
+    this.amandarine.playingIntro = false;
     this.playCount++;
 
     // Handle tabbing off the page. Pause the current game.
-    document.addEventListener(N7e.events.VISIBILITY,
+    document.addEventListener(OnDaRun.events.VISIBILITY,
       this.onVisibilityChange.bind(this));
 
-    window.addEventListener(N7e.events.BLUR,
+    window.addEventListener(OnDaRun.events.BLUR,
       this.onVisibilityChange.bind(this));
 
-    window.addEventListener(N7e.events.FOCUS,
+    window.addEventListener(OnDaRun.events.FOCUS,
       this.onVisibilityChange.bind(this));
   }
 
@@ -3147,7 +3399,7 @@ class N7e extends LitElement {
 
   }
 
-  updateSkyGradient(deltaTime) {
+  enactSkyGradient(deltaTime) {
     if (0 == this.skyGradientDuration) {
       return;
     }
@@ -3183,17 +3435,16 @@ class N7e extends LitElement {
         this.skyGradientDuration = 0;
       }
     }
-
   }
 
-  progress() {
+  enact() {
     // Filter ended action(s).
-    this.progressPending = false;
+    this.enactPending = false;
 
     /*
     if (this.playing)
-      this.amdr.assignAction({
-        type: AMDR.status.RUNNING,
+      this.amandarine.assignAction({
+        type: Amandarine.status.RUNNING,
         priority: 0,
       }, this.currentSpeed);
       */
@@ -3223,7 +3474,16 @@ class N7e extends LitElement {
       }
     }
 
-    this.updateSkyGradient(deltaTime);
+    if (this.menu) {
+      this.enactSkyGradient(deltaTime);
+      this.clearCanvas();
+      this.menu = this.menu.enact(deltaTime);
+      this.scheduleNextEnact();
+      return;
+    }
+
+
+    this.enactSkyGradient(deltaTime);
     this.clearCanvas();
 
     if (this.playing) {
@@ -3235,13 +3495,13 @@ class N7e extends LitElement {
 
         let alpha = this.actions[0] ? (3000-this.actions[0].timer)/3000 : 0;
           if (alpha < 0) alpha = 0;
-        this.horizon.progress(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
+        this.horizon.enact(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
 
         if (alpha > 0.95) {
           let crashPoint = this.actions[0].boxes[0].intersection(this.actions[0].boxes[1]).center();
           this.canvasCtx.drawImage(ODR.spriteGUI,
-              N7e.spriteDefinition.CRASH.x,
-              N7e.spriteDefinition.CRASH.y,
+              OnDaRun.spriteDefinition.CRASH.x,
+              OnDaRun.spriteDefinition.CRASH.y,
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
               crashPoint.x - this.config.CRASH_WIDTH/2, crashPoint.y - this.config.CRASH_HEIGHT/2,
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
@@ -3249,7 +3509,7 @@ class N7e extends LitElement {
 
         this.gameOverPanel.draw();
       } else {
-        this.horizon.progress(deltaTime, this.currentSpeed, hasObstacles, this.inverted, 1);
+        this.horizon.enact(deltaTime, this.currentSpeed, hasObstacles, this.inverted, 1);
       }
 
       // Check for collisions.
@@ -3257,7 +3517,7 @@ class N7e extends LitElement {
 
       if (hasObstacles) {
         for (let i = 0; obstacle = this.horizon.obstacles[i]; i++) {
-          obstacle.crash = checkForCollision(obstacle, this.amdr, ODR.config.SHOW_COLLISION && this.canvasCtx);
+          obstacle.crash = checkForCollision(obstacle, this.amandarine, ODR.config.SHOW_COLLISION && this.canvasCtx);
           if (obstacle.crash) {
             break;
           }
@@ -3275,7 +3535,7 @@ class N7e extends LitElement {
       } else if (!this.crashed) {
 
         this.queueAction({
-          type: AMDR.status.CRASHED,
+          type: Amandarine.status.CRASHED,
           priority: 3,
           boxes: obstacle.crash,
         }, this.currentSpeed);
@@ -3283,7 +3543,7 @@ class N7e extends LitElement {
         this.gameOver(obstacle);
       }
 
-      let playAchievementSound = this.distanceMeter.progress(deltaTime,
+      let playAchievementSound = this.distanceMeter.enact(deltaTime,
         Math.ceil(this.distanceRan));
 
       if (playAchievementSound) {
@@ -3315,27 +3575,18 @@ class N7e extends LitElement {
         }
       }
     } else if (!this.crashed) {
-      this.horizon.progress(0, 6, true);
-
-      this.showKeyDelta = !!this.showKeyDelta ? this.showKeyDelta : 1;
-      this.showKeyDelta += deltaTime;
-      if (!IS_MOBILE && this.showKeyDelta > 2000){
-        let xMap = [2,1,-2,-3,-2,1], yMap = [1,0,-2,-2,-2,0];
-        this.canvasCtx.drawImage(ODR.spriteGUI, 0, 96, 105, 54,
-          Math.round(this.amdr.xPos + xMap[this.amdr.currentFrame] + 20),
-          Math.round(this.amdr.yPos + yMap[this.amdr.currentFrame] - 47), 105, 54);
-      }
+      this.horizon.enact(0, 6, true);
     } else {
-        this.horizon.progress(0, 0, false, this.inverted, 1);
+        this.horizon.enact(0, 0, false, this.inverted, 1);
         if (this.gameOverPanel) {
           this.gameOverPanel.draw();
         }
-        this.distanceMeter.progress(0, Math.ceil(this.distanceRan))
+        this.distanceMeter.enact(0, Math.ceil(this.distanceRan))
     }
 
     let a = this.actions[0];
-    this.amdr.progressActionQueue(now, deltaTime, this.currentSpeed);
-    this.terminal.progress(deltaTime);
+    this.amandarine.handleActionQueue(now, deltaTime, this.currentSpeed);
+    this.terminal.enact(deltaTime);
 
     if (this.playLyrics && this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length) {
       let time = this.audioContext.currentTime - this.currentSong.startTime;
@@ -3345,7 +3596,7 @@ class N7e extends LitElement {
       }
     }
 
-    this.scheduleNextProgress();
+    this.scheduleNextEnact();
   }
 
   handleEvent(e) {
@@ -3362,27 +3613,31 @@ class N7e extends LitElement {
           this.onKeyUp(e);
         break;
       }
-    }.bind(this))(e.type, N7e.events);
+    }.bind(this))(e.type, OnDaRun.events);
   }
 
   startListening() {
     // Keys.
-    document.addEventListener(N7e.events.KEYDOWN, this);
-    document.addEventListener(N7e.events.KEYUP, this);
+    document.addEventListener(OnDaRun.events.KEYDOWN, this);
+    document.addEventListener(OnDaRun.events.KEYUP, this);
 
     if (!IS_MOBILE) {
-      document.addEventListener(N7e.events.MOUSEDOWN, this);
-      document.addEventListener(N7e.events.MOUSEUP, this);
+      /*
+      document.addEventListener(OnDaRun.events.MOUSEDOWN, this);
+      document.addEventListener(OnDaRun.events.MOUSEUP, this);
+      */
     }
   }
 
   stopListening() {
-    document.removeEventListener(N7e.events.KEYDOWN, this);
-    document.removeEventListener(N7e.events.KEYUP, this);
+    document.removeEventListener(OnDaRun.events.KEYDOWN, this);
+    document.removeEventListener(OnDaRun.events.KEYUP, this);
 
     if (!IS_MOBILE) {
-      document.removeEventListener(N7e.events.MOUSEDOWN, this);
-      document.removeEventListener(N7e.events.MOUSEUP, this);
+      /*
+      document.removeEventListener(OnDaRun.events.MOUSEDOWN, this);
+      document.removeEventListener(OnDaRun.events.MOUSEUP, this);
+      */
     }
   }
 
@@ -3397,53 +3652,47 @@ class N7e extends LitElement {
       e.preventDefault();
     }
 
-    if (this.crashed && e.type == N7e.events.TOUCHSTART && e.currentTarget == this.containerEl) {
-      this.restart();
-    }
-
     if (e.keyCode == '77') {
-      this.consoleButtons.CONSOLE_MUSIC.dir = 1;
+      this.consoleButtons.CONSOLE_A.dir = 1;
     } else if (e.keyCode == '71') {
-      this.consoleButtons.CONSOLE_GRAPHICS.dir = 1;
+      this.consoleButtons.CONSOLE_B.dir = 1;
     }
 
     let inputType = null;
-    if (e.code == 'ShiftRight' || N7e.keycodes.JUMP[e.keyCode]) {
-      inputType = AMDR.status.JUMPING;
-    } else if (e.code == 'ShiftLeft' || N7e.keycodes.SLIDE[e.keyCode]) {
-      inputType = AMDR.status.SLIDING;
-    } else if (e.type == N7e.events.MOUSEDOWN) {
-      inputType = e.button == 0 ? AMDR.status.SLIDING : AMDR.status.JUMPING;
+    if (e.code == 'ShiftRight' || OnDaRun.keycodes.JUMP[e.keyCode]) {
+      inputType = Amandarine.status.JUMPING;
+    } else if (e.code == 'ShiftLeft' || OnDaRun.keycodes.SLIDE[e.keyCode]) {
+      inputType = Amandarine.status.SLIDING;
+    } else if (e.type == OnDaRun.events.MOUSEDOWN) {
+      inputType = e.button == 0 ? Amandarine.status.SLIDING : Amandarine.status.JUMPING;
     }
 
     switch(inputType) {
-      case AMDR.status.JUMPING:
+      case Amandarine.status.JUMPING:
         this.consoleButtons.CONSOLE_RIGHT.dir = 1;
         break;
-      case AMDR.status.SLIDING:
+      case Amandarine.status.SLIDING:
         this.consoleButtons.CONSOLE_LEFT.dir = 1;
         break;
       default:;
     }
 
-    // Block all input-based actions after a crash or in story mode.
-    if (!this.crashed && (0 == this.actions.length || !this.actions[0].story)) {
+    /*if (0 == this.actions.length || !this.actions[0].story)*/ {
 
       let action;
-      if (inputType == AMDR.status.JUMPING) {
+      if (inputType == Amandarine.status.JUMPING) {
 
-        action = this.amdr.newAction(this.actions, AMDR.status.JUMPING);
+        action = this.amandarine.newAction(this.actions, Amandarine.status.JUMPING);
         action.begin = action.begin || this.time;
 
         if (!this.playing) {
           action.start = true;
-          //this.progress();
         }
 
-      } else if (this.playing && inputType == AMDR.status.SLIDING) {
+      } else if (inputType == Amandarine.status.SLIDING) {
         e.preventDefault(); //Test if this is needed.
 
-        action = this.amdr.newAction(this.actions, AMDR.status.SLIDING);
+        action = this.amandarine.newAction(this.actions, Amandarine.status.SLIDING);
         action.begin = action.begin || this.time;
       }
 
@@ -3455,7 +3704,6 @@ class N7e extends LitElement {
   }
 
   onKeyUp(e) {
-
     var keyCode = String(e.keyCode);
 
     if (keyCode == '67') {
@@ -3464,14 +3712,14 @@ class N7e extends LitElement {
       return;
     } else if (keyCode == '77') {
       /* Music toggle */
-      this.consoleButtons.CONSOLE_MUSIC.dir = -1;
+      this.consoleButtons.CONSOLE_A.dir = -1;
       this.setMusicMode(-1);
       return;
     } else if (keyCode == '71' || (keyCode <= 57 && keyCode >= 48)) {
       /* Graphics Mode switches */
-      this.consoleButtons.CONSOLE_GRAPHICS.dir = -1;
-      if (keyCode <= 57 && keyCode >= 48) {
-        this.setGraphicsMode(keyCode - 48);
+      this.consoleButtons.CONSOLE_B.dir = -1;
+      if (keyCode <= 53 && keyCode >= 49) {
+        this.setGraphicsMode(keyCode - 49);
       } else {
         this.setGraphicsMode(-1);
       }
@@ -3479,24 +3727,20 @@ class N7e extends LitElement {
     }
 
     let inputType;
-    if (e.code == 'ShiftRight' || N7e.keycodes.JUMP[keyCode]) {
-      inputType = AMDR.status.JUMPING;
-    } else if (e.code == 'ShiftLeft' || N7e.keycodes.SLIDE[keyCode]) {
-      inputType = AMDR.status.SLIDING;
-    } else if (e.type == N7e.events.MOUSEUP) {
-      inputType = e.button == 0 ? AMDR.status.JUMPING : AMDR.status.SLIDING;
-    }
-
-    if (this.actions.length && this.actions[0].story) {
-      return;
+    if (e.code == 'ShiftRight' || OnDaRun.keycodes.JUMP[keyCode]) {
+      inputType = Amandarine.status.JUMPING;
+    } else if (e.code == 'ShiftLeft' || OnDaRun.keycodes.SLIDE[keyCode]) {
+      inputType = Amandarine.status.SLIDING;
+    } else if (e.type == OnDaRun.events.MOUSEUP) {
+      inputType = e.button == 0 ? Amandarine.status.JUMPING : Amandarine.status.SLIDING;
     }
 
     /* Set console animation status */
     switch(inputType) {
-      case AMDR.status.JUMPING:
+      case Amandarine.status.JUMPING:
         this.consoleButtons.CONSOLE_RIGHT.dir = -1;
         break;
-      case AMDR.status.SLIDING:
+      case Amandarine.status.SLIDING:
         this.consoleButtons.CONSOLE_LEFT.dir = -1;
         break;
       default:
@@ -3508,12 +3752,7 @@ class N7e extends LitElement {
       this.activeActions[inputType] = null;
     }
 
-    if (!this.crashed && action && inputType == AMDR.status.JUMPING) {
-
-      if (action.start) {
-        this.setSpeed(this.config.SPEED);
-        this.play();
-      }
+    if (action && inputType == Amandarine.status.JUMPING) {
 
       if (action.priority == 0) {
         action.end = this.time;
@@ -3522,7 +3761,7 @@ class N7e extends LitElement {
         action.priority = 1;
       }
 
-    } else if (action && inputType == AMDR.status.SLIDING) {
+    } else if (action && inputType == Amandarine.status.SLIDING) {
 
       if (action.priority == 0) {
         action.end = this.time;
@@ -3531,31 +3770,21 @@ class N7e extends LitElement {
         action.priority = 1;
       }
 
-    } else if (this.crashed) {
-      // Check that enough time has elapsed before allowing jump key to restart.
-      var deltaTime = getTimeStamp() - this.crashedTime;
-
-      if (N7e.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
-      (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
-        inputType == AMDR.status.JUMPING)) {
-
-          if (this.raqId) {
-            cancelAnimationFrame(this.raqId);
-            this.raqId = 0;
-          }
-          this.restart();
-        }
-    } else if (this.paused && inputType == AMDR.status.JUMPING) {
+    } else if (this.paused && inputType == Amandarine.status.JUMPING) {
       // Reset the jump state
-      this.amdr.reset();
+      this.amandarine.reset();
       this.play();
     }
   }
 
   queueAction(action) {
+    if (this.menu && action.control) {
+      this.menu.queueAction(action);
+      return;
+    }
+
     if (action.start) {
       this.musics.stop();
-      this.loadSounds();
     }
 
     this.actionIndex++;
@@ -3565,13 +3794,13 @@ class N7e extends LitElement {
 
   isLeftClickOnCanvas(e) {
     return e.button != null && e.button < 2 &&
-      e.type == N7e.events.MOUSEUP && e.target == this.canvas;
+      e.type == OnDaRun.events.MOUSEUP && e.target == this.canvas;
   }
 
-  scheduleNextProgress() {
-    if (!this.progressPending) {
-      this.progressPending = true;
-      this.raqId = requestAnimationFrame(this.progress.bind(this));
+  scheduleNextEnact() {
+    if (!this.enactPending) {
+      this.enactPending = true;
+      this.raqId = requestAnimationFrame(this.enact.bind(this));
     }
   }
 
@@ -3601,14 +3830,14 @@ class N7e extends LitElement {
       this.sepia = 1.0;
       */
       this.clearCanvas();
-      this.horizon.progress(0, 0, true);
+      this.horizon.enact(0, 0, true);
     }
 
     //this.stop();
     this.crashed = true;
     this.distanceMeter.acheivement = false;
 
-    this.amdr.progress(100, this.currentSpeed, this.actions[0]);
+    this.amandarine.enact(100, this.currentSpeed, this.actions[0]);
 
     if (!this.gameOverPanel) {
       this.gameOverPanel = new GameOverPanel(this.canvas,
@@ -3649,7 +3878,7 @@ class N7e extends LitElement {
     this.crashedTime = this.time;
   }
 
-  setNeedsUpdate(deltaTime) {
+  setNeedsEnact(deltaTime) {
     if (this.time + deltaTime > this.stoppingTime) {
       this.stoppingTime = this.time + deltaTime;
     }
@@ -3685,7 +3914,7 @@ class N7e extends LitElement {
       this.playing = true;
       this.paused = false;
       this.time = getTimeStamp();
-      //this.progress();
+      //this.enact();
       this.terminal.setMessages("go go go!!",2000);
     }
   }
@@ -3723,10 +3952,10 @@ class N7e extends LitElement {
       this.clearCanvas();
       this.distanceMeter.reset(this.highestScore);
       this.horizon.reset();
-      this.amdr.reset();
+      this.amandarine.reset();
       this.playSound(this.soundFx.SOUND_SCORE,0.2);
       this.invert(true);
-      this.progress();
+      this.enact();
       this.gameOverPanel.timer = 0;
       this.musics.stop();
       this.isStopping = false;
@@ -3738,31 +3967,30 @@ class N7e extends LitElement {
     if (document.hidden || document.webkitHidden || e.type == 'blur' || document.visibilityState != 'visible') {
       this.stop();
     } else if (!this.crashed) {
-      this.amdr.reset();
+      this.amandarine.reset();
       this.play();
     }
   }
 
   invert(reset) {
     if (reset) {
-      document.body.classList.toggle(N7e.classes.INVERTED, false);
+      document.body.classList.toggle(OnDaRun.classes.INVERTED, false);
       this.invertTimer = 0;
       this.inverted = false;
     } else {
-      this.inverted = document.body.classList.toggle(N7e.classes.INVERTED,
-        this.invertTrigger);
-      }
+      this.inverted = document.body.classList.toggle(OnDaRun.classes.INVERTED, this.invertTrigger);
+    }
 
-      this.setSkyGradient(this.inverted ? ODR.config.SKY.NIGHT : ODR.config.SKY.DAY, 3000);
+    this.setSkyGradient(this.inverted ? ODR.config.SKY.NIGHT : ODR.config.SKY.DAY, 3000);
   }
 }
 
-N7e.defaultDimensions = {
+OnDaRun.defaultDimensions = {
   WIDTH: DEFAULT_WIDTH,
   HEIGHT: 200
 };
 
-N7e.Configurations = {
+OnDaRun.Configurations = {
   ACCELERATION: 0.00025,
   BG_CLOUD_SPEED: 0.2,
   BOTTOM_PAD: 10,
@@ -3791,7 +4019,7 @@ N7e.Configurations = {
   SLIDE_FACTOR: 1,
   SPEED: 6,
   SHOW_COLLISION: false,
-  GRAPHICS_MODE: 9,
+  GRAPHICS_MODE: 4,
   SKY: {
     DAY: [Math.floor(221*0.8), Math.floor(238*0.8), Math.floor(255*0.9), 238, 238, 255],
     //NIGHT: [68,136,170,102,153,187],
@@ -3818,9 +4046,8 @@ N7e.Configurations = {
   ],
 };
 
-N7e.classes = {
+OnDaRun.classes = {
   CANVAS: 'runner-canvas',
-  CONTAINER: 'runner-container',
   CRASHED: 'crashed',
   INVERTED: 'inverted',
   SNACKBAR: 'snackbar',
@@ -3836,7 +4063,7 @@ N7e.classes = {
   CONSOLE_RESET: 'runner-reset-button',
 };
 
-N7e.events = {
+OnDaRun.events = {
   ANIM_END: 'webkitAnimationEnd',
   CLICK: 'click',
   KEYDOWN: 'keydown',
@@ -3852,7 +4079,7 @@ N7e.events = {
   LOAD: 'load'
 };
 
-N7e.spriteDefinition = {
+OnDaRun.spriteDefinition = {
   VELOTA: { x: 0, y: 0 },
   ROTATA: { x: 0, y: 52 },
   CACTUS_LARGE: { x: 369, y: 0 },
@@ -3870,7 +4097,7 @@ N7e.spriteDefinition = {
   STAR: { x: 1114, y: 0 }
 };
 
-N7e.sounds = {
+OnDaRun.sounds = {
   BUTTON_PRESS: 'offline-sound-press',
   SOUND_HIT: 'offline-sound-hit',
   SOUND_SCORE: 'offline-sound-reached',
@@ -3881,9 +4108,10 @@ N7e.sounds = {
   SOUND_OGGG: 'offline-sound-oggg',
   SOUND_QUACK: 'offline-sound-quack',
   SOUND_BICYCLE: 'offline-sound-bicycle',
+  SOUND_BLIP: 'offline-sound-blip',
 };
 
-N7e.keycodes = {
+OnDaRun.keycodes = {
   JUMP: { '38': 1, '32': 1, '39': 1 },  // Up, spacebar, Right
   SLIDE: { '37': 1, '40': 1 },  // Left, Down
   RESTART: { '13': 1 }  // Enter
@@ -3896,7 +4124,7 @@ Obstacle.types = [
     type: 'CACTUS_SMALL',
     width: 17,
     height: 35,
-    yPos: N7e.defaultDimensions.HEIGHT - 45,
+    yPos: OnDaRun.defaultDimensions.HEIGHT - 45,
     multipleSpeed: 4,
     minGap: 120,
     minSpeed: 0,
@@ -3910,7 +4138,7 @@ Obstacle.types = [
     type: 'CACTUS_LARGE',
     width: 25,
     height: 50,
-    yPos: N7e.defaultDimensions.HEIGHT - 60,
+    yPos: OnDaRun.defaultDimensions.HEIGHT - 60,
     multipleSpeed: 7,
     minGap: 120,
     minSpeed: 0,
@@ -3925,12 +4153,12 @@ Obstacle.types = [
     width: 46,
     height: 38,
     yPos: [
-      N7e.defaultDimensions.HEIGHT - 50,
-      N7e.defaultDimensions.HEIGHT - 75,
-      N7e.defaultDimensions.HEIGHT - 100,
-      N7e.defaultDimensions.HEIGHT - 125,
-      N7e.defaultDimensions.HEIGHT - 150,
-      N7e.defaultDimensions.HEIGHT - 175,
+      OnDaRun.defaultDimensions.HEIGHT - 50,
+      OnDaRun.defaultDimensions.HEIGHT - 75,
+      OnDaRun.defaultDimensions.HEIGHT - 100,
+      OnDaRun.defaultDimensions.HEIGHT - 125,
+      OnDaRun.defaultDimensions.HEIGHT - 150,
+      OnDaRun.defaultDimensions.HEIGHT - 175,
     ], // Variable height.
     multipleSpeed: 999,
     // minSpeed: 8.5,
@@ -3951,12 +4179,12 @@ Obstacle.types = [
     width: 46,
     height: 38,
     yPos: [
-      N7e.defaultDimensions.HEIGHT - 50,
-      N7e.defaultDimensions.HEIGHT - 75,
-      N7e.defaultDimensions.HEIGHT - 100,
-      N7e.defaultDimensions.HEIGHT - 125,
-      N7e.defaultDimensions.HEIGHT - 150,
-      N7e.defaultDimensions.HEIGHT - 175,
+      OnDaRun.defaultDimensions.HEIGHT - 50,
+      OnDaRun.defaultDimensions.HEIGHT - 75,
+      OnDaRun.defaultDimensions.HEIGHT - 100,
+      OnDaRun.defaultDimensions.HEIGHT - 125,
+      OnDaRun.defaultDimensions.HEIGHT - 150,
+      OnDaRun.defaultDimensions.HEIGHT - 175,
     ], // Variable height.
     multipleSpeed: 999,
     // minSpeed: 8.5,
@@ -3976,7 +4204,7 @@ Obstacle.types = [
     type: 'VELOTA',
     width: 52,
     height: 52,
-    yPos: N7e.defaultDimensions.HEIGHT - 62,
+    yPos: OnDaRun.defaultDimensions.HEIGHT - 62,
     multipleSpeed: 999,
     minSpeed: 0,
     minGap: 100,
@@ -3993,7 +4221,7 @@ Obstacle.types = [
     type: 'ROTATA',
     width: 52,
     height: 52,
-    yPos: N7e.defaultDimensions.HEIGHT - 62,
+    yPos: OnDaRun.defaultDimensions.HEIGHT - 62,
     multipleSpeed: 999,
     minSpeed: 0,
     minGap: 100,
@@ -4019,7 +4247,7 @@ Obstacle.types.forEach(type => {
 HorizonLine.dimensions = {
   WIDTH: 600,
   HEIGHT: 23,
-  YPOS: N7e.defaultDimensions.HEIGHT-23
+  YPOS: OnDaRun.defaultDimensions.HEIGHT-23
 };
 
 Cloud.config = {
@@ -4027,7 +4255,7 @@ Cloud.config = {
   MAX_CLOUD_GAP: 400,
   MAX_SKY_LEVEL: 30,
   MIN_CLOUD_GAP: 50,
-  MIN_SKY_LEVEL: N7e.defaultDimensions.HEIGHT - 79,
+  MIN_SKY_LEVEL: OnDaRun.defaultDimensions.HEIGHT - 79,
   WIDTH: 92
 };
 
@@ -4042,9 +4270,9 @@ NightMode.config = {
   NUM_STARS: 15,
   STAR_SIZE: 10,
   STAR_SPEED: 0.07,
-  STAR_MAX_Y: N7e.defaultDimensions.HEIGHT - 50,
+  STAR_MAX_Y: OnDaRun.defaultDimensions.HEIGHT - 50,
 };
 
 NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
 
-customElements.define('n7e-ondarun', N7e);
+customElements.define('n7e-ondarun', OnDaRun);
