@@ -1,0 +1,43 @@
+Privacy Policy
+==============
+
+Amandarine Frontier Project (https://amandarine-frontier.firebaseapp.com) take privacy of your personal information seriously. This Privacy Policy aim to describe how we are commited to protect your personal information.
+
+:: Information collected ::
+
+There will be no other use of the linked social media accounts' data that was not purposely made public by the players themselves. We only use linked accounts for authentication purpose. The game play will be anonymously collected as usage data, only for improving the overall game plays for the project and will be provided anonymously to staffs. We are storing emails and display names from the authentication services but they will not be used by us.
+
+:: Your Public Information ::
+
+Your social media account will not be disclosed if not decided by yourself. The project will allow you to create a nickname and will give you a personal ID to indicate yourself. You are allowed to disclose your linked services and that will only be by your decision.
+
+:: Security Of Data ::
+The security of your data is very important to us but electronic storage is not 100% secure. Since we only rely on authentication service providers, we don't collect or store any password.
+
+:: Links ::
+
+The policy will only be applied to the project alone and does not cover any linked websites. We are not sharing any information with these linked website unless they are the authentication service provider that you are using them to authenticate yourself for us.
+
+:: Service Providers ::
+
+We use third parties' facilities to provide the authentication and sign on services. These parties have granted access to your personal data before the authentication.
+
+:: Tracking & Cookies Data ::
+
+This website uses a cookie to record preferences for individual users. They are some small text data and cannot be used to run harmful programs on your computer and can only be read by the webserver.
+
+:: Legal Requirements ::
+
+We may disclose your personal information if required to do so by law or in the good-faith belief that such action is necessary to:
+
+1. conform to the requirements of the law or comply with legal process served on The Amandarine Frontier Project or the Site;
+2. protect and defend the rights or property of The Amandarine Frontier Project; or
+3. act in urgent circumstances to protect personal safety of users of The Amandarine Frontier Project, its websites, or the public.
+
+:: Changes To This Privacy Policy ::
+
+We may update our Privacy Policy from time to time and will notify you of any change by the application's notification system. 
+
+:: Contacting us:
+
+If you have any concern about this privacy policy, please contact cumino.acid@gmail.com

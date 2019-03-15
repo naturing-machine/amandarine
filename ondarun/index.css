@@ -50,6 +50,14 @@ body.inverted {
   z-index: 5;
 }
 
+#redcross {
+  position: absolute;
+  top: 0px;
+  left: 129px;
+  -webkit-transition: all 0.5s ease-out;
+  z-index: 5;
+}
+
 .banner-off-screen {
   top: -32px !important;
   opacity: 0.5;
@@ -64,4 +72,3 @@ body.inverted {
 #offline-resources {
   display: none;
 }
-
