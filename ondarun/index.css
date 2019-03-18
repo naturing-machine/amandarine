@@ -22,6 +22,10 @@ body.inverted {
   background-color: cyan;
 }
 
+n7e-ondaarun {
+  opacity: 0;
+}
+
 .hidden {
   display: none;
 }

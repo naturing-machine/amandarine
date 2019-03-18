@@ -1572,7 +1572,6 @@ class A8e {
 
         // Drag the scene slower on crashing.
         ODR.setSpeed(Math.max(0, action.lagging * (3000-action.timer)/3000));
-
       } break;
       default:;
     }
@@ -1751,8 +1750,8 @@ A8e.animFrames = {
     msPerFrame: 1000 / 6
   },
   RUNNING: {
-    frames: [0, 40, 80, 120, 160, 200, 240, 280],
-    msPerFrame: 1000 / 24
+    frames: [0, 40, 80, 120, 120, 160, 200, 240, 280, 280],
+    msPerFrame: 1000 / 28
   },
   CRASHED: {
     frames: [0,40],
@@ -1873,6 +1872,7 @@ class Text {
         case '+': return 840;
         case '[': return 910;
         case ']': return 924;
+        case '%': return 952;
         default: return -code;
       }
     });
@@ -1905,10 +1905,10 @@ class Text {
         continue;
       }
       canvasCtx.drawImage(image,
-        x, 0, 14, 14,
+        x, 0, 14, 16,
         ~~offsetX + cur * glyphW,
         offsetY + glyphH * l,
-          14, 14);
+          14, 16);
       cur++;
     }
   }
@@ -2146,24 +2146,16 @@ DistanceMeter.config = {
   FLASH_ITERATIONS: 3
 };
 
-class Menu {
-  constructor(canvas, menu) {
-    this.canvas = canvas;
-    this.canvasCtx  = canvas.getContext('2d');
-    this.model = menu;
+class Panel {
+  constructor() {
     this.actions = [];
-    this.displayEntry = this.model.currentEntry = this.model.currentEntry  || 0;
+    this.submenu = null;
     this.buttons = [null,null];
-    this.xOffset = 0;
-    this.yOffset = 0;
-    this.settingMenu = null;
-    this.subtitle = new Text(600/14,0).setText('press both #slide+#jump to select');
-    this.text = new Text(100);
   }
 
   queueAction(action) {
-    if (this.settingMenu) {
-      this.settingMenu.queueAction(action);
+    if (this.submenu) {
+      this.submenu.queueAction(action);
       return;
     }
 
@@ -2174,6 +2166,117 @@ class Menu {
         this.buttons[0] = action;
       }
     }
+
+    //TODO change double to action flag.
+    if (this.buttons[0] && this.buttons[1]) {
+      this.buttons = [null,null];
+      this.double = true;
+    } else {
+      this.double = false;
+    }
+  }
+}
+
+class TitlePanel extends Panel {
+  constructor(canvas) {
+    super();
+    this.canvas = canvas;
+    this.canvasCtx  = canvas.getContext('2d');
+    this.actions = [];
+    this.timer = 0;
+    this.ender = 0;
+  }
+
+  queueAction(action) {
+    if (this.dataReady && !this.ender) {
+      //super.queueAction(action);
+      this.ender = this.timer;
+    }
+  }
+
+  repaint(deltaTime) {
+    ODR.horizon.repaint(deltaTime, 0, false, false, 1);
+    this.timer += deltaTime;
+    let factorA = Math.sin(this.timer / 400);
+    let factorB = Math.sin(this.timer / 300);
+    let factorC = Math.sin(this.timer / 400);
+    let factorD = Math.sin(this.timer / 200);
+
+    let runout = 0;
+    if (this.ender) {
+      let f = 200;
+      let t = 0.8*(this.timer - this.ender);
+      runout = t - f;
+      runout = (f*f - runout*runout) / 1000 ;
+
+      if (runout < -200) {
+        ODR.music.load('offline-intro-music', ODR.config.PLAY_MUSIC);
+        let defaultAction = new DefaultAction(1);
+        defaultAction.setXPos = -100;
+        ODR.queueAction(defaultAction);
+        return null;
+      }
+    }
+
+    /* A AMANDARINE FRONTIER */
+    this.canvasCtx.drawImage(ODR.spriteGUI,
+      148,15,208,85,
+      300-120 + 21,
+      Math.round(3) + runout * 1.1,
+      208,85);
+    /* BB REDHAND */
+    this.canvasCtx.drawImage(ODR.spriteGUI,
+      125,100,37,30,
+      300-120 + 41 + Math.round(factorB),
+      Math.round(80 + 6 * factorB) + runout * 1.2,
+      37,30);
+    /* B AMANDARINE */
+    this.canvasCtx.drawImage(ODR.spriteGUI,
+      368,115,162,133,
+      300-120 + 37 + Math.round(factorC),
+      Math.round(20 + 3 * factorB) + runout * 1.35,
+      162,133);
+    /* C ONDARUN */
+    this.canvasCtx.drawImage(ODR.spriteGUI,
+      127,175,241,75,
+      300-120 + 0,
+      Math.round(100) + runout * 1.38,
+      241,75);
+    /* D TANGERINE */
+    this.canvasCtx.drawImage(ODR.spriteGUI,
+      368,16,99,97,
+      300-120 + 121 - Math.round(2 * factorC),
+      Math.round(35 + 2 * factorD) + runout * 1.4,
+      99,97);
+
+    let total = (ODR.music.songs['offline-intro-music'].progress + ODR.music.songs['offline-play-music'].progress) * 50;
+    if (total < 100) {
+      new Text(600/14,0).drawText("loading audio data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
+    } else {
+      if (this.timer < 15000) {
+        new Text(600/14,0).drawText("Amandarine Frontier:On Da Run! BETA 0.99", this.canvasCtx,0,180-Math.min(0,runout));
+      } else {
+        new Text(600/14,0).drawText("press #slide/#jump to continue.", this.canvasCtx,0,180-Math.min(0,runout));
+      }
+      this.dataReady = true;
+    }
+
+    return this;
+  }
+}
+
+class Menu extends Panel {
+  constructor(canvas, menu) {
+    super();
+    this.canvas = canvas;
+    this.canvasCtx  = canvas.getContext('2d');
+    this.model = menu;
+    this.actions = [];
+    this.displayEntry = this.model.currentEntry = this.model.currentEntry  || 0;
+    this.xOffset = 0;
+    this.yOffset = 0;
+    this.subtitle = new Text(600/14,0).setText('press both #slide+#jump to select');
+    this.text = new Text(100);
   }
 
   repaint(deltaTime) {
@@ -2181,12 +2284,9 @@ class Menu {
       Menu.playSound = null;
     }
 
-    let countHold = 0;
     for (let i = 0; i < 2; i++) {
       let action = this.buttons[i];
-      if (action && action.priority == 0) {
-        countHold ++;
-      } else if (action && action.priority == 1) {
+      if (action && action.priority == 1) {
         ODR.playSound(ODR.soundFx.SOUND_BLIP, 0.3);
         switch (action.type) {
           case A8e.status.JUMPING:
@@ -2205,10 +2305,11 @@ class Menu {
       }
     }
 
-    if (countHold == 2) {
+    if (this.double) {
+      this.double = false;
       /*
-      if (this.settingMenu) {
-        this.settingMenu = null;
+      if (this.submenu) {
+        this.submenu = null;
       }
       */
 
@@ -2239,7 +2340,7 @@ class Menu {
           }
           subEntries.push({title:'CANCEL',exit:true});
 
-          this.settingMenu = new Menu(this.canvas, {
+          this.submenu = new Menu(this.canvas, {
             name: entry.title,
             currentEntry: currentEntry,
             entries: subEntries,
@@ -2251,12 +2352,12 @@ class Menu {
                 if (N7e.user)
                   N7e.user.odrRef.child('settings/'+entry.name).set(selectedItem);
               }
-              this.settingMenu = null;
+              this.submenu = null;
             },
           });
-          this.settingMenu.xOffset = this.xOffset + 25;
-          this.settingMenu.yOffset = this.yOffset + 8;
-          this.settingMenu.subtitle = null;
+          this.submenu.xOffset = this.xOffset + 25;
+          this.submenu.yOffset = this.yOffset + 8;
+          this.submenu.subtitle = null;
 
         } else return this.model.enter(this.model.currentEntry, entry);
       }
@@ -2320,13 +2421,13 @@ class Menu {
     }
     this.canvasCtx.restore();
 
-    if (this.settingMenu) {
-      this.settingMenu.repaint(deltaTime);
+    if (this.submenu) {
+      this.submenu.repaint(deltaTime);
     }
 
-    if (this.settingMenu && this.settingMenu.model.name) {
+    if (this.submenu && this.submenu.model.name) {
       new Text(600/14,0).drawText(this.model.title, this.canvasCtx,0,10);
-      new Text(600/14,0).drawText(this.settingMenu.model.name, this.canvasCtx,0,30);
+      new Text(600/14,0).drawText(this.submenu.model.name, this.canvasCtx,0,30);
     } else if (this.model.title){
       new Text(600/14,0).drawText(this.model.title,this.canvasCtx,0,10);
     }
@@ -2346,7 +2447,7 @@ class TextEditor {
     this.buttons = [null,null];
     this.xOffset = 0;
     this.yOffset = 0;
-    this.settingMenu = null;
+    this.submenu = null;
     this.subtitle = new Text(600/14,0).setText('press both #slide+#jump to select');
 
     this.text = text;
@@ -2419,8 +2520,8 @@ class TextEditor {
     if (this.double) {
       this.double = false;
       /*
-      if (this.settingMenu) {
-        this.settingMenu = null;
+      if (this.submenu) {
+        this.submenu = null;
       }
       */
       if (this.curX == 6 && this.curY == 6) {
@@ -2540,7 +2641,7 @@ class GameOverPanel {
 
 GameOverPanel.dimensions = {
   TEXT_X: 0,
-  TEXT_Y: 14,
+  TEXT_Y: 150,
   TEXT_WIDTH: 86,
   TEXT_HEIGHT: 26,
   RESTART_WIDTH: 38,
@@ -3261,6 +3362,7 @@ class OnDaRun extends LitElement {
     consoleImage.src = 'assets/console/console.png';
     this.style.backgroundImage = 'url('+consoleImage.src+')';
 
+    /* HACK prevent initial transition */
     consoleImage.addEventListener('load', (e) => {
       this.style.transition = 'opacity 1s';
     });
@@ -3328,7 +3430,7 @@ class OnDaRun extends LitElement {
   init() {
 
     this.config.PLAY_MUSIC = true;
-    this.music.load('offline-intro-music', this.config.PLAY_MUSIC);
+    this.music.load('offline-intro-music', false);
     this.music.load('offline-play-music', false);
     this.setSpeed();
 
@@ -3346,6 +3448,8 @@ class OnDaRun extends LitElement {
     this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
       this.config.GAP_COEFFICIENT);
 
+    this.menu = new TitlePanel(this.canvas);
+
     this.amandarine = new A8e(this.canvas, this.spriteDef.NATHERINE);
 
     this.distanceMeter = new DistanceMeter(this.canvas,
@@ -3360,9 +3464,6 @@ class OnDaRun extends LitElement {
 
     this.actionIndex = 0;
 
-    let defaultAction = new DefaultAction(1);
-    defaultAction.setXPos = -200;
-    this.queueAction(defaultAction);
 
     this.canvasCtx = this.canvas.getContext('2d');
 
@@ -3385,11 +3486,12 @@ class OnDaRun extends LitElement {
 
     this.introScriptTimer = 200;
     this.introScript = [
-      20000,"#tangerinen Da Run!\nAmandarine\n\nVERSION BETA 0.98",
-      20000,"Hi...",
+      20000,"Hi! Press #slide/#jump to start!",
       20000,"Just play already!",
       20000,"Didn't know you love the song that much!",
-      20000,"Man U will win ⚽\nYou know.",
+      20000,"Allow yourself to be a beginner. No one starts at the top.#<3",
+      20000,"Man.City will win ⚽\nYou know.",
+      20000,"You have no idea of the amount of HAPPINESS you brought into my life.",
       20000,'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.#<3',
       20000,'Never give up on something you really want #<3',
       20000,'You are my sunshine ☼#<3',
@@ -3401,7 +3503,7 @@ class OnDaRun extends LitElement {
   }
 
   setSpeed(opt_speed) {
-    this.currentSpeed = opt_speed || this.currentSpeed;
+    this.currentSpeed = opt_speed === undefined ? this.currentSpeed : opt_speed;
   }
 
   signIn() {
@@ -3490,7 +3592,7 @@ class OnDaRun extends LitElement {
     Object.assign(this.config, this.config.GRAPHICS_MODE_SETTINGS[mode]);
 
     if (this.menu && opt_showCustomMenu) {
-      if (this.menu.model.title == 'graphics settings') {
+      if (this.menu.model && this.menu.model.title == 'graphics settings') {
         this.menu = null;
         this.terminal.setMessages('CUSTOM GRAPHICS MODE', 5000);
         return;
@@ -4003,7 +4105,7 @@ class OnDaRun extends LitElement {
 
     if (keyCode <= 52 && keyCode >= 49) {
       /* Mapping 1,2,3,4 => 0,1,2,3 */
-      this.setGraphicsMode(keyCode - 48, true);
+      this.setGraphicsMode(keyCode - 49, true);
       return;
     }
   }
@@ -4398,8 +4500,9 @@ class OnDaRun extends LitElement {
 
                 /* Running into the scene
                   (A8e.config.START_X_POS + 200)*1000/FPS*/
-                if( action.timer > 3750 ) {
+                if( this.amandarine.xPos > this.amandarine.config.START_X_POS ) {
                   action.speed = 0;
+                  this.amandarine.xPos = this.amandarine.config.START_X_POS;
                   /* Setting speed to 0 turn DefaultAction into a waiting.
                   This is not very generic; that we may allow queue.replaceAction()
                   to replace a default with another that one may assign specific
@@ -4477,7 +4580,8 @@ class OnDaRun extends LitElement {
                       this.distanceMeter.reset(this.highestScore);
                       this.horizon.reset();
                       this.amandarine.reset();
-                      setTimeout(() => { this.music.load('offline-play-music', this.config.PLAY_MUSIC, this.config.NATHERINE_LYRICS); }, 1500);
+                      this.subtitle = null;
+                      setTimeout(() => { this.music.load('offline-play-music', this.config.PLAY_MUSIC); }, 1500);
                       break HANDLE_ACTION_QUEUE;
                     }
                   }
@@ -4522,6 +4626,7 @@ class OnDaRun extends LitElement {
                       action.speed = this.config.SPEED;
                       action.priority = 1;
                       this.setSkyGradient(ODR.config.SKY.DAY,3000);
+                      this.terminal.timer = 200;
                       /*
                       this.queueAction({
                         type: A8e.status.RUNNING,
@@ -4553,7 +4658,7 @@ class OnDaRun extends LitElement {
     if (this.activeAction)
       this.amandarine.enactAction(this.activeAction, deltaTime, speed);
     else {
-      console.log('No active action for repainting.');
+      //console.log('No active action for repainting.');
       //N7e.freeze = true;
     }
     //this.amandarine.repaint(deltaTime, speed, activeAction);
