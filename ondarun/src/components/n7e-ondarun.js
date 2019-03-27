@@ -28,11 +28,6 @@ var N7e = {
   userSigning: true,
 };
 
-function shapeSpeedDuration(speed, duration) {
-  let minPress = ODR.config.MIN_ACTION_PRESS + ODR.config.MIN_ACTION_PRESS_FACTOR*speed;
-  return duration * (ODR.config.MAX_ACTION_PRESS - minPress)/ODR.config.MAX_ACTION_PRESS + minPress;
-}
-
 function getRandomNum(min, max) {
   return ~~(Math.random() * (max - min + 1)) + min;
 }
@@ -271,9 +266,32 @@ class Obstacle {
       sourceWidth * this.size, sourceHeight,
       ~~this.xPos, ~~this.yPos,
       this.typeConfig.width * this.size, this.typeConfig.height);
+
+      /* TODO shadow
+    this.canvasCtx.save();
+    let ground = 150;
+    for( let i = 0,
+        dy = (ground-this.yPos)/10;
+            i < 13 && dy >= 0;
+                i++ ) {
+
+      let f = Math.pow(1.02, dy + i);
+      let y = ~~(187+dy+i);
+      if (y >= 200) break;
+      if (y < 187) continue;
+
+      this.canvasCtx.globalAlpha = (13 - i)/40;
+      this.canvasCtx.drawImage(this.typeConfig.shadow,
+        sourceX - this.spritePos.x, i, 40, 1,
+        ~~(300 - f*(300 - this.xPos)), y,
+        40, 1);
+    }
+    this.canvasCtx.restore();
+    */
+
   }
 
-  repaint(deltaTime, speed) {
+  forward(deltaTime, speed) {
     if (!this.remove) {
       /*
       if (this.typeConfig.speedOffset) {
@@ -342,7 +360,7 @@ class Particles {
   draw() {
   }
 
-  repaint(aging) {
+  forward(aging) {
     this.points = this.points.filter( point => {
       point.life -= aging;
       return point.life > 0;
@@ -414,7 +432,7 @@ class Cloud {
     } this.canvasCtx.restore();
   }
 
-  repaint(speed) {
+  forward(speed) {
     if (!this.remove) {
       this.xPos -= speed + speed * this.opacity;
       this.draw();
@@ -521,7 +539,7 @@ class Mountain {
     } this.canvasCtx.restore();
   }
 
-  repaint(speed) {
+  forward(speed) {
     if (!this.remove) {
       this.xPos -= speed;
       this.draw();
@@ -554,7 +572,7 @@ class NightMode {
     this.placeStars();
   }
 
-  repaint(activated, delta) {
+  forward(activated, delta) {
     // Moon phase.
     if (activated && 0 == this.opacity) {
       this.currentPhase = this.nextPhase;
@@ -756,7 +774,7 @@ class NightMode {
 
   reset() {
     //this.nextPhase = 0;
-    this.repaint(false);
+    this.forward(false);
   }
 }
 
@@ -790,10 +808,6 @@ class HorizonLine {
 
     this.xPos = 0;//[0, HorizonLine.dimensions.WIDTH];
     this.yPos = HorizonLine.dimensions.YPOS;
-  }
-
-  getRandomType() {
-      return Math.random() > this.bumpThreshold ? this.dimensions.WIDTH : 0;
   }
 
   generateGroundCache() {
@@ -944,7 +958,7 @@ class HorizonLine {
 
   }
 
-  repaint(deltaTime, speed) {
+  forward(deltaTime, speed) {
     var increment = speed * FPS / 1000 * deltaTime;
     if (ODR.config.GRAPHICS_GROUND_TYPE != 'DIRT') increment /= 3;
 
@@ -974,6 +988,7 @@ class Horizon {
     this.cloudFrequency = this.config.CLOUD_FREQUENCY;
     this.spritePos = spritePos;
     this.nightMode = null;
+    this.treX = !getRandomNum(0,3) ? 2800 : -20;
 
     // Cloud
     this.clouds = [];
@@ -999,36 +1014,50 @@ class Horizon {
     this.mountains = [];
   }
 
-  repaint(deltaTime, currentSpeed, repaintObstacles, showNightMode, alpha) {
+  forward(deltaTime, currentSpeed, forwardObstacles, showNightMode, alpha) {
     this.runningTime += deltaTime;
-    this.nightMode.repaint(showNightMode,deltaTime);
-    this.repaintClouds(deltaTime, currentSpeed, true);
-    this.repaintMountains(deltaTime, currentSpeed);
-    this.repaintClouds(deltaTime, currentSpeed);
-    this.horizonLine.repaint(deltaTime, currentSpeed);
+    this.nightMode.forward(showNightMode,deltaTime);
+    //FIXME Try sorting depth on single scene array.
+    this.forwardClouds(deltaTime, currentSpeed, true);
+    this.forwardMountains(deltaTime, currentSpeed);
+    this.forwardClouds(deltaTime, currentSpeed);
 
-    if (repaintObstacles) {
+    if (this.treX > -20) {
+      this.treX -= 3 + currentSpeed * 0.6 * FPS / 1000 * deltaTime;
+      this.canvasCtx.drawImage(ODR.spriteScene, 0, 0, 20, 22,
+        ~~this.treX, 155 + Math.abs(((~~this.treX)>>4)%4 - 2),
+        20, 22);
+
+        /*
+      if (this.treX < 600 && this.treX > 0)
+        ODR.terminal.setMessages('GRRRR...', 1000);
+        */
+    }
+
+    this.horizonLine.forward(deltaTime, currentSpeed);
+
+    if (forwardObstacles) {
       if (alpha == 1) {
-        this.repaintObstacles(deltaTime, currentSpeed);
+        this.forwardObstacles(deltaTime, currentSpeed);
       } else {
         this.canvasCtx.save();
         this.canvasCtx.globalAlpha = alpha;
-        this.repaintObstacles(deltaTime, currentSpeed);
+        this.forwardObstacles(deltaTime, currentSpeed);
         this.canvasCtx.restore();
       }
     }
   }
 
-  repaintClouds(deltaTime, speed, background) {
+  forwardClouds(deltaTime, speed, background) {
     var cloudSpeed = this.cloudSpeed / 1000 * deltaTime * speed;
     var numClouds = this.clouds.length;
 
     if (numClouds) {
       for (var i = numClouds - 1; i >= 0; i--) {
         if (background && this.clouds[i].opacity < 0.5) {
-          this.clouds[i].repaint(cloudSpeed);
+          this.clouds[i].forward(cloudSpeed);
         } else if (!background && this.clouds[i].opacity >= 0.5) {
-          this.clouds[i].repaint(cloudSpeed);
+          this.clouds[i].forward(cloudSpeed);
         }
       }
 
@@ -1052,7 +1081,7 @@ class Horizon {
     }
   }
 
-  repaintMountains(deltaTime, speed) {
+  forwardMountains(deltaTime, speed) {
     var mountainSpeed = this.mountainSpeed / 1000 * deltaTime * speed;
     var numMountains = this.mountains.length;
 
@@ -1060,7 +1089,7 @@ class Horizon {
       for (let j = 0; j < 2; j++) {
         for (let i = numMountains - 1; i >= 0; i--) {
           if (this.mountains[i].depth == j) {
-            this.mountains[i].repaint(mountainSpeed * (j ? 1.1 : 1));
+            this.mountains[i].forward(mountainSpeed * (j ? 1.1 : 1));
           }
         }
       }
@@ -1086,11 +1115,11 @@ class Horizon {
     }
   }
 
-  repaintObstacles(deltaTime, currentSpeed) {
+  forwardObstacles(deltaTime, currentSpeed) {
     // Obstacles, move to Horizon layer.
     for (let i = 0; i < this.obstacles.length; i++) {
       var obstacle = this.obstacles[i];
-      obstacle.repaint(deltaTime, currentSpeed);
+      obstacle.forward(deltaTime, currentSpeed);
     }
     // TODO better sort;
 
@@ -1145,64 +1174,82 @@ class Horizon {
       return;
     }
 
-    var obstacleTypeIndex = getRandomNum(0, Obstacle.types.length - 1);
-    var obstacleType = Obstacle.types[obstacleTypeIndex];
+    /*
+    let obstacleTypeIndex = (() => {
+      let idx;
+      do idx = getRandomNum(0, Obstacle.typeList.length - 1); while (idx == 4);
+      return idx;
+    })();
+    */
 
-    // Check for multiples of the same type of obstacle.
-    // Also check obstacle is available at current speed.
-    if (this.duplicateObstacleCheck(obstacleType.type)
-      || currentSpeed < obstacleType.minSpeed) {
-      this.addObstacle(currentSpeed);
-    } else {
-      var obstacleSpritePos = this.spritePos[obstacleType.type];
+    var obstacleType;
+    /*
+    let counter = [];
+    for (let i = 0; i < this.obstacleHistory.length; i++) {
+      let typeIndex = this.obstacleHistory[i].index;
+      counter[typeIndex] = counter[typeIndex] ? counter[type] + 1 : 1;
+    }
+    */
 
-      if (obstacleType.type == 'VELOTA') {
-        ODR.playSound(ODR.soundFx.SOUND_BICYCLE,0.5,false,0,1);
-      }
+    do {
+      // Check for multiples of the same type of obstacle.
+      // Also check obstacle is available at current speed.
+      obstacleType = Obstacle.getRandomType(currentSpeed);
+    } while(this.duplicateObstacleCheck(obstacleType));
 
-      if (obstacleType.type == 'LIVER' || obstacleType.type == 'RUBBER') {
+    var obstacleSpritePos = this.spritePos[obstacleType.name];
+    if (obstacleType.name == 'VELOTA') {
+      //ODR.playSound(ODR.soundFx.SOUND_BICYCLE,0.5,false,0,1);
+    }
 
-        if (!getRandomNum(0,5)) {
+    let obs;
 
-          // Sweepers
-          for (let i = -2; i <= 2; i+=getRandomNum(1,2)) {
-            let duck = new Obstacle(this.canvasCtx, obstacleType,
-            obstacleSpritePos, this.dimensions,
-            this.gapCoefficient, currentSpeed, obstacleType.width)
+    if (obstacleType.name == 'LIVER' || obstacleType.name == 'RUBBER') {
 
-            duck.currentFrame = getRandomNum(0, 5);
-            duck.yPos = OnDaRun.defaultDimensions.HEIGHT - ((i+5) * 25);
+      if (!getRandomNum(0,5)) {
 
-            duck.xPos += i*2
-            if (obstacleType.type == 'LIVER') {
-              duck.xPos += 30 * Math.abs(i);
-            } else {
-              duck.xPos += 70 + 30 * -Math.abs(i);
-            }
-            duck.xPos += getRandomNum(-10,10);
-            duck.yPos += getRandomNum(-2,2);
-            duck.speedFactor *= (0.8 + Math.random() * 0.2);
-
-            this.obstacles.push(duck);
-
-          }
-        } else {
-          let duck = new Obstacle(this.canvasCtx, obstacleType,
+        // Sweepers
+        for (let i = -2; i <= 2; i+=getRandomNum(1,2)) {
+          obs = new Obstacle(this.canvasCtx, obstacleType,
           obstacleSpritePos, this.dimensions,
           this.gapCoefficient, currentSpeed, obstacleType.width)
-          this.obstacles.push(duck);
+
+          obs.currentFrame = getRandomNum(0, 5);
+          obs.yPos = OnDaRun.defaultDimensions.HEIGHT - ((i+5) * 25);
+
+          obs.xPos += i*2
+          if (obstacleType.name == 'LIVER') {
+            obs.xPos += 30 * Math.abs(i);
+          } else {
+            obs.xPos += 70 + 30 * -Math.abs(i);
+          }
+          obs.xPos += getRandomNum(-10,10);
+          obs.yPos += getRandomNum(-2,2);
+          obs.speedFactor *= (0.8 + Math.random() * 0.2);
+
+          this.obstacles.push(obs);
         }
-
-      } else
-      this.obstacles.push(new Obstacle(this.canvasCtx, obstacleType,
-        obstacleSpritePos, this.dimensions,
-        this.gapCoefficient, currentSpeed, obstacleType.width));
-
-      this.obstacleHistory.unshift(obstacleType.type);
-
-      if (this.obstacleHistory.length > 1) {
-        this.obstacleHistory.splice(ODR.config.MAX_OBSTACLE_DUPLICATION);
+      } else {
+        obs = new Obstacle(this.canvasCtx, obstacleType,
+          obstacleSpritePos, this.dimensions,
+          this.gapCoefficient, currentSpeed, obstacleType.width);
+        this.obstacles.push(obs);
       }
+
+    } else {
+      obs = new Obstacle(this.canvasCtx, obstacleType,
+        obstacleSpritePos, this.dimensions,
+        this.gapCoefficient, currentSpeed, obstacleType.width);
+      this.obstacles.push(obs);
+
+      if (obstacleType === Obstacle.types.VELOTA)
+        ODR.playSound(ODR.soundFx.SOUND_BICYCLE,0.3,false,0,1);
+    }
+
+    this.obstacleHistory.unshift(obstacleType);
+
+    if (this.obstacleHistory.length > 1) {
+      this.obstacleHistory.splice(ODR.config.MAX_OBSTACLE_DUPLICATION);
     }
   }
 
@@ -1210,7 +1257,7 @@ class Horizon {
     var duplicateCount = 0;
 
     for (var i = 0; i < this.obstacleHistory.length; i++) {
-      duplicateCount = this.obstacleHistory[i] == nextObstacleType ?
+      duplicateCount = this.obstacleHistory[i] === nextObstacleType ?
         duplicateCount + 1 : 0;
     }
     return duplicateCount >= ODR.config.MAX_OBSTACLE_DUPLICATION;
@@ -1337,7 +1384,7 @@ class A8e {
     */
   }
 
-  getCollisionBoxes() {
+  get collisionBoxes() {
 //    switch (this.status) {
     switch (ODR.activeAction.type) {
       case A8e.status.SLIDING:
@@ -1369,7 +1416,7 @@ class A8e {
     // Simple outer bounds check.
     if (amandarineBox.intersects(obstacleBox)) {
       var collisionBoxes = obstacle.collisionBoxes;
-      var amandarineCollisionBoxes = this.getCollisionBoxes();
+      var amandarineCollisionBoxes = this.collisionBoxes;
 
       // Detailed axis aligned box check.
 
@@ -1440,7 +1487,7 @@ class A8e {
     }
   }
 
-  enactAction(action, deltaTime, speed) {
+  activate(action, deltaTime, speed) {
     console.assert(action && action.priority != -1, action);
 
     let adjustXToStart = () => {
@@ -1468,12 +1515,14 @@ class A8e {
       action.currentFrame = 0;
     }
 
+    if (action.type)
+
     switch (action.type) {
       case A8e.status.WAITING:
         if (action.heldStart) {
           if (action.timer - action.heldStart > 450) action.heldStart = action.timer - 450;
           action.currentFrame = 72 + ~~((action.timer - action.heldStart)/150);
-        } else {
+        } else if (!IS_MOBILE){
           //let xMap = [2,1,-2,-3,-2,1], yMap = [1,0,-2,-2,-2,0];
           let yMap = [0,2,3,2,0];
           this.canvasCtx.drawImage(ODR.spriteGUI, 0, 96, 105, 54,
@@ -1485,7 +1534,6 @@ class A8e {
 
         if (action.speed != speed) {
           let sp = action.speed - speed;
-          //if (speed) console.log('here')
           let increment = sp * FPS / 1000 * deltaTime;
           this.xPos += increment;
         } else {
@@ -1564,9 +1612,11 @@ class A8e {
 
         let timer = action.halfTime - action.timer;
 
-        action.currentFrame = action.dir == 1 ? 1 : 0;
+        action.currentFrame = action.dir == 1 ? 2 : 0;
+        if (action.timer > 25) action.currentFrame++;
+
         this.yPos = action.yCrashed
-          + ( this.config.GRAVITY_FACTOR/4 * timer * timer
+          + ( this.config.GRAVITY_FACTOR/2 * timer * timer
               - action.top * ODR.config.SCALE_FACTOR );
         this.xPos += deltaTime/10 * action.dir;
 
@@ -1581,8 +1631,31 @@ class A8e {
       ~~this.xPos, ~~this.yPos,
       this.config.WIDTH, this.config.HEIGHT);
 
+      /* TODO shadow
+    this.canvasCtx.save();
+
+    for( let i = 0,
+        dy = (this.groundYPos-this.yPos)/10;
+            i < 13 && dy >= 0;
+                i++ ) {
+
+      let f = Math.pow(1.02, dy + i);
+      let y = ~~(187+dy+i);
+      if (y >= 200) break;
+      if (y < 187) continue;
+
+      this.canvasCtx.globalAlpha = (13 - i)/40;
+      this.canvasCtx.drawImage(action.shadow,
+        action.frames[action.currentFrame], i, 40, 1,
+        ~~(300 - f*(300 - this.xPos)), y,
+        40, 1);
+    }
+
+    this.canvasCtx.restore();
+    */
+
     if (ODR.config.GRAPHICS_DUST != 'NONE') {
-      this.dust.repaint(deltaTime);
+      this.dust.forward(deltaTime);
     }
 
     action.timer += deltaTime;
@@ -1754,7 +1827,7 @@ A8e.animFrames = {
     msPerFrame: 1000 / 28
   },
   CRASHED: {
-    frames: [0,40],
+    frames: [0,40,80,120],
     msPerFrame: Infinity
   },
   JUMPING: {
@@ -1763,7 +1836,7 @@ A8e.animFrames = {
     //extended: true // this will need a duration to be defined.
   },
   SLIDING: {
-    frames: [0, 40, 80, 40],
+    frames: [0, 40, 80, 120, 160],
     msPerFrame: 1000 / 12
   }
 };
@@ -1779,6 +1852,7 @@ class Text {
     }
   }
 
+  //TODO Consider a rewrite to use word-breaker
   setText(messageStr) {
     messageStr = messageStr.split('##').join(String.fromCharCode(0xe000));
     messageStr = messageStr.split('#natA').join(String.fromCharCode(0xe001));
@@ -1801,18 +1875,25 @@ class Text {
     let wordList = messageStr.toString().split(' ');
     let newList = [wordList[0]];
     this.minLength = Math.max(wordList[0].length,this.minLength);
+    this.numberOfLines = 1;
 
     for (let i = 1, cur = wordList[0].length ; i < wordList.length ; i++) {
       let words = wordList[i].split('\n');
 
       words.forEach((w,index) => {
-        if (cur == 0) {
+        if (cur == 0 && w.length) {
           /* 0st word */
+          if (index) {
+            newList.push('\n');
+            this.numberOfLines++;
+          }
         } else if (cur + 1 + w.length > lineLength) {
           cur = 0;
           newList.push('\n');
+          this.numberOfLines++;
         } else if (index) {
           newList.push('\n');
+          this.numberOfLines++;
           cur = 0;
         } else {
           newList.push(' ');
@@ -1866,7 +1947,7 @@ class Text {
         case "'": return 686;
         case "☼": return 700;
         case ',': return 714;
-        case ';': return 720;
+        case ';': return 728;
         case ':': return 742;
         case '⚽': return 756;
         case '+': return 840;
@@ -1886,31 +1967,55 @@ class Text {
     image = image || ODR.spriteGUI;
 
     switch (this.alignment) {
-      default:
-      case -1:
-        break;
       case 0:
-        offsetX += glyphW * (this.maxLength - this.minLength)/2;
-        break;
       case 1:
-        offsetX += glyphW * (this.maxLength - this.minLength);
+        offsetX += glyphW * (this.maxLength - this.minLength)/2;
+
+        for (let i = 0, cur = 0, l = 0; i <= this.glyphs.length; i++) {
+          if (i != this.glyphs.length-1 && this.glyphs[i] != -10 ) {
+            continue;
+          }
+
+          let len = i - cur;
+          let lineStart = cur;
+          let lineOffset = this.alignment
+            ? this.minLength - len
+            : (this.minLength - len) >> 1;
+          while( cur < this.glyphs.length && cur <= i ) {
+            let g = this.glyphs[cur];
+            if( g == -10 ) {
+              cur++;
+              break;
+            }
+            canvasCtx.drawImage(image,
+              g, 0, 14, 16,
+              ~~offsetX + (cur - lineStart + lineOffset) * glyphW,
+              offsetY + glyphH * l,
+                14, 16);
+            cur++;
+          }
+          l++;
+        }
         break;
+
+      case -1:
+      default:
+        for (let i = 0, cur = 0, l = 0; i < this.glyphs.length; i++) {
+          let g = this.glyphs[i];
+          if (g == -10) {
+            cur = 0;
+            l++;
+            continue;
+          }
+          canvasCtx.drawImage(image,
+            g, 0, 14, 16,
+            ~~offsetX + cur * glyphW,
+            offsetY + glyphH * l,
+              14, 16);
+          cur++;
+        }
     }
 
-    for (let i = 0, cur = 0, l = 0; i < this.glyphs.length; i++) {
-      let x = this.glyphs[i];
-      if (x == -10) {
-        cur = 0;
-        l++;
-        continue;
-      }
-      canvasCtx.drawImage(image,
-        x, 0, 14, 16,
-        ~~offsetX + cur * glyphW,
-        offsetY + glyphH * l,
-          14, 16);
-      cur++;
-    }
   }
 
   drawText(messageStr, canvasCtx, offsetX, offsetY, glyphW, glyphH, image) {
@@ -1938,7 +2043,7 @@ class Terminal {
     this.text.setText(messageStr);
   }
 
-  repaint(deltaTime) {
+  forward(deltaTime) {
     if (this.timer > 0) {
 
       if (this.timer > 500) this.opacity += deltaTime/100;
@@ -2046,7 +2151,7 @@ class DistanceMeter {
     return distance ? Math.round(distance * this.config.COEFFICIENT) : 0;
   }
 
-  repaint(deltaTime, distance) {
+  forward(deltaTime, distance) {
     var paint = true;
     var playSound = false;
 
@@ -2127,7 +2232,7 @@ class DistanceMeter {
   }
 
   reset() {
-    this.repaint(0);
+    this.forward(0);
     this.acheivement = false;
   }
 }
@@ -2185,17 +2290,148 @@ class TitlePanel extends Panel {
     this.actions = [];
     this.timer = 0;
     this.ender = 0;
-  }
+    this.dataReadyTime = 0;
 
-  queueAction(action) {
-    if (this.dataReady && !this.ender) {
-      //super.queueAction(action);
-      this.ender = this.timer;
+    this.story = [
+      new Text(600/14 - 3,-1,
+`Friends, allow me to tell you a story, A tale of a young maiden named Amandarine, who was born in a small village called Mandarina.
+
+In the unfortunate beginning, Amandarine was unhealthy from birth. Her family had been trying all kinds of treatments, but her condition didn't improve. She had to endure suffering from the cruel birth defect throughout her childhood. The doctor had warned that her condition would be life-threatening by anytime.
+
+But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...` ),
+
+      new Text(600/14 - 3,-1,
+`That morning, Amandarine was having her custard bread. She then heard the sound of someone playing the ukulele while singing a song she had never heard before. She looked out the window and saw a man, a street performer, maybe; who was walking pass by until suddenly stumbled upon the rock and fell abjectly.
+
+She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...` ),
+
+      new Text(600/14 - 3,-1,
+`Warm sunlight was teasing the cold breeze that was blowing gently. The birds chirping in the morning reminded her that this man must definitely be hungry. She, therefore, gave him the remaining bread. He smiled for gratitude as he accepted and started eating the bread happily.
+
+Once finished, that was very soon after, he looked at Amandarine and said that telling from her facial skin and eye reflections, he could notice many signs of her dreadful health in which she nodded affirmatively.
+
+...In fact, he continued, he was a doctor from China called Lu Ji. Then he asked for her wrist so he could make a further diagnosis.
+
+After learning the pulses for a few breathes, Lu Ji told her that her disease, though very serious, had a cure.
+
+That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.` ),
+
+      new Text(600/14 - 3,-1,
+`Saying that he must flee his hometown since he had stolen this very tangerine. The dried brownish fruit was called "The Eighth Heaven Supremacy"; it could cure her illness, he explained and asked her to accept it.
+
+He said that she should boil it in ginger juice to create one adequate medicine for living longer but for her to be fully recovered its seeds must be planted in eight continents and she should have kept eating each kind of them afterwards until cured.
+
+Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.` ),
+
+      new Text(600/14 - 3,-1,
+`♬ Natherine ♬
+she is all they claim
+With her eyes of night
+and lips as bright as flame
+Natherine
+when she dances by
+Senoritas stare
+and caballeros sigh
+And I've seen
+toasts to Natherine
+Raised in every bar
+across the Argentine
+Yes, she has them all on da run
+And their hearts belong to just one
+Their hearts belong to Natherine` ),
+
+      new Text(600/14 - 3,0,
+`Credits
+
+-Music-
+
+The lyrics of the song "Natherine" base on another song "Tangerine" that was written
+by Victor Schertzinger and
+the lyrics by Johnny Mercer.
+
+The arrangement was adapted from
+Guy Bergeron's MIDI file
+without permission.
+
+
+-Computer Graphics-
+
+#tangerinerange Groove Sororite
+
+Which doesn't exist.
+
+
+-Software Developments-
+
+N#aturing Machine
+
+Which also doesn't exist.
+
+
+-Special Thanks-
+
+Dusita Kitisarakulchai
+...for the inspiration
+
+and some of her particular supporters/fanpages
+for buzzing about it.
+
+You can also support this project by making donations to
+the Thai Redcross Society #redcross.
+
+`
+        ),
+    ];
+
+    this.imgLoadCounter = 0;
+    this.storyPhotos = [];
+
+    this.msPerLine = 2250;
+
+    let clock = 3000;
+    this.photoTiming = [
+      [0,0, 30,33,1,215,411,1.5],
+      [0,0, 27,355,1,73,151,1.2],
+      [0,0, 29,26,1,26,358,1.2],
+      [0,0, 23,350,1,27,24,1],
+      [0,0, 62,244,1,12,160,0.5],
+      [0,0, 100,237,1,100,237,1.0],
+    ];
+    for( let i = 0; i < this.story.length; i++) {
+      //this.story[i] = new Text(600/14 - 3,-1).setText(this.story[i]);
+      this.photoTiming[i][0] = clock;
+      clock += 20000 + this.story[i].numberOfLines * this.msPerLine;
+      this.photoTiming[i][1] = clock;
     }
   }
 
-  repaint(deltaTime) {
-    ODR.horizon.repaint(deltaTime, 0, false, false, 1);
+  loadImages() {
+    for( let i = 0; i < this.story.length; i++  ) {
+      this.storyPhotos[i] = new Image();
+
+      if (i == this.story.length - 1)
+        this.storyPhotos[i].src = `assets/console/console.png`;
+      else this.storyPhotos[i].src = `assets/story/amandarine-story-${i+1}.jpg`;
+
+      this.storyPhotos[i].addEventListener('load', () => {
+        this.imgLoadCounter++;
+        if (this.imgLoadCounter == this.story.length) {
+          this.dataReadyTime = this.timer;
+        }
+      });
+    }
+  }
+
+  queueAction(action) {
+    if (this.dataReadyTime && !this.ender) {
+      //super.queueAction(action);
+      this.ender = this.timer;
+      ODR.setSkyGradient(ODR.config.SKY.DAY,3000);
+      ODR.loadSounds();
+    }
+  }
+
+  forward(deltaTime) {
     this.timer += deltaTime;
     let factorA = Math.sin(this.timer / 400);
     let factorB = Math.sin(this.timer / 300);
@@ -2209,56 +2445,115 @@ class TitlePanel extends Panel {
       runout = t - f;
       runout = (f*f - runout*runout) / 1000 ;
 
-      if (runout < -200) {
+      this.canvasCtx.save();
+      this.canvasCtx.translate(0,40+runout/5);
+      ODR.horizon.horizonLine.draw();
+      this.canvasCtx.restore();
+
+      if (ODR.soundFx.SOUND_SCORE && runout < -200) {
         ODR.music.load('offline-intro-music', ODR.config.PLAY_MUSIC);
         let defaultAction = new DefaultAction(1);
         defaultAction.setXPos = -100;
         ODR.queueAction(defaultAction);
+        ODR.shouldAddObstacle = true;
+        ODR.shouldIncreaseSpeed = true;
+        ODR.playSound(ODR.soundFx.SOUND_SCORE, 0.5);
         return null;
       }
+
     }
 
     /* A AMANDARINE FRONTIER */
     this.canvasCtx.drawImage(ODR.spriteGUI,
       148,15,208,85,
       300-120 + 21,
-      Math.round(3) + runout * 1.1,
+      ~~(3 + runout * 1.1),
       208,85);
     /* BB REDHAND */
     this.canvasCtx.drawImage(ODR.spriteGUI,
       125,100,37,30,
       300-120 + 41 + Math.round(factorB),
-      Math.round(80 + 6 * factorB) + runout * 1.2,
+      ~~(80 + 6 * factorB + runout * 1.2),
       37,30);
     /* B AMANDARINE */
     this.canvasCtx.drawImage(ODR.spriteGUI,
       368,115,162,133,
       300-120 + 37 + Math.round(factorC),
-      Math.round(20 + 3 * factorB) + runout * 1.35,
+      ~~(20 + 3 * factorB + runout * 1.35),
       162,133);
     /* C ONDARUN */
     this.canvasCtx.drawImage(ODR.spriteGUI,
       127,175,241,75,
       300-120 + 0,
-      Math.round(100) + runout * 1.38,
+      Math.round(100 + runout * 1.38),
       241,75);
     /* D TANGERINE */
     this.canvasCtx.drawImage(ODR.spriteGUI,
       368,16,99,97,
       300-120 + 121 - Math.round(2 * factorC),
-      Math.round(35 + 2 * factorD) + runout * 1.4,
+      ~~(30 + 2 * factorD + runout * 1.4),
       99,97);
 
     let total = (ODR.music.songs['offline-intro-music'].progress + ODR.music.songs['offline-play-music'].progress) * 50;
     if (total < 100) {
-      new Text(600/14,0).drawText("loading audio data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
+      new Text(600/14,0).drawText("loading data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
     } else {
       if (this.timer < 15000) {
-        new Text(600/14,0).drawText("Amandarine Frontier:On Da Run! BETA 0.99", this.canvasCtx,0,180-Math.min(0,runout));
+        new Text(600/14,0).drawText("Amandarine Frontier: On Da Run 1.0 RC1", this.canvasCtx,0,180-Math.min(0,runout));
       } else {
-        new Text(600/14,0).drawText("press #slide/#jump to continue.", this.canvasCtx,0,180-Math.min(0,runout));
+        if (IS_MOBILE)
+          new Text(600/14,0).drawText("press #slide/#jump to continue.", this.canvasCtx,0,180-Math.min(0,runout));
+        else
+          new Text(600/14,0).drawText("press [spacebar] to continue.", this.canvasCtx,0,180-Math.min(0,runout));
       }
-      this.dataReady = true;
+
+      if (!this.dataReadyTime) {
+        this.dataReadyTime = this.timer;
+        this.loadImages();
+      }
+
+      let storyStartOffset = 18000;
+      let fadingTime = 2000;
+      if (this.imgLoadCounter == this.story.length && this.timer - this.dataReadyTime > storyStartOffset) {
+      this.canvasCtx.save();
+
+        let storyTimer = this.timer - this.dataReadyTime - storyStartOffset;
+        this.canvasCtx.globalAlpha = Math.max(0, Math.min(1, storyTimer/2000))
+          * Math.max(0, Math.min(1, (this.photoTiming[this.story.length-1][1] + 2000 - storyTimer)/2000));
+        this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
+
+        this.photoTiming.forEach(([beginTime,endTime,beginX,beginY,beginSize,endX,endY,endSize],index) => {
+          if (storyTimer > beginTime && storyTimer < endTime) {
+
+            beginTime = storyTimer - beginTime;
+            endTime = endTime - storyTimer;
+
+            let ratio = beginTime / (beginTime + endTime);
+            let offsetX = beginX + (endX - beginX) * ratio;
+            let offsetY = beginY + (endY - beginY) * ratio;
+            let size = beginSize + (endSize - beginSize) * ratio;
+
+            this.canvasCtx.save(); {
+
+              this.canvasCtx.scale(size,size);
+              this.canvasCtx.translate(-offsetX,-offsetY);
+              this.canvasCtx.globalAlpha = 0.70
+                * Math.max(0,Math.min(1, beginTime/fadingTime))
+                * Math.max(0,Math.min(1, endTime/fadingTime));
+              this.canvasCtx.drawImage(this.storyPhotos[index],0,0);
+
+            } this.canvasCtx.restore();
+
+            this.canvasCtx.globalAlpha =
+              Math.max(0,Math.min(1, beginTime/fadingTime))
+              * Math.max(0,Math.min(1, endTime/fadingTime));
+            this.story[index].draw(this.canvasCtx,25,~~(200-beginTime/(this.msPerLine/20))); //20 is the default glyph height.
+          }
+        });
+
+      this.canvasCtx.restore();
+      }
+
     }
 
     return this;
@@ -2279,7 +2574,7 @@ class Menu extends Panel {
     this.text = new Text(100);
   }
 
-  repaint(deltaTime) {
+  forward(deltaTime) {
     if (Menu.playSound) {
       Menu.playSound = null;
     }
@@ -2363,8 +2658,10 @@ class Menu extends Panel {
       }
     }
 
+    /*
     this.canvasCtx.fillStyle = "#000d";
     this.canvasCtx.fillRect(0,0,this.canvas.width,this.canvas.height);
+    */
 
     if (this.model.profilePhoto) {
       this.canvasCtx.drawImage(this.model.profilePhoto,
@@ -2422,7 +2719,11 @@ class Menu extends Panel {
     this.canvasCtx.restore();
 
     if (this.submenu) {
-      this.submenu.repaint(deltaTime);
+      this.canvasCtx.save();
+      this.canvasCtx.globalAlpha = 0.9;
+      this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
+      this.canvasCtx.restore();
+      this.submenu.forward(deltaTime);
     }
 
     if (this.submenu && this.submenu.model.name) {
@@ -2493,7 +2794,7 @@ class TextEditor {
     }
   }
 
-  repaint(deltaTime) {
+  forward(deltaTime) {
     if (Menu.playSound) {
       Menu.playSound = null;
     }
@@ -2549,8 +2850,12 @@ class TextEditor {
     }
 
     this.canvasCtx.save();
+    /*
     this.canvasCtx.fillStyle = "#000d";
     this.canvasCtx.fillRect(0,0,this.canvas.width,this.canvas.height);
+    */
+    this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
+
     this.canvasCtx.fillStyle = "#a60"
     this.canvasCtx.fillRect(this.xOffset+295-(7*25/2) + this.curX*25,this.yOffset + 2 + (1 + this.curY)*25,23,23);
     for (let u = 0; u < 7; u++) {
@@ -2705,6 +3010,7 @@ class Action {
 
 }
 
+
 class DefaultAction extends Action {
   constructor( newSpeed ) {
     super();
@@ -2757,22 +3063,23 @@ class JumpAction extends Action {
     this.timer = 0;
   }
 
-  willEnd( endTime, currentSpeed ) {
+  willEnd( endTime, speed ) {
     this._end = endTime;
-    this._speed = currentSpeed;
+    this._speed = speed;
 
     this.pressDuration = this._end - this._begin;
     if( this.pressDuration > ODR.config.MAX_ACTION_PRESS )
       this.pressDuration = ODR.config.MAX_ACTION_PRESS;
 
-    this.maxPressDuration = shapeSpeedDuration( this.speed, this.pressDuration );
+    let minPress = ODR.config.MIN_ACTION_PRESS + ODR.config.MIN_ACTION_PRESS_FACTOR*speed;
+    this.maxPressDuration = this.pressDuration * (ODR.config.MAX_ACTION_PRESS - minPress)/ODR.config.MAX_ACTION_PRESS + minPress;
+
     // It seems more ergonomically natural to simply add the minimum than to clip the value.
     this.top = this.maxPressDuration / 1000;
     this.halfTime = Math.sqrt( 2000 * this.maxPressDuration / A8e.config.GRAVITY );
     this.duration = this.halfTime * 2;
     this.msPerFrame = this.duration / 3.5;
   }
-
 }
 
 class SlideAction extends Action {
@@ -2787,15 +3094,27 @@ class SlideAction extends Action {
     this.timer = 0;
   }
 
-  willEnd(endTime,currentSpeed) {
+  set currentFrame(newFrame) {}
+  get currentFrame() {
+    if (this.duration - this.timer < 350) {
+      return 2 + Math.round(Math.max( 0, 2 - (this.duration - this.timer)/175 ));
+    }
+
+    return (this.timer >> 6)&1;
+  }
+
+  willEnd( endTime, speed ) {
     this._end = endTime;
-    this._speed = currentSpeed;
+    this._speed = speed;
 
     this.pressDuration = this._end - this._begin;
     if( this.pressDuration > ODR.config.MAX_ACTION_PRESS )
       this.pressDuration = ODR.config.MAX_ACTION_PRESS;
 
-    this.maxPressDuration = ODR.config.SLIDE_FACTOR * shapeSpeedDuration(this._speed, this.pressDuration);
+    let minPress = ODR.config.MIN_ACTION_PRESS + ODR.config.MIN_ACTION_PRESS_FACTOR*speed;
+    this.maxPressDuration = this.pressDuration * (ODR.config.MAX_ACTION_PRESS - minPress)/ODR.config.MAX_ACTION_PRESS + minPress;
+
+    this.msPerFrame = this.duration / 2.25;
   }
 
   set maxPressDuration(mPD) {
@@ -2826,16 +3145,21 @@ class ConsoleButton {
     this.canvas = ODR.shadowRoot.getElementById(id);
     this.canvas.width = w;
     this.canvas.height = h;
-    this.canvasCtx = this.canvas.getContext('2d',{alpha:false});
-    this.canvasCtx.drawImage(this.sprite,0,0);
+    //this.canvasCtx = this.canvas.getContext('2d',{alpha:false});
+    this.canvasCtx = this.canvas.getContext('2d');
 
     this.canvas.addEventListener(OnDaRun.events.TOUCHSTART, this);
     this.canvas.addEventListener(OnDaRun.events.TOUCHEND, this);
     this.canvas.addEventListener(OnDaRun.events.MOUSEDOWN, this);
     this.canvas.addEventListener(OnDaRun.events.MOUSEUP, this);
+
   }
 
-  repaint(deltaTime) {
+  forward(deltaTime) {
+    if (this.frame == -1) {
+      this.canvas.style.visibility = 'visible';
+    }
+
     this.timer += deltaTime;
 
     if (this.dir) {
@@ -2853,9 +3177,13 @@ class ConsoleButton {
     if (frame != this.frame) {
       this.frame = frame;
       this.canvasCtx.drawImage( this.sprite,
-        frame * this.w, 0, this.w, this.h,
+        this.frame * this.w, 0, this.w, this.h,
         0, 0, this.w, this.h);
     }
+  }
+
+  draw() {
+    console.trace();
   }
 
   handleEvent(e) {
@@ -2891,14 +3219,18 @@ class ConsoleLeftButton extends ConsoleButton {
   constructor(x, y, w, h) { super('console-left', x, y, w, h); }
 
   handlePressed(e) {
-    this.action = new SlideAction(ODR.time, ODR.currentSpeed);
-    ODR.queueAction(this.action);
+    //FIXME What happen here is that you may receive a random key down event. if the key has been held.
+    if (!this.action || this.action.priority != 0) {
+      this.action = new SlideAction(ODR.time, ODR.currentSpeed);
+      ODR.queueAction(this.action);
+    }
   }
 
   handleReleased(e) {
     if (this.action && this.action.priority == 0) {
       this.action.willEnd(ODR.time,ODR.currentSpeed);
       this.action.priority = 1;
+      this.action = null;
     }
   }
 }
@@ -2907,14 +3239,17 @@ class ConsoleRightButton extends ConsoleButton {
   constructor(x, y, w, h) {super('console-right', x, y, w, h); }
 
   handlePressed(e) {
-    this.action = new JumpAction(ODR.time, ODR.currentSpeed);
-    ODR.queueAction(this.action);
+    if (!this.action || this.action.priority != 0) {
+      this.action = new JumpAction(ODR.time, ODR.currentSpeed);
+      ODR.queueAction(this.action);
+    }
   }
 
   handleReleased(e) {
     if (this.action && this.action.priority == 0) {
       this.action.willEnd(ODR.time,ODR.currentSpeed);
       this.action.priority = 1;
+      this.action = null;
     }
   }
 }
@@ -2942,6 +3277,9 @@ class ConsoleBButton extends ConsoleButton {
 
 class ConsoleCButton extends ConsoleButton {
   constructor(x, y, w, h) { super('console-c', x, y, w, h); }
+  handleReleased(e) {
+    ODR.terminal.setMessages('[THIS BUTTON WILL DO SOMETHING ONE DAY.]', 5000);
+  }
 }
 
 class ConsoleDButton extends ConsoleButton {
@@ -3085,7 +3423,7 @@ class Music {
     this.currentSong = null;
     for( let name in this.songs ) {
       if (this.songs[name].audio) {
-        console.log('stopping', name)
+        //console.log('stopping', name)
         this.songs[name].autoplay = false;
         this.songs[name].audio.fadeout();
         this.songs[name].audio = null;
@@ -3103,7 +3441,10 @@ class Music {
     }
   }
 
+  /* TODO If the audio context is created late, music should
+  recall load on the existing autoplayed song. */
   load(name, autoplay, lyrics) {
+    //console.log('load', name, autoplay)
     //if (IS_IOS) return;
     let song = this.songs[name] || (this.songs[name] = {title:name, autoplay:autoplay, lyrics:lyrics});
     song.lyrics = lyrics ? lyrics.slice(0) : null;
@@ -3115,9 +3456,12 @@ class Music {
     }
     */
 
-    if( song.autoplay = (song.autoplay || autoplay) ) {
-      if (this.currentSong == song) return;
+    if (this.currentSong == song) return;
 
+    song.autoplay = song.autoplay || autoplay;
+
+    /* Turn-off the others */
+    if( song.autoplay ) {
       for( let anotherName in this.songs ) {
         if( name == anotherName ) continue;
 
@@ -3127,41 +3471,56 @@ class Music {
           this.songs[anotherName].audio = null;
         }
       }
+    }
 
-      if( song.data ) {
-        if( !song.audio ) {
-          this.currentSong = song;
-          song.audio = ODR.playSound( song.data, 0.3 );
-          song.startTime = ODR.audioContext.currentTime;
-          /*
-          if( song.lyrics ) {
-            song.playLyrics = song.lyrics.slice(0);
-          }
-          */
+    if( song.autoplay && song.data ) {
+    /* The song has data ready, just play it. */
+      if( !song.audio ) {
+        this.currentSong = song;
+        song.audio = ODR.playSound( song.data, 0.3 );
+        song.startTime = ODR.audioContext.currentTime;
+        /*
+        if( song.lyrics ) {
+          song.playLyrics = song.lyrics.slice(0);
         }
-      } else if( !song.hasOwnProperty( 'progress' )) {
-        song.progress = 0;
-        var resourceTemplate = document.getElementById(ODR.config.RESOURCE_TEMPLATE_ID).content;
-        let request = new XMLHttpRequest();
-        request.open('GET', resourceTemplate.getElementById(name).src, true);
-        request.responseType = 'arraybuffer';
-        request.onload = () => {
-          song.progress = 1;
-          if (!ODR.audioContext) {
-            ODR.audioContext = new AudioContext();
-          }
+        */
+      }
+    } else if( !song.hasOwnProperty( 'progress' )) {
+    /* The song has not started being loaded. */
+      song.progress = 0;
+      var resourceTemplate = document.getElementById(ODR.config.RESOURCE_TEMPLATE_ID).content;
+      let request = new XMLHttpRequest();
+      request.open('GET', resourceTemplate.getElementById(name).src, true);
+      request.responseType = 'arraybuffer';
+      request.onload = () => {
+        song.progress = 1;
+
+        /* Without an audio context, it will just keep the blob around */
+        if (!ODR.audioContext) {
+          song.source = request.response;
+        } else {
           ODR.audioContext.decodeAudioData(request.response, audioData => {
             song.data = audioData;
             this.load( song.title, song.autoplay );
           });
         }
-        request.onprogress = (e) => {
-          song.progress = e.loaded/e.total;
-        }
-        request.send();
+      }
+      request.onprogress = (e) => {
+        song.progress = e.loaded/e.total;
+      }
+      request.send();
+    } else if( song.source ) {
+    /* Source was loaded but not yet processed. */
+      if (ODR.audioContext) {
+        ODR.audioContext.decodeAudioData( song.source ).then( audioData => {
+          song.source = null;
+          song.data = audioData;
+          this.load( song.title, song.autoplay );
+        });
       }
     }
   }
+
 }
 
 class OnDaRun extends LitElement {
@@ -3186,6 +3545,7 @@ class OnDaRun extends LitElement {
       position: absolute;
       z-index: 2;
       pointer-events: auto;
+      visibility: hidden;
     }
 
     #console-screen {
@@ -3201,7 +3561,7 @@ class OnDaRun extends LitElement {
       top: 495px;
       width: 100px;
       height: 100px;
-      background-image: url(assets/console/console-left.png);
+      /*background-image: url(assets/console/console-left.png);*/
     }
 
     #console-right {
@@ -3209,7 +3569,7 @@ class OnDaRun extends LitElement {
       top: 495px;
       width: 100px;
       height: 100px;
-      background-image: url(assets/console/console-right.png);
+      /*background-image: url(assets/console/console-right.png);*/
     }
 
     #console-a {
@@ -3217,7 +3577,7 @@ class OnDaRun extends LitElement {
       top: 495px;
       width: 66px;
       height: 50px;
-      background-image: url(assets/console/console-a.png);
+      /*background-image: url(assets/console/console-a.png);*/
     }
 
     #console-b {
@@ -3225,7 +3585,7 @@ class OnDaRun extends LitElement {
       top: 545px;
       width: 66px;
       height: 50px;
-      background-image: url(assets/console/console-b.png);
+      /*background-image: url(assets/console/console-b.png);*/
     }
 
     #console-c {
@@ -3233,7 +3593,7 @@ class OnDaRun extends LitElement {
       top: 495px;
       width: 66px;
       height: 50px;
-      background-image: url(assets/console/console-c.png);
+      /*background-image: url(assets/console/console-c.png);*/
     }
 
     #console-d {
@@ -3241,7 +3601,7 @@ class OnDaRun extends LitElement {
       top: 545px;
       width: 66px;
       height: 50px;
-      background-image: url(assets/console/console-d.png);
+      /*background-image: url(assets/console/console-d.png);*/
     }
 
     #console-n7e {
@@ -3249,7 +3609,7 @@ class OnDaRun extends LitElement {
       top: 628px;
       width: 18px;
       height: 18px;
-      background-image: url(assets/console/console-n7e.png);
+      /*background-image: url(assets/console/console-n7e.png);*/
     }
 
     #console-reset {
@@ -3257,7 +3617,7 @@ class OnDaRun extends LitElement {
       top: 628px;
       width: 18px;
       height: 18px;
-      background-image: url(assets/console/console-reset.png);
+      /*background-image: url(assets/console/console-reset.png);*/
     }
 
     `;
@@ -3296,6 +3656,7 @@ class OnDaRun extends LitElement {
     this.dimensions = OnDaRun.defaultDimensions;
     this.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
     this.menu = null;
+    this.scene = null;
 
     this.canvas = null;
     this.canvasCtx = null;
@@ -3351,20 +3712,29 @@ class OnDaRun extends LitElement {
       CONSOLE_RESET: new ConsoleResetButton(424, 628, 18, 18),
     };
 
-    this.consoleButtonForKeyboardCodes['ShiftRight'] = this.consoleButtons.CONSOLE_RIGHT;
-    this.consoleButtonForKeyboardCodes['ShiftLeft'] = this.consoleButtons.CONSOLE_LEFT;
+    this.consoleButtonForKeyboardCodes['Space'] = this.consoleButtons.CONSOLE_RIGHT;
+
+    this.consoleButtonForKeyboardCodes['NumpadEnter'] = this.consoleButtons.CONSOLE_RIGHT;
+    this.consoleButtonForKeyboardCodes['ArrowRight'] = this.consoleButtons.CONSOLE_RIGHT;
+    this.consoleButtonForKeyboardCodes['Slash'] = this.consoleButtons.CONSOLE_RIGHT;
+
+    this.consoleButtonForKeyboardCodes['Numpad0'] = this.consoleButtons.CONSOLE_LEFT;
+    this.consoleButtonForKeyboardCodes['ArrowLeft'] = this.consoleButtons.CONSOLE_LEFT;
+    this.consoleButtonForKeyboardCodes['KeyZ'] = this.consoleButtons.CONSOLE_LEFT;
+
     this.consoleButtonForKeyboardCodes['KeyM'] = this.consoleButtons.CONSOLE_A;
     this.consoleButtonForKeyboardCodes['Digit5'] = this.consoleButtons.CONSOLE_B;
 
 
     /* Load and set console image */
-    let consoleImage = new Image();
-    consoleImage.src = 'assets/console/console.png';
-    this.style.backgroundImage = 'url('+consoleImage.src+')';
+    this.consoleImage = new Image();
+    this.consoleImage.src = 'assets/console/console.png';
+    this.style.backgroundImage = 'url('+this.consoleImage.src+')';
 
     /* HACK prevent initial transition */
-    consoleImage.addEventListener('load', (e) => {
+    this.consoleImage.addEventListener('load', (e) => {
       this.style.transition = 'opacity 1s';
+      this.style.opacity = 1;
     });
 
     /* Listing & creating images for sprites */
@@ -3391,10 +3761,14 @@ class OnDaRun extends LitElement {
 
     let bicyclesSprite = addSprite('biking');
     let ducksSprite = addSprite('ducks');
-    Obstacle.types.forEach(type => {
-      switch (type.type) {
+    Obstacle.typeList.forEach(type => {
+      switch (type.name) {
         case 'ROTATA':
+          //Rotata.sprite = bicyclesSprite;
+          type.sprite = bicyclesSprite;
+          break;
         case 'VELOTA':
+          //Velota.sprite = bicyclesSprite;
           type.sprite = bicyclesSprite;
           break;
         case 'LIVER':
@@ -3413,7 +3787,6 @@ class OnDaRun extends LitElement {
       if (completion < loadingList.length)
         return;
 
-      this.loadSounds();
       this.music = new Music();
       this.init();
     };
@@ -3427,7 +3800,68 @@ class OnDaRun extends LitElement {
     });
   }
 
+  /*
+  generateShadowCache() {
+    // Generate A8e shadows.
+
+    let width = 0;
+
+    //Amandarine shadow
+    Object.entries(A8e.animFrames).forEach(([name,act]) => {
+      let base = 0;
+      ('SLIDING' == name
+        ? A8e.collisionBoxes.SLIDING
+        : A8e.collisionBoxes.RUNNING).forEach(box => base = Math.max(base,box.maxY()));
+
+      act.shadow = document.createElement('canvas');
+      act.shadow.width = act.sprite.width;
+      act.shadow.height = 40; // Use 5px offset
+      let shadowCtx = act.shadow.getContext('2d');
+      shadowCtx.filter = `brightness(0)`;
+      for( let i = 0; i < 40; i++ ) {
+        //shadowCtx.filter = `blur(8px) brightness(0) opacity(${40*(20-i)/20}%)`;
+        if( base - i < 0 ) break;
+        shadowCtx.drawImage( act.sprite,
+          0, base-i, act.shadow.width, 1,
+          0, i/3, act.shadow.width, 1 );
+      }
+
+    });
+
+    // Collidable shadows.
+    Obstacle.typeList.forEach(type => {
+      let base = 0;
+      type.collisionBoxes.forEach(box => base = Math.max( base, box.maxY()));
+
+      let def = OnDaRun.spriteDefinition[type.name];
+      let frames = new Set( type.frames ? type.frames : [def.x]);
+
+      type.shadow = document.createElement('canvas');
+      type.shadow.width = type.width * frames.size;
+      type.shadow.height = type.height;
+      let shadowCtx = type.shadow.getContext('2d');
+
+      frames.forEach(frameX => {
+        let dx = frameX - def.x;
+        for( let i = 0; i < type.shadow.height; i++ ) {
+          if( base - i < 0 ) break;
+          shadowCtx.filter = `brightness(0)`;
+          shadowCtx.drawImage(type.sprite,
+            def.x + dx, base - i, type.width, 1,
+            dx, i/3, type.width, 1 );
+
+        }
+
+      });
+
+    });
+
+  }
+  */
+
   init() {
+
+    //this.generateShadowCache();
 
     this.config.PLAY_MUSIC = true;
     this.music.load('offline-intro-music', false);
@@ -3438,6 +3872,7 @@ class OnDaRun extends LitElement {
     this.canvas.width = this.dimensions.WIDTH;
     this.canvas.height = this.dimensions.HEIGHT;
     this.canvasCtx = this.canvas.getContext('2d');
+    this.canvas.style.visibility = 'visible';
 
     this.skyCanvas = document.createElement('canvas');
     this.skyCanvas.width = this.dimensions.WIDTH;
@@ -3448,7 +3883,7 @@ class OnDaRun extends LitElement {
     this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
       this.config.GAP_COEFFICIENT);
 
-    this.menu = new TitlePanel(this.canvas);
+    this.scene = new TitlePanel(this.canvas);
 
     this.amandarine = new A8e(this.canvas, this.spriteDef.NATHERINE);
 
@@ -3473,33 +3908,16 @@ class OnDaRun extends LitElement {
 
     /*
     this.clearCanvas();
-    this.horizon.repaint(0, this.currentSpeed, true);
-    this.amandarine.repaint(this.currentSpeed, 0);
+    this.horizon.forward(0, this.currentSpeed, true);
+    this.amandarine.forward(this.currentSpeed, 0);
     */
     this.style.opacity = 1;
 
     this.startListening();
-    this.shouldAddObstacle = true;
-    this.shouldIncreaseSpeed = true;
     this.signIn();
     this.scheduleNextRepaint();
 
     this.introScriptTimer = 200;
-    this.introScript = [
-      20000,"Hi! Press #slide/#jump to start!",
-      20000,"Just play already!",
-      20000,"Didn't know you love the song that much!",
-      20000,"Allow yourself to be a beginner. No one starts at the top.#<3",
-      20000,"Man.City will win ⚽\nYou know.",
-      20000,"You have no idea of the amount of HAPPINESS you brought into my life.",
-      20000,'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.#<3',
-      20000,'Never give up on something you really want #<3',
-      20000,'You are my sunshine ☼#<3',
-      20000,'My love for you is a journey;\nStarting at forever,\nand ending at never.#<3',
-      20000,'Glory in life is not in never failing,but rising each time we fail.#<3',
-      20000,'Love this project?\nDonate_Thai_Redcross_#redcross!\nSee the bottom right for details.',
-    ];
-
   }
 
   setSpeed(opt_speed) {
@@ -3540,17 +3958,18 @@ class OnDaRun extends LitElement {
         });
         authUser.odrRef.on('value', snapshot => {
           let odr = snapshot.val();
+          if (odr) {
+            if (odr.score > this.highestScore) {
+              this.highestScore = odr.score;
+              this.distanceMeter.setHighScore(this.highestScore);
+            } else if (odr.score < this.highestScore) {
+              authUser.odrRef.child('score').set(this.highestScore);
+            }
 
-          if (odr.score > this.highestScore) {
-            this.highestScore = odr.score;
-            this.distanceMeter.setHighScore(this.highestScore);
-          } else if (odr.score < this.highestScore) {
-            authUser.odrRef.child('score').set(this.highestScore);
-          }
-
-          Object.assign(this.config.GRAPHICS_MODE_SETTINGS[3], odr.settings);
-          if (this.config.GRAPHICS_MODE == 3) {
-            this.setGraphicsMode(3, false);
+            Object.assign(this.config.GRAPHICS_MODE_SETTINGS[3], odr.settings);
+            if (this.config.GRAPHICS_MODE == 3) {
+              this.setGraphicsMode(3, false);
+            }
           }
 
         });
@@ -3642,11 +4061,12 @@ class OnDaRun extends LitElement {
 
     if (this.config.GRAPHICS_DUST != 'DUST')
       this.amandarine.dust.reset();
-    this.setSkyGradient(this.skyGradientCurrentValues,0);
+    //Conflict, FIXME
+    //this.setSkyGradient(this.skyGradientToValues,0);
     /*
     this.clearCanvas();
     this.horizon.horizonLine.draw();
-    this.amandarine.repaint(0, this.currentSpeed);
+    this.amandarine.forward(0, this.currentSpeed);
     */
     if (this.config.GRAPHICS_MOON == 'SHINE') {
       this.horizon.nightMode.generateMoonCache();
@@ -3654,6 +4074,9 @@ class OnDaRun extends LitElement {
       this.horizon.nightMode.moonCanvas = null;
     }
     this.canvas.style.opacity = 1 - this.config.GRAPHICS_DAY_LIGHT/5;
+
+    //Generate caches
+    this.horizon.forward(0, this.currentSpeed, true);
   }
 
   loadSounds() {
@@ -3665,9 +4088,9 @@ class OnDaRun extends LitElement {
       var resourceTemplate =
       document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
 
-      for (var sound in OnDaRun.sounds) {
+      Object.entries(OnDaRun.sounds).forEach(([sound, id]) => {
         var soundSrc =
-        resourceTemplate.getElementById(OnDaRun.sounds[sound]).src;
+          resourceTemplate.getElementById(id).src;
         soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
         let len = (soundSrc.length / 4) * 3;
         let str = atob(soundSrc);
@@ -3679,11 +4102,9 @@ class OnDaRun extends LitElement {
         }
 
         // Async, so no guarantee of order in array.
-        this.audioContext.decodeAudioData(bytes.buffer, function (index, audioData) {
-          this.soundFx[index] = audioData;
-        }.bind(this, sound));
-
-      }
+        this.audioContext.decodeAudioData(bytes.buffer)
+          .then( audioData => this.soundFx[sound] = audioData);
+      });
     }
   }
 
@@ -3830,7 +4251,7 @@ class OnDaRun extends LitElement {
 
   }
 
-  repaintSkyGradient(deltaTime) {
+  forwardSkyGradient(deltaTime) {
     if (0 == this.skyGradientDuration) {
       return;
     }
@@ -3868,25 +4289,37 @@ class OnDaRun extends LitElement {
     }
   }
 
-  repaint(now) {
-    this.repaintPending = false;
+  forward(now) {
+    this.forwardPending = false;
 
     var deltaTime = now - (this.time || now);
     this.time = now;
 
     for (let key in this.consoleButtons) {
-      this.consoleButtons[key].repaint(deltaTime);
+      this.consoleButtons[key].forward(deltaTime);
     }
 
     if (this.menu) {
-      this.repaintSkyGradient(deltaTime);
+      /*
+      this.forwardSkyGradient(deltaTime);
       this.clearCanvas();
-      this.menu = this.menu.repaint(deltaTime);
+      */
+      this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
+      this.menu = this.menu.forward(deltaTime);
       this.scheduleNextRepaint();
       return;
     }
 
-    this.repaintSkyGradient(deltaTime);
+    //HACK, will rethink of this again later.
+    if (this.scene) {
+      this.forwardSkyGradient(deltaTime);
+      this.clearCanvas();
+      this.scene = this.scene.forward(deltaTime);
+      this.scheduleNextRepaint();
+      return;
+    }
+
+    this.forwardSkyGradient(deltaTime);
     this.clearCanvas();
 
     if (this.playing) {
@@ -3898,7 +4331,7 @@ class OnDaRun extends LitElement {
 
         let alpha = this.actions[0] ? (3000-this.actions[0].timer)/3000 : 0;
           if (alpha < 0) alpha = 0;
-        this.horizon.repaint(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
+        this.horizon.forward(deltaTime, this.currentSpeed, hasObstacles, this.inverted, alpha);
 
         if (alpha > 0.95) {
           let crashPoint = this.actions[0].boxes[0].intersection(this.actions[0].boxes[1]).center();
@@ -3912,7 +4345,7 @@ class OnDaRun extends LitElement {
 
         this.gameOverPanel.draw();
       } else {
-        this.horizon.repaint(deltaTime, this.currentSpeed, hasObstacles, this.inverted, 1);
+        this.horizon.forward(deltaTime, this.currentSpeed, hasObstacles, this.inverted, 1);
       }
 
       // Check for collisions.
@@ -3948,7 +4381,7 @@ class OnDaRun extends LitElement {
         this.gameOver(obstacle);
       }
 
-      let playAchievementSound = this.distanceMeter.repaint(deltaTime,
+      let playAchievementSound = this.distanceMeter.forward(deltaTime,
         Math.ceil(this.distanceRan));
 
       if (playAchievementSound) {
@@ -3981,24 +4414,25 @@ class OnDaRun extends LitElement {
         }
       }
     } else if (!this.crashed) {
-      this.horizon.repaint(0, 6, true);
+      this.horizon.forward(0, 6, true);
     } else {
-        this.horizon.repaint(0, 0, false, this.inverted, 1);
+        this.horizon.forward(0, 0, false, this.inverted, 1);
         if (this.gameOverPanel) {
           this.gameOverPanel.draw();
         }
-        this.distanceMeter.repaint(0, Math.ceil(this.distanceRan))
+        this.distanceMeter.forward(0, Math.ceil(this.distanceRan))
     }
 
     let a = this.actions[0];
     this.scheduleActionQueue(now, deltaTime, this.currentSpeed);
-    this.terminal.repaint(deltaTime);
+    this.terminal.forward(deltaTime);
 
 
     if (this.playLyrics) {
       let text = this.music.lyrics;
       if (text === null) {
         this.playLyrics = false;
+        this.subtitle = null;
       } else {
         this.subtitle = new Text(600/14,0).setText(text||"");
       }
@@ -4037,6 +4471,10 @@ class OnDaRun extends LitElement {
 
   handleEvent(e) {
     if (this.menu && this.menu.handleEvent && this.menu.handleEvent(e)) {
+      return;
+    }
+
+    if (this.scene && this.scene.handleEvent && this.scene.handleEvent(e)) {
       return;
     }
     switch (e.type) {
@@ -4116,6 +4554,11 @@ class OnDaRun extends LitElement {
       return;
     }
 
+    if (this.scene && action.control) {
+      this.scene.queueAction(action);
+      return;
+    }
+
     this.actionIndex++;
     action.index = this.actionIndex;
     this.actions.push(action);
@@ -4131,9 +4574,9 @@ class OnDaRun extends LitElement {
       console.warn('FROZEN');
       return;
     }
-    if (!this.repaintPending) {
-      this.repaintPending = true;
-      this.raqId = requestAnimationFrame(this.repaint.bind(this));
+    if (!this.forwardPending) {
+      this.forwardPending = true;
+      this.raqId = requestAnimationFrame((now) => this.forward(now));
     }
   }
 
@@ -4142,7 +4585,7 @@ class OnDaRun extends LitElement {
   }
 
   gameOver(obstacle) {
-    switch(obstacle.typeConfig.type) {
+    switch(obstacle.typeConfig.name) {
       case "LIVER":
       case "RUBBER":
         this.playSound(this.soundFx.SOUND_QUACK, 0.2, false, 0.2);
@@ -4164,7 +4607,7 @@ class OnDaRun extends LitElement {
       */
       /*
       this.clearCanvas();
-      this.horizon.repaint(0, 0, true);
+      this.horizon.forward(0, 0, true);
       */
     }
 
@@ -4175,7 +4618,7 @@ class OnDaRun extends LitElement {
     //FIXME
     /*
     console.trace();
-    this.amandarine.repaint(100, this.currentSpeed, this.actions[0]);
+    this.amandarine.forward(100, this.currentSpeed, this.actions[0]);
     */
 
     if (!this.gameOverPanel) {
@@ -4257,7 +4700,7 @@ class OnDaRun extends LitElement {
     if (!this.crashed) {
       this.playing = true;
       this.time = getTimeStamp();
-      //this.repaint();
+      //this.forward();
     }
   }
 
@@ -4282,7 +4725,7 @@ class OnDaRun extends LitElement {
       this.amandarine.reset();
       this.playSound(this.soundFx.SOUND_SCORE,0.2);
       this.invert(true);
-      this.repaint(this.time);
+      this.forward(this.time);
       this.gameOverPanel.timer = 0;
       this.music.stop();
     }
@@ -4319,7 +4762,7 @@ class OnDaRun extends LitElement {
 
   /* Phear the Scheduler. Cuz it's a fucking mess.
      Scheduler is for conducting specific behaviors of an action to
-     a particular priority before enacting the action: enactAction().
+     a particular priority before activate the action: activate().
 
      *** Priority Definitions ***
       0: Either...
@@ -4362,6 +4805,8 @@ class OnDaRun extends LitElement {
 
     //Prevent modifications during traversing the queue.
 
+    let debugDrawnJ = false;
+    let debugDrawnS = false;
     HANDLE_ACTION_QUEUE: {
       let actionQueue = this.actions.slice();
       for (let queueIndex = 0, action; action = actionQueue[queueIndex]; queueIndex++) {
@@ -4371,18 +4816,22 @@ class OnDaRun extends LitElement {
             switch(action.type) {
               case A8e.status.JUMPING:
                 this.amandarine.jumpingGuideIntensity = Math.min(1,gji+deltaTime/200);
+                console.assert(debugDrawnJ == false,'double drew Jumping.');
                 this.amandarine.drawJumpingGuide(action, now, speed);
+                debugDrawnJ = true;
                 continue;
               case A8e.status.SLIDING:
                 this.amandarine.slidingGuideIntensity = Math.min(1,gsi+deltaTime/200);
+                console.assert(debugDrawnS == false,'double drew Sliding.');
                 this.amandarine.drawSlidingGuide(action, now, speed);
+                debugDrawnS = true;
                 continue;
               case A8e.status.RUNNING:
 
                 action.timer = 0;
                 action.priority = 1;
                 this.activeAction = action;
-                //this.amandarine.enactAction(action, deltaTime, speed);
+                //this.amandarine.activate(action, deltaTime, speed);
 
                 break;
               case A8e.status.WAITING:
@@ -4415,6 +4864,7 @@ class OnDaRun extends LitElement {
 
                 break;
               case A8e.status.SLIDING:
+                this.activeAction = action;
                 action.xPos = this.amandarine.xPos;
                 break;
 
@@ -4424,8 +4874,7 @@ class OnDaRun extends LitElement {
               case A8e.status.RUNNING:
                 this.activeAction = action;
                 action.speed = speed;
-
-
+                action.msPerFrame = 1000 / (22 + speed);
 
                 /*
                 if (action.hasOwnProperty('duration') && action.duration > 0) {
@@ -4433,7 +4882,7 @@ class OnDaRun extends LitElement {
                   if (action.duration < 0) {
                     action.priority = -1;
                   } else {
-                    //this.amandarine.enactAction(action, deltaTime, speed);
+                    //this.amandarine.activate(action, deltaTime, speed);
                   }
                   break HANDLE_ACTION_QUEUE;
                 }
@@ -4443,7 +4892,7 @@ class OnDaRun extends LitElement {
 
               case A8e.status.CRASHED:
                 // The priority-3 was demoted to 1
-                //this.amandarine.enactAction(action, deltaTime, speed);
+                //this.amandarine.activate(action, deltaTime, speed);
               default:
                 break HANDLE_ACTION_QUEUE;
             }
@@ -4451,7 +4900,7 @@ class OnDaRun extends LitElement {
             // All 1s will progress into 2s
           case 2: /* priority */
             this.activeAction = action;
-            //this.amandarine.enactAction(action, deltaTime, speed);
+            //this.amandarine.activate(action, deltaTime, speed);
 
             /*
             if (action.priority == -1) {
@@ -4517,7 +4966,6 @@ class OnDaRun extends LitElement {
               case A8e.status.CRASHED: {
                 if (0 == action.timer) {
                   //TOOD this.dispatchEvent(new CustomEvent('odr-crash', { bubbles: false, detail: { action: action } }));
-                  console.log('CRASHED');
 
                   this.music.stop();
                   this.playSound(this.soundFx.SOUND_OGGG,0.3);
@@ -4540,7 +4988,7 @@ class OnDaRun extends LitElement {
                   action.lagging = speed;
                 }
 
-                //this.amandarine.enactAction(action, deltaTime, speed);
+                //this.amandarine.activate(action, deltaTime, speed);
 
                 if (action.timer > 3000 && !action.playEndMusic) {
                   action.playEndMusic = true;
@@ -4590,6 +5038,21 @@ class OnDaRun extends LitElement {
               } //break HANDLE_ACTION_QUEUE;
               break;
               case A8e.status.WAITING:
+                this.introScript = this.introScript || [
+                  20000, `Hi${(N7e.user||{}).nickname ? '_'+N7e.user.nickname.split(' ').join('_') : ''}!\nPress_#slide/#jump_to_start!`,
+                  20000, (N7e.user||{}).nickname ? "Just play already!" : "What's your name? You can login by pressing #trophy button.",
+                  20000, "Didn't know you love the song that much!",
+                  20000, "Allow yourself to be a beginner. No one starts at the top.#<3",
+                  20000, "Man.City will win ⚽\nYou know.",
+                  20000, "You have no idea of the amount of HAPPINESS you brought into my life.",
+                  20000, 'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.#<3',
+                  20000, 'Never give up on something you really want #<3',
+                  20000, 'You are my sunshine ☼#<3',
+                  20000, 'My love for you is a journey;\nStarting at forever,\nand ending at never.#<3',
+                  20000, 'Glory in life is not in never failing,but rising each time we fail.#<3',
+                  20000, 'Love this project?\nDonate_Thai_Redcross_#redcross!\nSee the bottom right for details.',
+                ];
+
                 this.introScriptTimer -= deltaTime;
                 if (this.introScriptTimer < 0) {
                   let wait = this.introScript.shift();
@@ -4648,7 +5111,7 @@ class OnDaRun extends LitElement {
             console.error(action, action.priority);
             N7e.freeze = true;
             /*
-            this.amandarine.enactAction(action, deltaTime, speed);
+            this.amandarine.activate(action, deltaTime, speed);
             break HANDLE_ACTION_QUEUE;
             */
         }
@@ -4656,12 +5119,12 @@ class OnDaRun extends LitElement {
     }
 
     if (this.activeAction)
-      this.amandarine.enactAction(this.activeAction, deltaTime, speed);
+      this.amandarine.activate(this.activeAction, deltaTime, speed);
     else {
       //console.log('No active action for repainting.');
       //N7e.freeze = true;
     }
-    //this.amandarine.repaint(deltaTime, speed, activeAction);
+    //this.amandarine.forward(deltaTime, speed, activeAction);
   }
 
 
@@ -4698,7 +5161,6 @@ OnDaRun.Configurations = {
   MOBILE_SPEED_COEFFICIENT: 1.2,
   RESOURCE_TEMPLATE_ID: 'audio-resources',
   SCALE_FACTOR: 210,
-  SLIDE_FACTOR: 1,
   SPEED: 6,
   SHOW_COLLISION: false,
   GRAPHICS_MODE: 0,
@@ -4796,6 +5258,7 @@ OnDaRun.Configurations = {
     40, "#natA Natherine #natB",
     45, null,
   ],
+
 };
 
 OnDaRun.classes = {
@@ -4860,9 +5323,9 @@ OnDaRun.keycodes = {
 
 Obstacle.MAX_GAP_COEFFICIENT = 1.5;
 Obstacle.MAX_OBSTACLE_LENGTH = 3,
-Obstacle.types = [
+Obstacle.typeList = [
   {
-    type: 'CACTUS_SMALL',
+    name: 'CACTUS_SMALL',
     width: 17,
     height: 35,
     yPos: OnDaRun.defaultDimensions.HEIGHT - 45,
@@ -4876,7 +5339,7 @@ Obstacle.types = [
     ]
   },
   {
-    type: 'CACTUS_LARGE',
+    name: 'CACTUS_LARGE',
     width: 25,
     height: 50,
     yPos: OnDaRun.defaultDimensions.HEIGHT - 60,
@@ -4890,7 +5353,7 @@ Obstacle.types = [
     ]
   },
   {
-    type: 'LIVER',
+    name: 'LIVER',
     width: 46,
     height: 38,
     yPos: [
@@ -4902,8 +5365,8 @@ Obstacle.types = [
       OnDaRun.defaultDimensions.HEIGHT - 175,
     ], // Variable height.
     multipleSpeed: 999,
-    // minSpeed: 8.5,
-    minSpeed: 0,
+    minSpeed: 7.2,
+    //minSpeed: 0,
     minGap: 150,
     collisionBoxes: [
       new CollisionBox(15, 18, 16, 16),
@@ -4916,7 +5379,7 @@ Obstacle.types = [
     speedFactor: 0.25,
   },
   {
-    type: 'RUBBER',
+    name: 'RUBBER',
     width: 46,
     height: 38,
     yPos: [
@@ -4929,7 +5392,7 @@ Obstacle.types = [
     ], // Variable height.
     multipleSpeed: 999,
     // minSpeed: 8.5,
-    minSpeed: 0,
+    minSpeed: 7.2,
     minGap: 150,
     reversed: true,
     collisionBoxes: [
@@ -4942,12 +5405,12 @@ Obstacle.types = [
     speedFactor: -0.25,
   },
   {
-    type: 'VELOTA',
+    name: 'VELOTA',
     width: 52,
     height: 52,
     yPos: OnDaRun.defaultDimensions.HEIGHT - 62,
     multipleSpeed: 999,
-    minSpeed: 0,
+    minSpeed: 6.5,
     minGap: 100,
     collisionBoxes: [
 
@@ -4960,12 +5423,12 @@ Obstacle.types = [
     speedFactor: 0.35,
   },
   {
-    type: 'ROTATA',
+    name: 'ROTATA',
     width: 52,
     height: 52,
     yPos: OnDaRun.defaultDimensions.HEIGHT - 62,
     multipleSpeed: 999,
-    minSpeed: 0,
+    minSpeed: 6.5,
     minGap: 100,
     reversed: true,
     collisionBoxes: [
@@ -4979,12 +5442,26 @@ Obstacle.types = [
   }
 ];
 
-Obstacle.types.forEach(type => {
-  if (type.reversed) {
-    type.collisionBoxes.forEach(box => box.flop(type.width));
-    type.frames.reverse();
+Obstacle.types = {};
+
+Obstacle.typeList.forEach((typeConfig,index) => {
+  typeConfig.index = index;
+  if (typeConfig.reversed) {
+    typeConfig.collisionBoxes.forEach(box => box.flop(typeConfig.width));
+    typeConfig.frames.reverse();
   }
+  Obstacle.types[typeConfig.name] = typeConfig;
 });
+
+Obstacle.getRandomType = function (currentSpeed/*, opt_ignoreSet*/) {
+  let tries = 0;
+  let ret;
+  do {
+    tries++;
+    ret = this.typeList[getRandomNum(0, this.typeList.length - 1)];
+  } while(/*(opt_ignoreSet && opt_ignoreSet.has(ret)) ||*/ ret.minSpeed > currentSpeed);
+  return ret;
+}
 
 HorizonLine.dimensions = {
   WIDTH: 600,
