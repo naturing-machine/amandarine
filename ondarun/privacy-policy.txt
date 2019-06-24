@@ -1,15 +1,15 @@
 Privacy Policy
 ==============
 
-Amandarine Frontier Project (https://amandarine-frontier.firebaseapp.com) take privacy of your personal information seriously. This Privacy Policy aim to describe how we are commited to protect your personal information.
+Amandarine Frontier Project (https://amandarine-frontier.firebaseapp.com) takes the privacy of your personal information seriously. This Privacy Policy aim to describe how we are committed to protect your personal information.
 
 :: Information collected ::
 
-There will be no other use of the linked social media accounts' data that was not purposely made public by the players themselves. We only use linked accounts for authentication purpose. The game play will be anonymously collected as usage data, only for improving the overall game plays for the project and will be provided anonymously to staffs. We are storing emails and display names from the authentication services but they will not be used by us.
+There will be no other use of the linked social media account data that was not purposely made public by the users themselves. We only use linked accounts for authentication purpose. The software usage will be anonymously collected, only for improving the overall usages for the project and will only be provided anonymously to official developer(s). We are storing emails and display names from the authentication services but they will not be used by us.
 
 :: Your Public Information ::
 
-Your social media account will not be disclosed if not decided by yourself. The project will allow you to create a nickname and will give you a personal ID to indicate yourself. You are allowed to disclose your linked services and that will only be by your decision.
+Your social media account will not be disclosed if not decided by yourself. The project will allow you to decide a display name but will generate for you a personal ID to indicate yourself. You are allowed to disclose your linked services at will.
 
 :: Security Of Data ::
 The security of your data is very important to us but electronic storage is not 100% secure. Since we only rely on authentication service providers, we don't collect or store any password.
@@ -24,7 +24,7 @@ We use third parties' facilities to provide the authentication and sign on servi
 
 :: Tracking & Cookies Data ::
 
-This website uses a cookie to record preferences for individual users. They are some small text data and cannot be used to run harmful programs on your computer and can only be read by the webserver.
+This website uses a cookie to record preferences for individual users. They are some small text data and cannot be used to run harmful programs on your computer and can only be read by the web-server.
 
 :: Legal Requirements ::
 
@@ -36,7 +36,7 @@ We may disclose your personal information if required to do so by law or in the 
 
 :: Changes To This Privacy Policy ::
 
-We may update our Privacy Policy from time to time and will notify you of any change by the application's notification system. 
+We may update our Privacy Policy from time to time and will notify you of any change by the application's notification system.
 
 :: Contacting us:
 
