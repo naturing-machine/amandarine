@@ -5625,7 +5625,7 @@ class OnDaRun extends LitElement {
       case OnDaRun.events.CONSOLEUP:{
 
         let button = e.detail.consoleButton;
-        if( this.lastButtonUp === button ){
+        if( this.menu && this.lastButtonUp === button ){
           this.menu = null;
           this.lastButtonUp = null;
           break;
