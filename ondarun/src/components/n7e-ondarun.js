@@ -194,7 +194,10 @@ class User {
   constructor(opt_providerName) {
     let redirect = true;
     let provider;
-    if (opt_providerName) {
+    if( opt_providerName ){
+      N7e.userSignedIn = false;
+      N7e.signing.progress = true;
+
       firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => {
         switch(opt_providerName) {
           case "google":
@@ -5087,6 +5090,7 @@ class OnDaRun extends LitElement {
                 return mainMenu;
               } else {
                 N7e.user = new User(['facebook','twitter','google'][entryIndex]);
+                return new WaitingPanel( this.canvas, () => N7e.signing.progress );
               }
             },
           });
