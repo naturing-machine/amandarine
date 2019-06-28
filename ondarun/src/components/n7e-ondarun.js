@@ -5513,19 +5513,24 @@ class OnDaRun extends LitElement {
 
     switch( e.type ){
       case OnDaRun.events.KEYDOWN:{
-        e.preventDefault();
         let button = this.consoleButtonForKeyboardCodes[ e.code ];
-        if( !e.repeat && button) {
-          button.handleEvent( e );
+        if( button ){
+          e.preventDefault();
+          if( !e.repeat ){
+            button.handleEvent( e );
+          }
         } else {
           this.onKeyDown( e );
         }
+
       } break;
 
       case OnDaRun.events.KEYUP:{
         let button = this.consoleButtonForKeyboardCodes[ e.code ];
-        if (!e.repeat && button) {
-          this.consoleButtonForKeyboardCodes[ e.code ].handleEvent( e );
+        if ( button) {
+          if( !e.repeat ){
+            button.handleEvent( e );
+          }
         } else {
           this.onKeyUp( e );
         }
