@@ -3001,34 +3001,8 @@ DistanceMeter.config = {
 
 class Panel {
   constructor() {
-    this.actions = [];
     this.submenu = null;
-    this.buttons = [null,null];
-  }
-
-  queueAction( action ) {
-    if( this.submenu ){
-      this.submenu.queueAction( action );
-      return;
-    }
-
-    if( !action ) return;
-
-    if( action.priority == 0 ){
-      if( action.type == A8e.status.JUMPING ){
-        this.buttons[1] = action;
-      } else if( action.type == A8e.status.SLIDING ){
-        this.buttons[0] = action;
-      }
-    }
-
-    //TODO change double to action flag.
-    if( this.buttons[0] && this.buttons[ 1 ]){
-      this.buttons = [null,null];
-      this.double = true;
-    } else {
-      this.double = false;
-    }
+    this.passthrough = false;
   }
 }
 
@@ -3037,7 +3011,6 @@ class TitlePanel extends Panel {
     super();
     this.canvas = canvas;
     this.canvasCtx  = canvas.getContext('2d');
-    this.actions = [];
     this.timer = 0;
     this.ender = 0;
     this.dataReadyTime = 0;
@@ -3178,13 +3151,13 @@ the Thai Redcross Society #redcross
     }
   }
 
-  queueAction( action ) {
+  handleEvent( e ){
     if (this.dataReadyTime && !this.ender) {
-      //super.queueAction(action);
       this.ender = this.timer;
       ODR.setSkyGradient( ODR.config.SKY.DAY, 3000 );
       ODR.loadSounds();
     }
+    return true;
   }
 
   forward( deltaTime ) {
@@ -3347,7 +3320,7 @@ class WaitingPanel extends Panel {
     return this.progressingCallback() ? this : null;
   }
 
-  handleEvent(e) {
+  handleEvent( e ){
     return true;
   }
 }
@@ -3364,44 +3337,94 @@ class Menu extends Panel {
     this.yOffset = 0;
     this.subtitle = new Text(600/14,0).setText('press both #slide+#jump to select');
     this.text = new Text(100);
+    this.timer = 0;
+    this.buttonUpTime = [ 0, 0 ];
+    this.offset = 0;
+    this.muted = muted;
+  }
+
+  handleEvent( e ){
+    if( this.submenu && this.submenu.handleEvent ){
+      return this.submenu.handleEvent( e );
+    }
+
+    // Only handle known event types, default to passing the event back to the parent.
+    switch( e.type ){
+      case OnDaRun.events.CONSOLEDOWN: {
+        let button = e.detail.consoleButton;
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:{
+            this.willEnter = this.buttonUpTime[ 1 ] ? true : false;
+            this.buttonUpTime[ 0 ] = this.timer;
+          } break;
+
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+            this.willEnter = this.buttonUpTime[ 0 ] ? true : false;
+            this.buttonUpTime[ 1 ] = this.timer;
+          } break;
+
+          default:
+            return false;
+        }
+      } break;
+
+      case OnDaRun.events.CONSOLEUP: {
+        let button = e.detail.consoleButton;
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:{
+            if( this.buttonUpTime[ 0 ]){
+              this.buttonUpTime[ 0 ] = 0;
+              if( !this.willEnter )
+                this.offset--;
+            }
+          } break;
+
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+            if( this.buttonUpTime[ 1 ]){
+              this.buttonUpTime[ 1 ] = 0;
+              if( !this.willEnter )
+                this.offset++;
+            }
+          } break;
+
+          default:
+            return false;
+        }
+
+      } break;
+
+      default:
+        return false;
+    }
+
+    return true;
   }
 
   forward( deltaTime, depth ) {
-    for (let i = 0; i < 2; i++) {
-      let action = this.buttons[i];
-      if (action && action.priority == 1) {
-        switch (action.type) {
-          case A8e.status.JUMPING:
-            this.model.currentIndex++;
-            if (this.model.currentIndex >= this.model.entries.length)
-              this.model.currentIndex = 0;
-          break;
-          case A8e.status.SLIDING:
-            this.model.currentIndex--;
-            if (this.model.currentIndex < 0)
-              this.model.currentIndex = this.model.entries.length - 1;
-          break;
-        }
-        action.priority = -1;
-        this.buttons[i] = null;
-        if( this.model.select ) {
-          this.model.select( this.model.entries[this.model.currentIndex], this.model.currentIndex, this.model );
-        } else {
-          ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_APP_VOLUME/10 );
-        }
-      }
+    this.timer += deltaTime;
+
+    if( this.offset ){
+
+      if( !this.muted )
+        ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+
+      let newIdx = this.model.currentIndex + this.offset;
+      let length = this.model.entries.length;
+
+      this.model.currentIndex = newIdx - length * Math.floor( newIdx / length );
+      this.offset = 0;
     }
 
-    if (this.double) {
-      this.double = false;
-      /*
-      if (this.submenu) {
-        this.submenu = null;
-      }
-      */
+    /*
+    this.canvasCtx.fillStyle = "#000d";
+    this.canvasCtx.fillRect(0,0,this.canvas.width,this.canvas.height);
+    */
 
-      this.buttons = [null,null];
-      let entry = this.model.entries[this.model.currentIndex];
+    // An entry was chosen. Waiting until both buttons are released.
+    if( this.willEnter && 0 == this.buttonUpTime[ 0 ] && 0 == this.buttonUpTime[ 1 ] ){
+      this.willEnter = false;
+
+      let entry = this.model.entries[ this.model.currentIndex ];
 
       if (entry.disabled || (entry.hasOwnProperty('value') && !entry.options)) {
         ODR.playSound( ODR.soundFx.SOUND_ERROR, ODR.config.SOUND_APP_VOLUME/10 );
@@ -3570,7 +3593,7 @@ class TextEditor {
     this.pattern = "etnsh ◅aiouc.'rdlmf,\"wygpb!?vkqjxz#01234+/56789-▻";
   }
 
-  handleEvent(e) {
+  handleEvent( e ){
     if (e.type == OnDaRun.events.KEYUP || e.type == OnDaRun.events.KEYDOWN) {
       if (e.type == OnDaRun.events.KEYUP) {
         if (e.key == 'Backspace') {
@@ -3950,7 +3973,7 @@ class SlideAction extends Action {
 }
 
 class ConsoleButton {
-  constructor(id, x, y, w, h) {
+  constructor( id, x, y, w, h ){
     this.id = id;
     this.x = x;
     this.y = y;
@@ -3977,7 +4000,7 @@ class ConsoleButton {
 
   }
 
-  forward(deltaTime) {
+  forward( deltaTime ) {
     if (this.frame == -1) {
       this.canvas.style.visibility = 'visible';
     }
@@ -4010,17 +4033,13 @@ class ConsoleButton {
 
   handleEvent( e ){
 
-    switch(e.type) {
+    switch( e.type ){
       case OnDaRun.events.KEYDOWN:
       case OnDaRun.events.MOUSEDOWN:
       case OnDaRun.events.TOUCHSTART: {
         e.preventDefault();
         this.timer = 0;
         this.dir = 1;
-        if( ODR.scene ) {
-          ODR.scene.queueAction();
-          break;
-        }
         this.handlePressed(e);
       } break;
       case OnDaRun.events.MOUSEOUT:
@@ -4031,15 +4050,12 @@ class ConsoleButton {
         e.preventDefault();
         this.timer = 0;
         this.dir = -1;
-        if( ODR.scene ) {
-          ODR.scene.queueAction();
-          break;
-        }
         this.handleReleased(e);
       } break;
       default:
-        console.log(this,e);
+        console.log('event', this,e);
     }
+
   }
 
   handlePressed( e ){
@@ -4047,6 +4063,7 @@ class ConsoleButton {
       bubbles: true,
       composed: true,
       detail: {
+        time: ODR.time,
         consoleButton: this,
       },
     });
@@ -4058,6 +4075,7 @@ class ConsoleButton {
       bubbles: true,
       composed: true,
       detail: {
+        time: ODR.time,
         consoleButton: this,
         timeOut: false,
       },
@@ -4094,6 +4112,7 @@ class ConsoleSystemButton extends ConsoleButton {
         bubbles: true,
         composed: true,
         detail: {
+          time: ODR.time,
           consoleButton: this,
           timeOut: true,
         },
@@ -4489,15 +4508,20 @@ class OnDaRun extends LitElement {
 
     this.consoleButtonForKeyboardCodes['NumpadEnter'] = this.consoleButtons.CONSOLE_RIGHT;
     this.consoleButtonForKeyboardCodes['ArrowRight'] = this.consoleButtons.CONSOLE_RIGHT;
-    this.consoleButtonForKeyboardCodes['ShiftRight'] = this.consoleButtons.CONSOLE_RIGHT;
+    this.consoleButtonForKeyboardCodes['Backslash'] = this.consoleButtons.CONSOLE_RIGHT;
+    this.consoleButtonForKeyboardCodes['Backspace'] = this.consoleButtons.CONSOLE_RIGHT;
+    this.consoleButtonForKeyboardCodes['NumpadAdd'] = this.consoleButtons.CONSOLE_RIGHT;
+    this.consoleButtonForKeyboardCodes['NumpadSubstract'] = this.consoleButtons.CONSOLE_RIGHT;
+    //this.consoleButtonForKeyboardCodes['ShiftRight'] = this.consoleButtons.CONSOLE_RIGHT;
 
     this.consoleButtonForKeyboardCodes['Numpad0'] = this.consoleButtons.CONSOLE_LEFT;
     this.consoleButtonForKeyboardCodes['ArrowLeft'] = this.consoleButtons.CONSOLE_LEFT;
-    this.consoleButtonForKeyboardCodes['ShiftLeft'] = this.consoleButtons.CONSOLE_LEFT;
+    this.consoleButtonForKeyboardCodes['Backquote'] = this.consoleButtons.CONSOLE_LEFT;
+    this.consoleButtonForKeyboardCodes['Tab'] = this.consoleButtons.CONSOLE_LEFT;
+    //this.consoleButtonForKeyboardCodes['ShiftLeft'] = this.consoleButtons.CONSOLE_LEFT;
 
     this.consoleButtonForKeyboardCodes['KeyM'] = this.consoleButtons.CONSOLE_A;
     this.consoleButtonForKeyboardCodes['Digit5'] = this.consoleButtons.CONSOLE_B;
-
 
     /* Load and set console image */
     this.consoleImage = new Image();
@@ -4813,8 +4837,18 @@ class OnDaRun extends LitElement {
     }
   }
 
+  closeMenuForButton( button ){
+    if( this.menu && this.menu.associatedButton == button ){
+      this.menu = null;
+      return true;
+    }
+    return false;
+  }
+
   openSoundMenu(){
-    this.config.PLAY_MUSIC = true;
+    let button = this.consoleButtons.CONSOLE_A;
+
+    //this.config.PLAY_MUSIC = true;
     this.music.stop();
     let entries = [];
     let key;
@@ -4878,28 +4912,36 @@ class OnDaRun extends LitElement {
           ODR.music.load('offline-play-music', this.config.PLAY_MUSIC);
         }
 
-        if( entry.value != this.config[entry.name] ) {
-          this.config[entry.name] = entry.value;
+        if( entry.value != this.config[ entry.name ] ) {
+          this.config[ entry.name ] = entry.value;
           if (N7e.user) {
             N7e.user.odrRef.child('settings/'+entry.name).set(entry.value);
+          }
+
+          if( entry.name == 'PLAY_MUSIC' ) {
+            ODR.terminal.setMessages(`♬ ${entry.value ? "ON" : "OFF"}`, 2000);
           }
 
           return null;
         }
         return null;
       },
-    });
+    }, button );
   }
 
-  openGraphicsMenu() {
+  openGraphicsMenu(){
+    let button = this.consoleButtons.CONSOLE_B;
+    if( this.closeMenuForButton( button )) return;
+
     this.music.stop();
     let entries = [];
     for (let key in this.config.GRAPHICS_MODE_OPTIONS) {
       let def = this.config.GRAPHICS_MODE_OPTIONS[key];
       entries.push({title:key.slice(9), name:key, options:def, value:this.config[key]});
     }
+
     entries.push({title:'exit', exit:true});
-    this.menu = new Menu(this.canvas, {
+    this.menu = new Menu( this.canvas, {
       title: 'graphics',
       entries: entries,
       enter: ( entryIndex, entry ) => {
@@ -4917,7 +4959,7 @@ class OnDaRun extends LitElement {
         this.setGraphicsMode( 3 );
         return null;
       },
-    });
+    }, button );
   }
 
   setGameMode(choice) {
@@ -4964,6 +5006,9 @@ class OnDaRun extends LitElement {
   }
 
   openGameMenu() {
+    let button = this.consoleButtons.CONSOLE_C;
+    if( this.closeMenuForButton( button )) return;
+
     this.music.stop();
     let entries = [];
 
@@ -4989,11 +5034,13 @@ class OnDaRun extends LitElement {
 
         return null;
       }
-    });
-
+    }, button );
   }
 
   openUserMenu() {
+    let button = this.consoleButtons.CONSOLE_D;
+    if( this.closeMenuForButton( button )) return;
+
     if( N7e.signing.progress ){
       this.playSound( this.soundFx.SOUND_ERROR, this.config.SOUND_APP_VOLUME/10, false, 0.2 );
       this.subtitle = new Text(600/14,0).setText("signing in..please wait");
@@ -5060,14 +5107,14 @@ class OnDaRun extends LitElement {
                   ODR.distanceMeter.setHighScore( 0 );
                 }
               },
-            })
+            }, button )
           else if( choice = "set name" ){
             return null; //NYI
           }
         }
-      })
+      }, button )
       /* No active user */
-      : new Menu(this.canvas, {
+      : new Menu( this.canvas, {
         title: 'LINK PROFILE',
         entries: [
           '#facebook FACEBOOK',
@@ -5093,9 +5140,9 @@ class OnDaRun extends LitElement {
                 return new WaitingPanel( this.canvas, () => N7e.signing.progress );
               }
             },
-          });
+          }, button );
         },
-      });
+      }, button );
   }
 
   setGraphicsMode(mode) {
@@ -5381,26 +5428,28 @@ class OnDaRun extends LitElement {
     var deltaTime = now - (this.time || now);
     this.time = now;
 
+    // Update button animations.
     for( let key in this.consoleButtons ){
-      this.consoleButtons[key].forward(deltaTime);
+      this.consoleButtons[ key ].forward( deltaTime );
     }
 
-    if (this.scene ){
+    /*
+    if( this.scene ){
       //this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
       this.scene = this.scene.forward(deltaTime);
       this.scheduleNextRepaint();
-      return;
+      if( !this.scene.passthrough )
+        return;
     }
+    */
 
-    if(this.menu) {
-      /*
-      this.forwardSkyGradient(deltaTime);
-      this.clearCanvas();
-      */
+    if( this.menu ){
       this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
       this.menu = this.menu.forward(deltaTime);
       this.scheduleNextRepaint();
-      return;
+      if( this.menu && !this.menu.passthrough ){
+        return;
+      }
     }
 
     /*
@@ -5569,30 +5618,32 @@ class OnDaRun extends LitElement {
  * OnDarun event handler interface
  * @param {Event} e application events.
  */
+
   handleEvent(e) {
-    if( this.scene && this.scene.handleEvent && this.scene.handleEvent( e )){
-      return;
-    }
+
     if( this.menu && this.menu.handleEvent && this.menu.handleEvent( e )){
       return;
     }
 
     switch( e.type ){
-      case OnDaRun.events.KEYDOWN:
-        if( !e.repeat && this.consoleButtonForKeyboardCodes[ e.code ]) {
-          this.consoleButtonForKeyboardCodes[e.code].handleEvent( e );
+      case OnDaRun.events.KEYDOWN:{
+        let button = this.consoleButtonForKeyboardCodes[ e.code ];
+        if( !e.repeat && button) {
+          e.preventDefault();
+          button.handleEvent( e );
         } else {
           this.onKeyDown( e );
         }
-        break;
+      } break;
 
-      case OnDaRun.events.KEYUP:
-        if (!e.repeat && this.consoleButtonForKeyboardCodes[e.code]) {
-          this.consoleButtonForKeyboardCodes[e.code].handleEvent(e);
+      case OnDaRun.events.KEYUP:{
+        let button = this.consoleButtonForKeyboardCodes[ e.code ];
+        if (!e.repeat && button) {
+          this.consoleButtonForKeyboardCodes[ e.code ].handleEvent( e );
         } else {
           this.onKeyUp( e );
         }
-        break;
+      } break;
 
       case OnDaRun.events.CONSOLEDOWN: {
 
@@ -5625,11 +5676,6 @@ class OnDaRun extends LitElement {
       case OnDaRun.events.CONSOLEUP:{
 
         let button = e.detail.consoleButton;
-        if( this.menu && this.lastButtonUp === button ){
-          this.menu = null;
-          this.lastButtonUp = null;
-          break;
-        }
 
         switch( button ){
           case this.consoleButtons.CONSOLE_LEFT:
@@ -5645,8 +5691,10 @@ class OnDaRun extends LitElement {
           // Music button
           case this.consoleButtons.CONSOLE_A:
             if( e.detail.timeOut || this.menu ){
-              this.openSoundMenu();
-              this.lastButtonUp = button;
+
+              if( !this.closeMenuForButton( button ))
+                this.openSoundMenu();
+
             } else if( !this.menu ){
               this.setMusicMode(-1 );
               let sub = this.subtitle = new Text(600/14,0).setText("hold the button for sound settings.");
@@ -5657,27 +5705,29 @@ class OnDaRun extends LitElement {
           // Graphics button
           case this.consoleButtons.CONSOLE_B:
             if( e.detail.timeOut || this.menu ){
-              this.openGraphicsMenu();
-              this.lastButtonUp = button;
+
+              if( !this.closeMenuForButton( button ))
+                this.openGraphicsMenu();
+
             } else if( !this.menu ){
               this.setGraphicsMode(-1 );
               let sub = this.subtitle = new Text(600/14,0).setText("hold the button for graphics settings.");
               this.subtitleTimer = 2000;
             }
-          break;
+            break;
 
           case this.consoleButtons.CONSOLE_C:
-            this.openGameMenu();
-            this.lastButtonUp = button;
-          break;
+            if( !this.closeMenuForButton( button ))
+              this.openGameMenu();
+            break;
 
           case this.consoleButtons.CONSOLE_D:
-            this.openUserMenu();
-            this.lastButtonUp = button;
-          break;
+            if( !this.closeMenuForButton( button ))
+              this.openUserMenu();
+            break;
 
           case this.consoleButtons.CONSOLE_RESET:
-          break;
+            break;
 
           case this.consoleButtons.CONSOLE_N7E:{
             if (!this.n7eUrlList || this.n7eUrlList.length == 0) {
@@ -5733,7 +5783,7 @@ class OnDaRun extends LitElement {
 
     // Prevent native page scrolling whilst tapping on mobile.
     if (IS_MOBILE && this.playing) {
-      e.preventDefault();
+      //e.preventDefault();
     }
   }
 
@@ -5748,15 +5798,6 @@ class OnDaRun extends LitElement {
   }
 
   queueAction(action) {
-    if (this.scene && action.control) {
-      this.scene.queueAction(action);
-      return;
-    }
-    if (this.menu && action.control) {
-      this.menu.queueAction(action);
-      return;
-    }
-
     this.actionIndex++;
     action.index = this.actionIndex;
     this.actions.push(action);
@@ -5847,10 +5888,12 @@ class OnDaRun extends LitElement {
       this.distanceMeter.setHighScore( this.score );
     }
 
+    // RMME Looks like it was used once?
     // Reset the time clock.
-    this.time = getTimeStamp();
-    this.crashedTime = this.time;
+    //this.time = getTimeStamp();
+    //this.crashedTime = this.time;
   }
+
 
   get gameModeTotalScore(){
     let sum = 0;
@@ -5944,10 +5987,10 @@ class OnDaRun extends LitElement {
 
 
   /* Phear the Scheduler. Cuz it's a fucking mess.
-     Scheduler is for conducting specific behaviors of an action to
-     a particular priority before activate the action: activateAction().
+     Scheduler is for conducting all actions into their priority handlers,
+     before activating them in activateAction().
 
-     *** Priority Definitions ***
+     *** Action Priority Definitions ***
       0: Either...
         a) Collecting active parameters (eg. weighting Jump & Slide)
         b) Suspended. Waiting to be updated into a background task.
@@ -5959,7 +6002,7 @@ class OnDaRun extends LitElement {
       3: Interrupting. (eg. Crash, Pause)
      -1: Zombie, a released task.
   */
-  scheduleActionQueue(now, deltaTime, speed) {
+  scheduleActionQueue( now, deltaTime, speed ) {
 
     /* activeAction points to the current active action, drawings & tests
     such as collision checkings will be done with this action.
@@ -5996,11 +6039,11 @@ class OnDaRun extends LitElement {
 
             switch(action.type) {
               case A8e.status.JUMPING:
-                this.amandarine.jumpingGuideIntensity = Math.min(1,gji+deltaTime/200);
+                this.amandarine.jumpingGuideIntensity = Math.min( 1, gji + deltaTime/200 );
                 this.amandarine.drawJumpingGuide(action, now, speed);
                 continue;
               case A8e.status.SLIDING:
-                this.amandarine.slidingGuideIntensity = Math.min(1,gsi+deltaTime/200);
+                this.amandarine.slidingGuideIntensity = Math.min( 1, gsi + deltaTime/200 );
                 this.amandarine.drawSlidingGuide(action, now, speed);
                 continue;
               case A8e.status.RUNNING:
@@ -6053,18 +6096,6 @@ class OnDaRun extends LitElement {
                 action.speed = speed;
                 action.msPerFrame = 1000 / (22 + speed);
 
-                /*
-                if (action.hasOwnProperty('duration') && action.duration > 0) {
-                  action.duration -= deltaTime;
-                  if (action.duration < 0) {
-                    action.priority = -1;
-                  } else {
-                    //this.amandarine.activateAction(action, deltaTime, speed);
-                  }
-                  break HANDLE_ACTION_QUEUE;
-                }
-                */
-
                 continue;
 
               case A8e.status.CRASHED:
@@ -6079,7 +6110,9 @@ class OnDaRun extends LitElement {
             this.activeAction = action;
             //this.amandarine.activateAction(action, deltaTime, speed);
 
+
             /*
+            // TODO! Don't delete.
             if (action.priority == -1) {
 
               // At the end of the first action, the actual game begins.
@@ -6308,8 +6341,6 @@ class OnDaRun extends LitElement {
     }
     //this.amandarine.forward(deltaTime, speed, activeAction);
   }
-
-
 }
 
 OnDaRun.defaultDimensions = {
