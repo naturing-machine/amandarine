@@ -1498,39 +1498,13 @@ class Horizon {
     this.nightMode = new NightMode(this.canvas, this.spritePos.MOON, this.dimensions.WIDTH);
 
     // We will only initialize clouds.
-    // Every 2-layer will be lightly tinted with an atmosphere (skyCanvas).
+    // Every 2-layer will be lightly tinted with an atmosphere (sky).
 
     for( let i = 0; i < this.cloudFrequency * 10; i++ ){
       let x = getRandomNum(-50, DEFAULT_WIDTH*2 );
       this.layers[[0,2,4][getRandomNum(0,2)]].push( new Cloud( this.canvas, Cloud.randomCloudType,
         x, Cloud.randomCloudHeight ));
     }
-    /*
-    this.layers.forEach(( layer, index ) => {
-      if( index % 2 == 0 ){
-        // Clouds
-        let x = Cloud.randomCloudGap - 50;
-        while( x < DEFAULT_WIDTH ){
-          if( 0 === getRandomNum( 0, this.layers.length - 1 )) continue;
-
-          // FIXME adjust cloud height based on index.
-          layer.push( new Cloud( this.canvas, Cloud.randomCloudType,
-            x, Cloud.randomCloudHeight ));
-          x+= Cloud.randomCloudGap;
-        }
-      } else {
-        // Mountains
-
-      }
-    })
-    */
-      /*
-    this.addCloud();
-    this.addMountains();
-    this.addMountains();
-    this.oldMountains = this.mountains;
-    this.mountains = [];
-    */
   }
 
   growMountain( generator, parent ){
@@ -1567,6 +1541,12 @@ class Horizon {
     let numMountains = 0;
     let maxXMountain = 0;
 
+    //Update the atmosphere.
+    ODR.sky.forward( deltaTime );
+
+    //First draw
+    this.canvasCtx.clearRect( 0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT );
+
     for( let i = 0, layer; layer = this.layers[i]; i++ ){
 
 
@@ -1592,7 +1572,7 @@ class Horizon {
           this.canvasCtx.globalCompositeOperation = 'source-atop';
           this.canvasCtx.globalAlpha = 0.4;
           //this.canvasCtx.fillStyle = '#' + (i == 3 ? ODR.rgb0x2 : ODR.rgb0x1);
-          this.canvasCtx.fillStyle = '#' + ODR.rgb0x2;
+          this.canvasCtx.fillStyle = '#' + ODR.sky.toRGB;
           this.canvasCtx.fillRect( 0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT );
 
         } this.canvasCtx.restore();
@@ -1638,14 +1618,6 @@ class Horizon {
 
 
     //Hack sky tint
-    /*
-      this.canvasCtx.save();
-      this.canvasCtx.globalAlpha = 0.5;
-      this.canvasCtx.drawImage( ODR.skyCanvas, 0, 0 );
-      this.canvasCtx.restore();
-      */
-
-    //this.forwardClouds(deltaTime, currentSpeed);
 
     /*
     if (this.treX > -20) {
@@ -1660,7 +1632,7 @@ class Horizon {
     this.canvasCtx.save();
     this.canvasCtx.globalCompositeOperation = 'destination-over';
     this.nightMode.forward(showNightMode,deltaTime);
-    this.canvasCtx.drawImage( ODR.skyCanvas, 0, 0 );
+    ODR.sky.repaint( this.canvasCtx );
     this.canvasCtx.restore();
 
 
@@ -1676,75 +1648,6 @@ class Horizon {
     }
 
   }
-
-  /*
-  forwardClouds( deltaTime, speed, background ) {
-    var cloudSpeed = this.cloudSpeed / 1000 * deltaTime * speed;
-    var numClouds = this.clouds.length;
-
-    if (numClouds) {
-      for (var i = numClouds - 1; i >= 0; i--) {
-        if (background && this.clouds[i].opacity < 0.5) {
-          this.clouds[i].forward(cloudSpeed);
-        } else if (!background && this.clouds[i].opacity >= 0.5) {
-          this.clouds[i].forward(cloudSpeed);
-        }
-      }
-
-      var lastCloud = this.clouds[numClouds - 1];
-
-      // Check for adding a new cloud.
-      if (!background && numClouds < this.config.MAX_CLOUDS &&
-          (this.dimensions.WIDTH - lastCloud.minX) > lastCloud.cloudGap &&
-          ODR.config.GRAPHICS_CLOUDS/10 * this.cloudFrequency > Math.random()) {
-        this.addCloud();
-      }
-
-      // Remove expired clouds.
-      if(!background) {
-        this.clouds = this.clouds.filter(obj => {
-          return !obj.remove;
-        });
-      }
-    } else {
-      this.addCloud();
-    }
-  }
-
-  forwardMountains(deltaTime, speed) {
-    var mountainSpeed = this.mountainSpeed / 1000 * deltaTime * speed;
-    var numMountains = this.mountains.length;
-
-    if (numMountains) {
-      for (let j = 0; j < 2; j++) {
-        for (let i = numMountains - 1; i >= 0; i--) {
-          if (this.mountains[i].depth == j) {
-            this.mountains[i].forward(mountainSpeed * (j ? 1.1 : 1));
-          }
-        }
-      }
-
-      var lastMountain = this.mountains[numMountains - 1];
-
-      if (numMountains < 10 &&
-          (this.dimensions.WIDTH - lastMountain.minX) > lastMountain.mountainGap &&
-          this.mountainFrequency > Math.random()) {
-        this.addMountains();
-      }
-
-      this.mountains = this.mountains.filter(obj => {
-        if (obj.remove) {
-          this.oldMountains.push(obj);
-          obj.remove = false;
-          return false;
-        }
-        return true;
-      });
-    } else {
-      this.addMountains();
-    }
-  }
-  */
 
   resetEntities() {
     if( this.entities )
@@ -2024,70 +1927,6 @@ class Horizon {
     this.canvas.height = height;
   }
 
-  /*
-  addCloud() {
-    if (ODR.config.GRAPHICS_CLOUDS == 0) {
-      return
-    }
-
-    let type = getRandomNum(0,this.spritePos.CLOUD.y.length - 1);
-    let len = this.clouds.length;
-    if (len >= 2) {
-      if (this.clouds[len-1].type == this.clouds[len-2].type && this.clouds[len-2].type == type) {
-        type++;
-        type %= this.spritePos.CLOUD.y.length;
-      }
-    }
-
-    this.clouds.push(new Cloud(this.canvas, this.spritePos.CLOUD,
-      this.dimensions.WIDTH, type));
-  }
-
-  addMountain(distance, level) {
-    let mountain;
-    //TODO elevate mounains randomly to reduce cache size.
-    if (this.oldMountains.length > 10) {
-      mountain = this.oldMountains.splice(getRandomNum(0,10),1)[0];
-      mountain.minX = distance;
-      mountain.remove = false;
-      mountain.depth = level;
-    } else {
-      mountain = new Mountain(this.canvas, distance, level);
-    }
-
-    this.mountains.push(mountain);
-
-    let adjusted;
-    let mountains = this.mountains;
-    do {
-      adjusted = false;
-      let untested = [];
-
-      mountains.forEach(mnt => {
-        if (mountain.minX > mnt.minX && mountain.minX + mountain.width < mnt.minX + mnt.width) {
-          mountain.minX +=  mnt.width - mountain.width/2 + getRandomNum(0,100);
-          adjusted = true;
-        } else {
-          untested.push(mnt);
-        }
-      });
-      mountains = untested;
-    } while (adjusted);
-  }
-  */
-
-  addMountain( distance ) {
-    this.layers[[ 1, 3 ][ getRandomNum( 0, 1 )]].push( new Mountain( this.canvas, distance ));
-  }
-
-  addMountains() {
-    this.addMountain( this.dimensions.WIDTH + getRandomNum( 0,1000 ), 1 );
-    this.addMountain( this.dimensions.WIDTH + getRandomNum( 100,900 ), 1 );
-    this.addMountain( this.dimensions.WIDTH + getRandomNum( 200,800 ), 1 );
-    this.addMountain( this.dimensions.WIDTH + getRandomNum( 100,900 ), 3 );
-    this.addMountain( this.dimensions.WIDTH + getRandomNum( 200,800 ), 3 );
-    this.addMountain( this.dimensions.WIDTH + getRandomNum( 300,700 ), 3 );
-  }
 }
 
 Horizon.config = {
@@ -3154,16 +2993,20 @@ the Thai Redcross Society #redcross
   handleEvent( e ){
     if (this.dataReadyTime && !this.ender) {
       this.ender = this.timer;
-      ODR.setSkyGradient( ODR.config.SKY.DAY, 3000 );
+      ODR.sky.setShade( ODR.config.SKY.DAY, 3000 );
       ODR.loadSounds();
     }
     return true;
   }
 
+/**
+ * TitlePanel forward.
+ * @param {number} deltaTime - duration since last call.
+ * @return {Panel} - a subsitute or null.
+ */
   forward( deltaTime ) {
 
-    ODR.forwardSkyGradient(deltaTime);
-    ODR.clearCanvas();
+    ODR.sky.forward( deltaTime, this.canvasCtx );
 
     this.timer += deltaTime;
     let factorA = Math.sin(this.timer / 400);
@@ -4298,6 +4141,129 @@ class Music {
 
 }
 
+class Layer {
+  constructor(){
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = DEFAULT_WIDTH;
+    this.canvas.height = DEFAULT_HEIGHT;
+    this.canvasCtx = this.canvas.getContext('2d');
+    this.needsRepaint = false;
+
+  }
+
+  /*
+  forward( deltaTime ){
+    if( this.needsRepaint ){
+      this.paint();
+    }
+  }
+  */
+}
+
+class Sky extends Layer {
+  constructor(){
+    super();
+
+    this.sourceShade = [0,0,0,0,0,0];
+    this.targetShade = [0,0,0,0,0,0];
+    this.shade = [0,0,0,0,0,0];
+    this.fromRGB = '000000';
+    this.toRGB = '000000';
+
+    //FIXME try to 0
+    this.shadingTimer = 1;
+    this.shadingDuration = 1;
+    this.lastRepaintTimer = 0;
+  }
+
+  setShade( newShade, duration ){
+    if( duration == 0 ){
+      this.sourceShade = newShade;
+      this.shade = newShade.slice();
+      this.targetShade = newShade;
+
+      this.shadingTimer = 1;
+      this.shadingDuration = 1;
+      this.lastRepaintTimer = 0;
+      return;
+    }
+
+    // Restart a shade if the transition was interrupted
+    if( this.shadingTimer < this.shadingDuration ){
+      this.targetShade = this.shade;
+    }
+
+    this.sourceShade = this.targetShade;
+    this.shade = this.sourceShade.slice();
+    this.targetShade = newShade;
+
+    this.shadingTimer = 0;
+    this.shadingDuration = duration;
+    this.lastRepaintTimer = 0;
+
+  }
+
+  repaint( displayCtx ){
+
+    if( this.needsRepaint ){
+      let gr = this.shade;
+      this.fromRGB = (( 1<<24 ) + ( gr[ 0 ]<<16 ) + ( gr[ 1 ]<<8) + gr[ 2 ]).toString( 16 ).slice( 1 );
+
+      if( ODR.config.GRAPHICS_SKY_GRADIENT == 'SOLID'){
+        this.canvasCtx.fillStyle = '#' + this.fromRGB;
+      } else if( ODR.config.GRAPHICS_SKY_GRADIENT == 'GRADIENT'){
+        let gradient = this.canvasCtx.createLinearGradient( 0, 0, 0, DEFAULT_HEIGHT );
+        this.toRGB = (( 1<<24 ) + ( gr[ 3 ]<<16 ) + ( gr[ 4 ]<<8 ) + gr[ 5 ]).toString( 16 ).slice( 1 );
+        gradient.addColorStop( 0, '#' + this.fromRGB );
+        gradient.addColorStop( 1, '#' + this.toRGB );
+        this.canvasCtx.fillStyle = gradient;
+      }
+
+      this.canvasCtx.fillRect( 0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT );
+
+      this.lastRepaintTimer = this.shadingTimer;
+      this.needsRepaint = false;
+    }
+
+    displayCtx.drawImage( this.canvas, 0, 0 );
+
+  }
+
+  forward( deltaTime, displayCtx ) {
+    if( 0 != this.shadingDuration ){
+      let ratio;
+      let dur = this.shadingTimer - this.shadingDuration;
+      this.shadingTimer += deltaTime;
+
+      if( dur >= 0 ){
+        ratio = 1;
+        this.shadingTimer = this.shadingDuration;
+        this.shadingDuration = 0; //This avoids recalculation in the next entry.
+        this.shade = [ ...this.targetShade ];
+      } else {
+        ratio = this.shadingTimer/this.shadingDuration;
+        for( let i = 0; i < 6; i++ ){
+          this.shade[i] = ~~( this.sourceShade[ i ]
+            + ratio*( this.targetShade[ i ] - this.sourceShade[ i ]));
+        }
+      }
+
+      // TODO Move this to Layer abstraction so layers can define their own updating FPS.
+      // Updating the sky at ~ 20fps
+      if( ratio == 1 || this.shadingTimer - this.lastRepaintTimer > 50) {
+        this.needsRepaint = true;
+      }
+    }
+
+    if( displayCtx ){
+      this.repaint( displayCtx );
+    }
+  }
+
+
+}
+
 class OnDaRun extends LitElement {
   static get styles() {
     return css`
@@ -4431,18 +4397,12 @@ class OnDaRun extends LitElement {
     //FIXME just replace
     this.dimensions = OnDaRun.defaultDimensions;
     this.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
-    this.scene = null;
+    //this.scene = null;
     this.menu = null;
 
     this.canvas = null;
     this.canvasCtx = null;
-    this.skyCanvas = null;
-    this.skyCanvasCtx = null;
-    this.skyGradientFromValues = [0,0,0,0,0,0];
-    this.skyGradientToValues = [0,0,0,0,0,0];
-    this.skyGradientCurrentValues = [0,0,0,0,0,0];
-    this.rgb0x1 = '000000';
-    this.rgb0x2 = '000000';
+    this.sky = null;
 
     this.amandarine = null;
     this.distanceMeter = null;
@@ -4665,15 +4625,11 @@ class OnDaRun extends LitElement {
     this.canvasCtx = this.canvas.getContext('2d');
     this.canvas.style.visibility = 'visible';
 
-    this.skyCanvas = document.createElement('canvas');
-    this.skyCanvas.width = DEFAULT_WIDTH;
-    this.skyCanvas.height = DEFAULT_HEIGHT;
-    this.skyCanvasCtx = this.skyCanvas.getContext('2d');//,{alpha:false}
-
-    this.setSkyGradient( this.config.SKY.START, 0 );
+    this.sky = new Sky( this.canvas );
+    this.sky.setShade( ODR.config.SKY.START, 0 );
     this.horizon = new Horizon( this.canvas, this.spriteDef, this.dimensions );
 
-    this.scene = new TitlePanel( this.canvas );
+    this.menu = new TitlePanel( this.canvas );
 
     this.amandarine = new A8e( this.canvas, this.spriteDef.NATHERINE );
 
@@ -4688,9 +4644,6 @@ class OnDaRun extends LitElement {
     this.terminal = new Terminal( this.canvas, this.spriteDef.TEXT_SPRITE );
 
     this.actionIndex = 0;
-
-
-    this.canvasCtx = this.canvas.getContext('2d');
 
     /* Set default custom mode to setting 0 */
     this.config.GRAPHICS_MODE_SETTINGS[3] = JSON.parse(JSON.stringify(OnDaRun.Configurations.GRAPHICS_MODE_SETTINGS[0]));
@@ -5001,8 +4954,8 @@ class OnDaRun extends LitElement {
     let defaultAction = new DefaultAction(1);
     defaultAction.setX = -100;
     this.queueAction(defaultAction);
-    this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_APP_VOLUME/10 );
-    this.setSkyGradient(ODR.config.SKY.DAY,0);
+    this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
+    this.sky.setShade( ODR.config.SKY.DAY, 0 );
   }
 
   openGameMenu() {
@@ -5175,13 +5128,6 @@ class OnDaRun extends LitElement {
 
     if (this.config.GRAPHICS_DUST != 'DUST')
       this.amandarine.dust.reset();
-    //Conflict, FIXME
-    //this.setSkyGradient(this.skyGradientToValues,0);
-    /*
-    this.clearCanvas();
-    this.horizon.horizonLine.draw();
-    this.amandarine.forward(0, this.currentSpeed);
-    */
 
     if (this.config.GRAPHICS_MOON == 'SHINE') {
       this.horizon.nightMode.generateMoonCache();
@@ -5348,77 +5294,6 @@ class OnDaRun extends LitElement {
   */
 
 
-  clearCanvas() {
-    this.canvasCtx.drawImage( this.skyCanvas, 0, 0 );
-  }
-
-  setSkyGradient(newValues, duration) {
-    if (duration == 0) {
-      this.skyGradientFromValues = newValues;
-      this.skyGradientCurrentValues = newValues.slice();
-      this.skyGradientToValues = newValues;
-      this.skyGradientTimer = 1;
-      this.skyGradientDuration = 1;
-      this.lastDrawnSkyTimer = 0;
-      this.drawCounter = 0;
-      return;
-    }
-
-      /* Create a gradient if the transition was interrupted */
-    if (this.skyGradientTimer < this.skyGradientDuration) {
-      this.skyGradientToValues = this.skyGradientCurrentValues;
-    }
-
-    this.skyGradientFromValues = this.skyGradientToValues;
-    this.skyGradientCurrentValues = this.skyGradientFromValues.slice();
-    this.skyGradientToValues = newValues;
-
-    this.skyGradientTimer = 0;
-    this.skyGradientDuration = duration;
-    this.lastDrawnSkyTimer = 0;
-    this.drawCounter = 0;
-
-  }
-
-  forwardSkyGradient( deltaTime ) {
-    if (0 == this.skyGradientDuration) {
-      return;
-    }
-
-    this.skyGradientTimer += deltaTime;
-    if (this.skyGradientTimer >= this.skyGradientDuration) {
-      this.skyGradientTimer = this.skyGradientDuration;
-    }
-
-    let ratio = this.skyGradientTimer/this.skyGradientDuration;
-    for(let i = 0; i < 6; i++) {
-      this.skyGradientCurrentValues[i] = ~~(this.skyGradientFromValues[i]
-        + ratio * (this.skyGradientToValues[i] - this.skyGradientFromValues[i]));
-    }
-
-    // Updating the sky at ~ 20fps
-    if (ratio == 1 || this.skyGradientTimer - this.lastDrawnSkyTimer > 50) {
-      this.lastDrawnSkyTimer = this.skyGradientTimer;
-      let gr = this.skyGradientCurrentValues;
-      this.rgb0x1 = ((1 << 24) + (gr[0] << 16) + (gr[1] << 8) + gr[2]).toString(16).slice(1);
-
-      if (this.config.GRAPHICS_SKY_GRADIENT == 'SOLID') {
-        this.skyCanvasCtx.fillStyle = '#' + this.rgb0x1;
-      } else if (this.config.GRAPHICS_SKY_GRADIENT == 'GRADIENT') {
-        let gradient = this.skyCanvasCtx.createLinearGradient(0, 0, 0, DEFAULT_HEIGHT);
-        this.rgb0x2 = ((1 << 24) + (gr[3] << 16) + (gr[4] << 8) + gr[5]).toString(16).slice(1);
-        gradient.addColorStop(0, '#' + this.rgb0x1);
-        gradient.addColorStop(1, '#' + this.rgb0x2);
-        this.skyCanvasCtx.fillStyle = gradient;
-      }
-      this.skyCanvasCtx.fillRect(0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-      this.drawCounter++;
-      if (ratio == 1) {
-        this.skyGradientDuration = 0;
-      }
-    }
-  }
-
 /**
  * OnDarun main forwarding
  */
@@ -5451,13 +5326,6 @@ class OnDaRun extends LitElement {
         return;
       }
     }
-
-    /*
-    this.forwardSkyGradient( deltaTime );
-    this.clearCanvas();
-    */
-    this.canvasCtx.clearRect(0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-    this.forwardSkyGradient( deltaTime );
 
     if( this.playing ){
 
@@ -5956,7 +5824,6 @@ class OnDaRun extends LitElement {
       this.distance = 0;
       this.setSpeed(this.config.SPEED);
       this.time = getTimeStamp();
-      this.clearCanvas();
       this.distanceMeter.reset();
       this.horizon.reset();
       this.amandarine.reset();
@@ -5982,7 +5849,7 @@ class OnDaRun extends LitElement {
         : this.invertTrigger;
     }
 
-    this.setSkyGradient(this.inverted ? ODR.config.SKY.NIGHT : ODR.config.SKY.DAY, 3000);
+    this.sky.setShade( this.inverted ? ODR.config.SKY.NIGHT : ODR.config.SKY.DAY, 3000 );
   }
 
 
@@ -6181,7 +6048,7 @@ class OnDaRun extends LitElement {
 
                   this.music.stop();
                   this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-                  this.setSkyGradient(this.config.SKY.SUNSET,3000);
+                  this.sky.setShade( this.config.SKY.SUNSET, 3000 );
                   this.shouldAddObstacle = false;
                   this.shouldIncreaseSpeed = false;
 
@@ -6219,7 +6086,7 @@ class OnDaRun extends LitElement {
                       nextAction.priority = -1;
                     } else {
                       this.music.stop();
-                      this.setSkyGradient(ODR.config.SKY.DAY,3000);
+                      this.sky.setShade( ODR.config.SKY.DAY,  3000 );
                       action.priority = -1;
 
                       // Let the default action take responsibility
@@ -6303,14 +6170,8 @@ class OnDaRun extends LitElement {
                       setTimeout(() => { this.music.load('offline-play-music', this.config.PLAY_MUSIC); }, 500);
                       action.speed = this.config.SPEED;
                       action.priority = 1;
-                      this.setSkyGradient(ODR.config.SKY.DAY,3000);
+                      this.sky.setShade( ODR.config.SKY.DAY, 3000 );
                       this.terminal.timer = 200;
-                      /*
-                      this.queueAction({
-                        type: A8e.status.RUNNING,
-                        priority: 0,
-                      });
-                      */
                     } else if (nextAction.priority == 0) {
                     }
                   }
