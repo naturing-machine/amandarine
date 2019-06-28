@@ -1625,7 +1625,7 @@ class Horizon {
     if( numClouds < (ODR.config.GRAPHICS_CLOUDS || 0) * this.cloudFrequency ){
       //HACK FIXME
       let x = DEFAULT_WIDTH + getRandomNum(0,600);
-      this.layers[[0,2,4][getRandomNum(0,2)]].push( new Cloud( this.canvas, Cloud.randomCloudType,
+      this.layers[[0,2,2,4,4,4][getRandomNum(0,5)]].push( new Cloud( this.canvas, Cloud.randomCloudType,
         x, Cloud.randomCloudHeight ));
     }
 
