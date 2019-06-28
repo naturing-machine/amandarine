@@ -932,7 +932,11 @@ Cloud.cycleType = 0;
 // Generate mountains.
 
 class Mountain {
-  static generateMountains( futureOptions ){
+/**
+ * Mountain +generateMountainImages
+ * - Generate base mountains by scaling them vertically and cache the results.
+ */
+  static generateMountainImages( futureOptions ){
     this.mntsCanvas = document.createElement('canvas');
     this.mntsCanvas.width = 1200;
     this.mntsCanvas.height = 100 + 75 + 50;
@@ -1518,7 +1522,7 @@ class Horizon {
     }
   }
 
-  growMountain( generator, parent ){
+  growMountain( generator, parent, layer ){
     if( generator.energy > 0 ){
       generator.energy--;
 
@@ -1535,7 +1539,7 @@ class Horizon {
       }
 
       if( generator.energy ){
-        this.growMountain( generator, mountain );
+        this.growMountain( generator, mountain, li );
       }
     }
   }
@@ -1605,9 +1609,6 @@ class Horizon {
         });
 
       }
-
-
-
 
     }
 
@@ -4633,7 +4634,7 @@ class OnDaRun extends LitElement {
   init() {
 
     //this.generateShadowCache();
-    Mountain.generateMountains();
+    Mountain.generateMountainImages();
 
     this.config.PLAY_MUSIC = true;
     this.music = new Music();
