@@ -1485,7 +1485,6 @@ class Horizon {
     this.resetEntities();
     this.obstacleHistory = [];
     this.horizonOffsets = [0, 0];
-//    this.cloudFrequency = this.config.CLOUD_FREQUENCY;
     this.cloudFrequency = 1.0;
     this.spritePos = spritePos;
     this.nightMode = null;
@@ -1498,16 +1497,6 @@ class Horizon {
     }
 
     //this.treX = !getRandomNum(0,3) ? 2800 : -20;
-
-    // Cloud
-    /*
-    this.clouds = [];
-    this.cloudSpeed = this.config.BG_CLOUD_SPEED;
-
-    this.mountains = [];
-    this.oldMountains = [];
-    this.mountainSpeed = 6;
-    */
 
     // Horizon
     this.horizonLine = null;
@@ -1538,8 +1527,9 @@ class Horizon {
         : DEFAULT_WIDTH + getRandomNum( -250, 250 );
 
       let mountain = new Mountain( this.canvas, distance );
-      this.layers[[ 1, 3 ][ getRandomNum( 0, 1 )]].push( mountain );
-      generator.mountains.push( mountain );
+      let li = [ 1, 3 ][ getRandomNum( 0, 1 )];
+      this.layers[ li ].push( mountain );
+      generator.mountains.push([ mountain, li ]);
       if( generator.minX > mountain.minX ){
         generator.minX = mountain.minX;
       }
@@ -1634,7 +1624,10 @@ class Horizon {
       this.growMountain( generator );
       if( generator.minX < DEFAULT_WIDTH ){
         let shift = getRandomNum( 0, 400 ) + DEFAULT_WIDTH - generator.minX;
-        generator.mountains.forEach( mountain => mountain.minX += shift );
+        generator.mountains.forEach( mountain => {
+          mountain[0].minX += shift;
+          if( mountain[1] == 3 ) mountain[0].minX *= 1.2;
+        });
       }
     }
 
