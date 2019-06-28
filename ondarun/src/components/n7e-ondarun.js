@@ -44,7 +44,7 @@ var N7e = class {
     this.signing[key] = state;
     this.signing.progress = !this.userSignedIn;
     if( !this.signing.progress ) {
-      ODR.hackShouldDropTangerines();
+      ODR.checkShouldDropTangerines();
       /*
       if( ODR.subtitle && ODR.subtitle.signing ) {
         ODR.subtitle = null;
@@ -366,7 +366,7 @@ class Tangerine extends Entity {
   }
 
   collide( collision ) {
-    ODR.hackShouldDropTangerines();
+    ODR.checkShouldDropTangerines();
 
     if( !this.collected ) {
       ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_APP_VOLUME/10 );
@@ -3032,7 +3032,7 @@ the Thai Redcross Society #redcross
         defaultAction.setX = -100;
         ODR.queueAction(defaultAction);
         ODR.shouldAddObstacle = true;
-        ODR.hackShouldDropTangerines();
+        ODR.checkShouldDropTangerines();
         ODR.shouldIncreaseSpeed = true;
         ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_APP_VOLUME/10 );
 
@@ -5777,8 +5777,7 @@ class OnDaRun extends LitElement {
     return Math.round(this.distance * this.config.TO_SCORE);
   }
 
-  //FIXME
-  hackShouldDropTangerines() {
+  checkShouldDropTangerines() {
     this.shouldDropTangerines = false;
     if( N7e.userSignedIn ){
       let d = new Date();
@@ -5816,7 +5815,7 @@ class OnDaRun extends LitElement {
       //this.playCount++;
       this.playLyrics = false;
       this.shouldAddObstacle = true;
-      this.hackShouldDropTangerines();
+      this.checkShouldDropTangerines();
       this.shouldIncreaseSpeed = true;
 
       this.runTime = 0;
@@ -6095,7 +6094,7 @@ class OnDaRun extends LitElement {
                       this.minX = -40;
                       this.playLyrics = false;
                       this.shouldAddObstacle = true;
-                      this.hackShouldDropTangerines();
+                      this.checkShouldDropTangerines();
                       this.shouldIncreaseSpeed = true;
                       this.runTime = 0;
                       this.playing = true;
@@ -6162,7 +6161,7 @@ class OnDaRun extends LitElement {
                     } else if (nextAction.priority == 1) {
                       this.subtitle = null;
                       this.shouldAddObstacle = true;
-                      this.hackShouldDropTangerines();
+                      this.checkShouldDropTangerines();
                       this.shouldIncreaseSpeed = true;
                       this.setSpeed(this.config.SPEED);
                       this.playing = true;
