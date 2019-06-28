@@ -3098,7 +3098,7 @@ the Thai Redcross Society #redcross
       new Text(600/14,0).drawText("loading data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
     } else {
       if (this.timer < 15000) {
-        new Text(600/14,0).drawText("Amandarine Frontier: On Da Run 1.0 RC4", this.canvasCtx,0,180-Math.min(0,runout));
+        new Text(600/14,0).drawText("Amandarine Frontier: On Da Run 1.0 RC5", this.canvasCtx,0,180-Math.min(0,runout));
       } else {
         if (IS_MOBILE)
           new Text(600/14,0).drawText("press #slide/#jump to continue.", this.canvasCtx,0,180-Math.min(0,runout));
