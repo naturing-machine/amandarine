@@ -3191,12 +3191,12 @@ class WaitingPanel extends Panel {
 }
 
 class Menu extends Panel {
-  constructor( canvas, menu ) {
+  constructor( canvas, model, associatedButton, muted = false ) {
     super();
     this.canvas = canvas;
     this.canvasCtx  = canvas.getContext('2d');
-    this.model = menu;
-    this.actions = [];
+    this.model = model;
+    this.associatedButton = associatedButton;
     this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
     this.xOffset = 0;
     this.yOffset = 0;
