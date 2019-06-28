@@ -369,8 +369,8 @@ class Tangerine extends Entity {
     ODR.checkShouldDropTangerines();
 
     if( !this.collected ) {
-      ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_APP_VOLUME/10 );
-      ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_APP_VOLUME/20 );
+      ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/20 );
       this.collected = true;
       this.collectedY = this.minY;
       this.collectedTimer = 0;
@@ -3034,7 +3034,7 @@ the Thai Redcross Society #redcross
         ODR.shouldAddObstacle = true;
         ODR.checkShouldDropTangerines();
         ODR.shouldIncreaseSpeed = true;
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_APP_VOLUME/10 );
+        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
 
         if( N7e.signing.progress ){
           return new WaitingPanel( this.canvas, () => N7e.signing.progress );
@@ -3270,10 +3270,11 @@ class Menu extends Panel {
       let entry = this.model.entries[ this.model.currentIndex ];
 
       if (entry.disabled || (entry.hasOwnProperty('value') && !entry.options)) {
-        ODR.playSound( ODR.soundFx.SOUND_ERROR, ODR.config.SOUND_APP_VOLUME/10 );
+        ODR.playSound( ODR.soundFx.SOUND_ERROR, ODR.config.SOUND_SYSTEM_VOLUME/10 );
       } else {
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_APP_VOLUME/10 );
+        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
 
+        // The choosen entry has "options". Create a submenu.
         if (entry.options) {
           this.model.enter(this.model.currentIndex, entry);
 
@@ -3292,9 +3293,9 @@ class Menu extends Panel {
               break;
             }
           }
-          subEntries.push({title:'CANCEL',exit:true});
+          subEntries.push({ title:'CANCEL', exit:true });
 
-          this.submenu = new Menu(this.canvas, {
+          this.submenu = new Menu( this.canvas, {
             name: entry.name,
             title: entry.title,
             _currentIndex: currentIndex,
@@ -3304,7 +3305,7 @@ class Menu extends Panel {
             },
             set currentIndex( newIndex ) {
               if( this.select ) {
-                //this.select( entry, newIndex, this );
+                this.select( entry, newIndex, this );
               }
               this._currentIndex = newIndex;
             },
@@ -3321,23 +3322,22 @@ class Menu extends Panel {
                   */
               }
               //hackish, to turn sample music off on leaving the submenu.
-              ODR.music.stop();
+              if( this.associatedButton == ODR.consoleButtons.CONSOLE_A )
+                ODR.music.stop();
               this.submenu = null;
             },
-          });
+          }, this.associatedButton, entry.muted  );
+
           this.submenu.xOffset = this.xOffset + 25;
           this.submenu.yOffset = this.yOffset + 8;
           this.submenu.subtitle = null;
 
-        } else return this.model.enter(this.model.currentIndex, entry);
+        } else return this.model.enter( this.model.currentIndex, entry );
       }
     }
 
-    /*
-    this.canvasCtx.fillStyle = "#000d";
-    this.canvasCtx.fillRect(0,0,this.canvas.width,this.canvas.height);
-    */
-
+    // Dislay User Profile on the right side of the menu.
+    // FIXME subclass this
     if( this.model.profile ){
       if( N7e.user.image ){
         this.canvasCtx.drawImage( N7e.user.image,
@@ -3472,11 +3472,11 @@ class TextEditor {
     }
   }
 
-  forward(deltaTime) {
+  forward( deltaTime ) {
     for (let i = 0; i < 2; i++) {
       let action = this.buttons[i];
       if (action && action.priority == 1) {
-        ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_APP_VOLUME/10 );
+        ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
         switch (action.type) {
           case A8e.status.SLIDING:
             this.curY++;
@@ -3515,11 +3515,11 @@ class TextEditor {
         }
       }
 
-      if (this.text.length > 25) {
+      if( this.text.length > 25 ){
         this.text = this.text.slice(0,25);
-        ODR.playSound( ODR.soundFx.SOUND_ERROR, ODR.config.SOUND_APP_VOLUME/10 );
+        ODR.playSound( ODR.soundFx.SOUND_ERROR, ODR.config.SOUND_SYSTEM_VOLUME/10 );
       } else {
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_APP_VOLUME/10 );
+        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
       }
     }
 
@@ -4806,12 +4806,21 @@ class OnDaRun extends LitElement {
     let entries = [];
     let key;
 
+    key = 'PLAY_MUSIC_VOLUME';
+    entries.push({
+      title: 'PLAY MUSIC',
+      name: 'PLAY_MUSIC',
+      options: ['YES','NO'],
+      value: this.config.PLAY_MUSIC,
+    });
+
     key = 'SOUND_MUSIC_VOLUME';
     entries.push({
       title: key.slice(6),
       name: key,
       options: this.config.SOUND_OPTIONS[ key ],
       value: this.config[ key ],
+      muted: true,
     });
 
     key = 'SOUND_EFFECTS_VOLUME';
@@ -4820,26 +4829,32 @@ class OnDaRun extends LitElement {
       name: key,
       options: this.config.SOUND_OPTIONS[ key ],
       value: this.config[ key ],
+      muted: true,
     });
 
-    key = 'SOUND_APP_VOLUME';
+    key = 'SOUND_SYSTEM_VOLUME';
     entries.push({
       title: key.slice(6),
       name: key,
       options: this.config.SOUND_OPTIONS[ key ],
       value: this.config[ key ],
+      muted: true,
     });
 
     entries.push({title:'exit', exit:true});
 
-    this.menu = new Menu(this.canvas, {
+    this.menu = new Menu( this.canvas, {
       title: 'sounds',
       entries: entries,
       select: ( entry, vol, model ) => {
         if( this.menu.model === model || vol > 10) {
-          ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_APP_VOLUME/10 );
+          if( model.name == 'SOUND_MUSIC_VOLUME' && vol == 11) {
+            this.music.volume = ODR.config.SOUND_MUSIC_VOLUME;
+          } else {
+            ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          }
         } else {
-          if( model.name == 'SOUND_APP_VOLUME' ) {
+          if( model.name == 'SOUND_SYSTEM_VOLUME' ) {
             ODR.playSound( ODR.soundFx.SOUND_BLIP, vol/10 );
           } else if( model.name == 'SOUND_EFFECTS_VOLUME' ) {
             this.sounds = this.sounds || [
@@ -4995,7 +5010,7 @@ class OnDaRun extends LitElement {
     if( this.closeMenuForButton( button )) return;
 
     if( N7e.signing.progress ){
-      this.playSound( this.soundFx.SOUND_ERROR, this.config.SOUND_APP_VOLUME/10, false, 0.2 );
+      this.playSound( this.soundFx.SOUND_ERROR, this.config.SOUND_SYSTEM_VOLUME/10, false, 0.2 );
       this.subtitle = new Text(600/14,0).setText("signing in..please wait");
       this.subtitle.signing = true;
       return;
@@ -5005,7 +5020,7 @@ class OnDaRun extends LitElement {
     let mainMenu = this.menu =
       /* User has signed in */
       N7e.user
-      ? new Menu(this.canvas, {
+      ? new Menu( this.canvas, {
         title: 'USER PROFILE',
         entries: [
           "SET NAME",
@@ -5029,7 +5044,7 @@ class OnDaRun extends LitElement {
               return mainMenu;
             });
           else if (choice == "SIGN OUT")
-            return new Menu(this.canvas, {
+            return new Menu( this.canvas, {
               title: 'DO YOU WANT TO SIGN OUT?',
               profile: true,
               profilePhoto: N7e.user.image,
@@ -5078,7 +5093,7 @@ class OnDaRun extends LitElement {
         enter: (entryIndex,choice) => {
           if (choice.exit) return null;
 
-          return new Menu(this.canvas, {
+          return new Menu( this.canvas, {
             title: 'DO YOU WANT TO LINK ' + choice + '?',
             entries: [
               'YES',
@@ -6319,11 +6334,11 @@ OnDaRun.Configurations = {
   },
   SOUND_EFFECTS_VOLUME: 5,
   SOUND_MUSIC_VOLUME: 5,
-  SOUND_APP_VOLUME: 10,
+  SOUND_SYSTEM_VOLUME: 10,
   SOUND_OPTIONS: {
     SOUND_EFFECTS_VOLUME: { min: 0, max: 10, step: 1 },
     SOUND_MUSIC_VOLUME: { min: 0, max: 10, step: 1 },
-    SOUND_APP_VOLUME: { min: 0, max: 10, step: 1 },
+    SOUND_SYSTEM_VOLUME: { min: 0, max: 10, step: 1 },
   },
   SKY: {
     DAY: [~~(221*0.8), ~~(238*0.8), ~~(255*0.9), 238, 238, 255],
