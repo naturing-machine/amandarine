@@ -2398,7 +2398,7 @@ class A8e {
     let startingSlide = new SlideAction(endTime - ODR.config.MAX_ACTION_PRESS, 7.2);
     startingSlide.priority = 1;
     //FIXME playCount is used for deciding if it should draw guides or not at start.
-    startingSlide.start = ODR.playCount;
+    startingSlide.start = ODR.gameOverPanel ? true : false;
     startingSlide.end = endTime;
       startingSlide.maxPressDuration = 1500;
 
@@ -3588,6 +3588,13 @@ class GameOverPanel {
   }
 
   draw(deltaTime) {
+    //Hack
+    if( this.timer == 0 ){
+      // Only play lyrics if a condition is met
+      ODR.updateScore();
+    }
+
+
     deltaTime = deltaTime ? deltaTime : 1;
     this.timer += deltaTime;
     let dist = this.timer/100;
@@ -5369,7 +5376,7 @@ class OnDaRun extends LitElement {
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
         }
 
-        this.gameOverPanel.draw();
+        this.gameOverPanel.draw( deltaTime );
       } else {
         this.runTime += deltaTime;
         this.horizon.forward( deltaTime, this.currentSpeed, this.inverted, hasObstacles);
@@ -5442,7 +5449,7 @@ class OnDaRun extends LitElement {
       // Game over suspending
         this.horizon.forward( 0, 0, this.inverted, 0);
         if (this.gameOverPanel) {
-          this.gameOverPanel.draw();
+          this.gameOverPanel.draw( deltaTime );
         }
         this.distanceMeter.forward( 0, this.score );
     }
@@ -5719,7 +5726,7 @@ class OnDaRun extends LitElement {
     return !!this.raqId;
   }
 
-  gameOver( obstacle ){
+  gameOver(){
 
     this.distanceMeter.flashIterations = 0;
 
@@ -5735,11 +5742,13 @@ class OnDaRun extends LitElement {
         this.dimensions);
     }
 
-    this.gameOverPanel.draw();
+    this.gameOverPanel.draw( 0 );
 
+  }
+
+  updateScore(){
     let d = this.score;
 
-    // Only play lyrics if a condition is met
     if( d > 1000 && this.distance > this.gameMode.distance / 2 )
       this.playLyrics = true;
 
@@ -5751,8 +5760,11 @@ class OnDaRun extends LitElement {
       ];
     } else {
 
+      //FIXME should be called once
       if( this.distance > this.gameMode.distance )
-        this.terminal.setMessages('A NEW HIGH ' + d + '! #natB', 5000 );
+        this.terminal.setMessages(`A NEW HIGH!
+${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_SCORE )} ▻ ${Math.round( this.distance * this.config.TO_SCORE )}
+GOOD JOB! #natB`, 15000 );
 
       d = d/2 - d/2%100;
       this.achievements = [
