@@ -223,6 +223,28 @@ class User {
     }
   }
 }
+/***
+ * Entity
+ * TODO These should be made with Mixins.
+
+ Class map
+ =========
+
+ Entity
+ +-Space
+ +-Tangerine
+ +-Obstacle
+   +-MultiWidth
+   | +-SmallCactus
+   | +-LargeCactus
+   +-DynamicObstacle
+     +-DuckType
+     | +-Liver
+     | +-Rubber
+     +-BicycleType
+       +-Velota
+       +-Rotata
+ */
 
 class Entity {
   constructor( ctx, speed, elevation ) {
@@ -3499,14 +3521,14 @@ class TextEditor {
         this.submenu = null;
       }
       */
-      if (this.curX == 6 && this.curY == 6) {
-        return this.callback(this.text);
-      } else if (this.curX == 6 && this.curY == 0) {
-        this.text = this.text.slice(0,this.text.length-1);
+      if( this.curX == 6 && this.curY == 6 ){
+        return this.callback( this.text );
+      } else if( this.curX == 6 && this.curY == 0 ){
+        this.text = this.text.slice( 0, this.text.length - 1 );
       } else {
         let slicePos = this.curY*7+this.curX;
-        this.text += this.pattern.slice( slicePos, slicePos+1 );
-        if (slicePos >= 35 && slicePos <= 39 || slicePos >= 42 && slicePos <= 46 ) {
+        this.text += this.pattern.slice( slicePos, slicePos + 1 );
+        if( slicePos >= 35 && slicePos <= 39 || slicePos >= 42 && slicePos <= 46 ){
           this.curX = 0;
           this.curY = 5;
         } else {
@@ -5261,30 +5283,9 @@ class OnDaRun extends LitElement {
     }
   }
 
-  playIntro() {
-    console.log('kill me')
-    if (!this.activated && !this.crashed) {
-      this.playingIntro = true;
-      this.amandarine.playingIntro = true;
-
-      // CSS animation definition.
-
-      // if (this.touchController) {
-      //     this.outerContainerEl.appendChild(this.touchController);
-      // }
-      this.playing = true;
-      this.activated = true;
-
-    } else if (this.crashed) {
-      this.restart();
-    }
-  }
-
   /*
   startGame() {
     this.runTime = 0;
-    this.playingIntro = false;
-    this.amandarine.playingIntro = false;
     this.playCount++;
 
     // Handle tabbing off the page. Pause the current game.
@@ -5349,6 +5350,7 @@ class OnDaRun extends LitElement {
       if( this.crashed && this.gameOverPanel ) {
         this.gameOverPanel.draw(deltaTime);
 
+        //Define existence as a timing ratio used to by the gameover animations.
         let existence = Math.max( 0,
           this.actions[0]
           ? Math.min( 1, (this.config.GAMEOVER_CLEAR_TIME - this.actions[0].timer) / this.config.GAMEOVER_CLEAR_TIME )
