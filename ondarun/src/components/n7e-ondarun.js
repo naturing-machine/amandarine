@@ -5519,9 +5519,9 @@ class OnDaRun extends LitElement {
 
     switch( e.type ){
       case OnDaRun.events.KEYDOWN:{
+        e.preventDefault();
         let button = this.consoleButtonForKeyboardCodes[ e.code ];
         if( !e.repeat && button) {
-          e.preventDefault();
           button.handleEvent( e );
         } else {
           this.onKeyDown( e );
@@ -5686,6 +5686,10 @@ class OnDaRun extends LitElement {
       /* Mapping 1,2,3,4 => 0,1,2,3 */
       this.setGraphicsMode(keyCode - 49);
       return;
+    }
+
+    if( e.code == 'Escape' ){
+      this.menu = null;
     }
   }
 
