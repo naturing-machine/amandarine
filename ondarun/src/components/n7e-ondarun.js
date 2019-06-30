@@ -2998,17 +2998,85 @@ DistanceMeter.config = {
 };
 
 class Panel {
-  constructor() {
+  constructor( canvas, associatedButton = null ) {
+    this.canvas = canvas;
+    this.canvasCtx  = canvas.getContext('2d');
     this.submenu = null;
     this.passthrough = false;
+    this.associatedButton = associatedButton;
+    this.buttonUpTime = [ 0, 0 ];
+    this.willEnter = false; //Indicate double-pressed.
+    this.offset = 0;
+    this.timer = 0;
+  }
+
+  forward( deltaTime ){
+    this.timer += deltaTime;
+  }
+
+/**
+ * Panel event handler.
+ * @param {Event} e - an event.
+ * @return {boolean} - true if the event was handled and shouldn't be handled again.
+ */
+  handleEvent( e ){
+
+    // Only handle known event types, default to passing the event back to the parent.
+    switch( e.type ){
+      case OnDaRun.events.CONSOLEDOWN: {
+        let button = e.detail.consoleButton;
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:{
+            this.willEnter = this.buttonUpTime[ 1 ] ? true : false;
+            this.buttonUpTime[ 0 ] = this.timer;
+          } break;
+
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+            this.willEnter = this.buttonUpTime[ 0 ] ? true : false;
+            this.buttonUpTime[ 1 ] = this.timer;
+          } break;
+
+          default:
+            return false;
+        }
+      } break;
+
+      case OnDaRun.events.CONSOLEUP: {
+        let button = e.detail.consoleButton;
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:{
+            if( this.buttonUpTime[ 0 ]){
+              this.buttonUpTime[ 0 ] = 0;
+              if( !this.willEnter )
+                this.offset--;
+            }
+          } break;
+
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+            if( this.buttonUpTime[ 1 ]){
+              this.buttonUpTime[ 1 ] = 0;
+              if( !this.willEnter )
+                this.offset++;
+            }
+          } break;
+
+          default:
+            return false;
+        }
+
+      } break;
+
+      default:
+        return false;
+    }
+
+    return true;
   }
 }
 
 class TitlePanel extends Panel {
   constructor( canvas ) {
-    super();
-    this.canvas = canvas;
-    this.canvasCtx  = canvas.getContext('2d');
+    super( canvas );
     this.timer = 0;
     this.ender = 0;
     this.dataReadyTime = 0;
@@ -3150,7 +3218,7 @@ the Thai Redcross Society #redcross
   }
 
   handleEvent( e ){
-    if (this.dataReadyTime && !this.ender) {
+    if( this.dataReadyTime && !this.ender ){
       this.ender = this.timer;
       ODR.sky.setShade( ODR.config.SKY.DAY, 3000 );
       ODR.loadSounds();
@@ -3304,12 +3372,10 @@ the Thai Redcross Society #redcross
 
 class WaitingPanel extends Panel {
   constructor( canvas, progressingCallback ) {
-    super();
-    this.canvas = canvas;
+    super( canvas );
     this.progressingCallback = progressingCallback;
-    this.canvasCtx  = canvas.getContext('2d');
     this.timer = 0;
-    this.subtitle = new Text(600/14,0).setText("signing in..please wait");
+    this.bottomText = new Text(600/14,0).setText("signing in..please wait");
   }
 
   forward( deltaTime ) {
@@ -3318,7 +3384,7 @@ class WaitingPanel extends Panel {
     this.canvasCtx.drawImage( ODR.spriteGUI,
       38 + ~~(this.timer/100)%4 * 22, 73, 22, 22,
       300-11, 100-11, 22, 22 );
-    this.subtitle.draw(this.canvasCtx,0,180);
+    this.bottomText.draw(this.canvasCtx,0,180);
     return this.progressingCallback() ? this : null;
   }
 
@@ -3329,19 +3395,15 @@ class WaitingPanel extends Panel {
 
 class Menu extends Panel {
   constructor( canvas, model, associatedButton, muted = false ) {
-    super();
-    this.canvas = canvas;
-    this.canvasCtx  = canvas.getContext('2d');
+    super( canvas );
     this.model = model;
     this.associatedButton = associatedButton;
     this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
     this.xOffset = 0;
     this.yOffset = 0;
-    this.subtitle = new Text(600/14,0).setText('press both #slide+#jump to select');
+    this.bottomText = new Text(600/14,0).setText('press both #slide+#jump to select');
     this.text = new Text(100);
     this.timer = 0;
-    this.buttonUpTime = [ 0, 0 ];
-    this.offset = 0;
     this.muted = muted;
   }
 
@@ -3351,55 +3413,7 @@ class Menu extends Panel {
     }
 
     // Only handle known event types, default to passing the event back to the parent.
-    switch( e.type ){
-      case OnDaRun.events.CONSOLEDOWN: {
-        let button = e.detail.consoleButton;
-        switch( button ){
-          case ODR.consoleButtons.CONSOLE_LEFT:{
-            this.willEnter = this.buttonUpTime[ 1 ] ? true : false;
-            this.buttonUpTime[ 0 ] = this.timer;
-          } break;
-
-          case ODR.consoleButtons.CONSOLE_RIGHT:{
-            this.willEnter = this.buttonUpTime[ 0 ] ? true : false;
-            this.buttonUpTime[ 1 ] = this.timer;
-          } break;
-
-          default:
-            return false;
-        }
-      } break;
-
-      case OnDaRun.events.CONSOLEUP: {
-        let button = e.detail.consoleButton;
-        switch( button ){
-          case ODR.consoleButtons.CONSOLE_LEFT:{
-            if( this.buttonUpTime[ 0 ]){
-              this.buttonUpTime[ 0 ] = 0;
-              if( !this.willEnter )
-                this.offset--;
-            }
-          } break;
-
-          case ODR.consoleButtons.CONSOLE_RIGHT:{
-            if( this.buttonUpTime[ 1 ]){
-              this.buttonUpTime[ 1 ] = 0;
-              if( !this.willEnter )
-                this.offset++;
-            }
-          } break;
-
-          default:
-            return false;
-        }
-
-      } break;
-
-      default:
-        return false;
-    }
-
-    return true;
+    return super.handleEvent( e );
   }
 
   forward( deltaTime, depth ) {
@@ -3423,12 +3437,12 @@ class Menu extends Panel {
     */
 
     // An entry was chosen. Waiting until both buttons are released.
-    if( this.willEnter && 0 == this.buttonUpTime[ 0 ] && 0 == this.buttonUpTime[ 1 ] ){
+    if( this.willEnter && 0 == this.buttonUpTime[ 0 ] && 0 == this.buttonUpTime[ 1 ]){
       this.willEnter = false;
 
       let entry = this.model.entries[ this.model.currentIndex ];
 
-      if (entry.disabled || (entry.hasOwnProperty('value') && !entry.options)) {
+      if( entry.disabled || ( entry.hasOwnProperty('value') && !entry.options )){
         ODR.playSound( ODR.soundFx.SOUND_ERROR, ODR.config.SOUND_SYSTEM_VOLUME/10 );
       } else {
         ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
@@ -3489,7 +3503,7 @@ class Menu extends Panel {
 
           this.submenu.xOffset = this.xOffset + 25;
           this.submenu.yOffset = this.yOffset + 8;
-          this.submenu.subtitle = null;
+          this.submenu.bottomText = null;
 
         } else return this.model.enter( this.model.currentIndex, entry );
       }
@@ -3569,24 +3583,23 @@ class Menu extends Panel {
     if (this.model.title){
       new Text(600/14,0).drawText(this.model.title,this.canvasCtx,0,10 + depth * 20);
     }
-    if (this.subtitle)
-      this.subtitle.draw(this.canvasCtx,0,180);
+
+    if( this.bottomText ){
+      this.bottomText.draw(this.canvasCtx,0,180);
+    }
 
     return this;
   }
 
 }
 
-class TextEditor {
-  constructor(canvas, text, callback) {
-    this.canvas = canvas;
-    this.canvasCtx  = canvas.getContext('2d');
-    this.actions = [];
-    this.buttons = [null,null];
+class TextEditor extends Panel {
+  constructor( canvas, text, callback ){
+    super( canvas );
     this.xOffset = 0;
     this.yOffset = 0;
     this.submenu = null;
-    this.subtitle = new Text(600/14,0).setText('press both #slide+#jump to select');
+    this.bottomText = new Text(600/14,0).setText('press both #slide+#jump to select');
 
     this.text = text;
     this.curX = 0;
@@ -3596,9 +3609,13 @@ class TextEditor {
   }
 
   handleEvent( e ){
-    if (e.type == OnDaRun.events.KEYUP || e.type == OnDaRun.events.KEYDOWN) {
-      if (e.type == OnDaRun.events.KEYUP) {
-        if (e.key == 'Backspace') {
+    switch( e.type ){
+      case OnDaRun.events.KEYDOWN:
+        return ( e.key == 'Delete'
+          || e.key == 'Enter'
+          || this.pattern.indexOf( e.key ) != -1 );
+      case OnDaRun.events.KEYUP:
+        if( e.key == 'Delete' ){
           this.text = this.text.slice(0,this.text.length-1);
           return true;
         } else if (e.key == 'Enter') {
@@ -3610,55 +3627,35 @@ class TextEditor {
           this.text += e.key;
           return true;
         }
-      }
-    }
-    return false;
-  }
-
-  //FIXME fix missing action bug, reproduce keep repeating double presses.
-  queueAction(action) {
-    if (action.priority == 0) {
-      if (action.type == A8e.status.JUMPING) {
-        this.buttons[1] = action;
-      } else if (action.type == A8e.status.SLIDING) {
-        this.buttons[0] = action;
-      }
+        return false;
+        break;
     }
 
-    if (this.buttons[0] && this.buttons[1]) {
-      this.buttons = [null,null];
-      this.double = true;
-    }
+    return super.handleEvent( e );
   }
 
   forward( deltaTime ) {
-    for (let i = 0; i < 2; i++) {
-      let action = this.buttons[i];
-      if (action && action.priority == 1) {
-        ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
-        switch (action.type) {
-          case A8e.status.SLIDING:
-            this.curY++;
-            if (this.curY > 6) this.curY = 0;
-          break;
-          case A8e.status.JUMPING:
-            this.curX++;
-            if (this.curX > 6) this.curX = 0;
-          break;
-        }
-        action.priority = -1;
-        this.buttons[i] = null;
-      }
+    this.timer += deltaTime;
+
+    if( this.offset && !this.muted )
+      ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+    if( this.offset > 0 ){
+      this.curX = (this.curX + this.offset)%7;
+      this.offset = 0;
+    } else if ( this.offset < 0 ){
+      this.curY = (this.curY - this.offset)%7;
+      this.offset = 0;
     }
 
-    if (this.double) {
-      this.double = false;
+    if( this.willEnter && 0 == this.buttonUpTime[ 0 ] && 0 == this.buttonUpTime[ 1 ]){
+      this.willEnter = false;
       /*
       if (this.submenu) {
         this.submenu = null;
       }
       */
       if( this.curX == 6 && this.curY == 6 ){
+        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
         return this.callback( this.text );
       } else if( this.curX == 6 && this.curY == 0 ){
         this.text = this.text.slice( 0, this.text.length - 1 );
@@ -5888,7 +5885,7 @@ class OnDaRun extends LitElement {
 
       //FIXME should be called once
       if( this.distance > this.gameMode.distance )
-        this.terminal.setMessages(`A NEW HIGH!
+        this.notifier.notify( `A NEW HIGH!
 ${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_SCORE )} ▻ ${Math.round( this.distance * this.config.TO_SCORE )}
 GOOD JOB! #natB`, 15000 );
 
@@ -6141,22 +6138,22 @@ GOOD JOB! #natB`, 15000 );
                 this.playCount++;
                 switch(this.playCount) {
                   case 1:
-                    this.terminal.setMessages("go go go!!",2000);
+                    this.notifier.notify( "go go go!!",2000);
                     break;
                   case 10:
-                    this.terminal.setMessages('NATHERINE ♥ YOU.#natB',10000);
+                    this.notifier.notify('NATHERINE ♥ YOU.#natB',10000);
                     break;
                   case 20:
-                    OR.terminal.setMessages('NATHERINE STILL ♥ You.#natB',10000);
+                    OR.notifier.notify('NATHERINE STILL ♥ You.#natB',10000);
                     break;
                   case 30:
-                    this.terminal.setMessages('NATHERINE WILL ALWAYS ♥ You.#natB',10000);
+                    this.notifier.notify('NATHERINE WILL ALWAYS ♥ You.#natB',10000);
                     break;
                   default:
                   if (this.playCount % 10 == 0) {
-                    this.terminal.setMessages('Love the game?\nPlease_Make_a_Donation\nTO_Thai_Redcross_#redcross',8000);
+                    this.notifier.notify('Love the game?\nPlease_Make_a_Donation\nTO_Thai_Redcross_#redcross',8000);
                   } else {
-                    this.terminal.setMessages('▻▻',1000);
+                    this.notifier.notify('▻▻',1000);
                   }
                 }
 
