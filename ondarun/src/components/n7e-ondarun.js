@@ -45,11 +45,6 @@ var N7e = class {
     this.signing.progress = !this.userSignedIn;
     if( !this.signing.progress ) {
       ODR.checkShouldDropTangerines();
-      /*
-      if( ODR.subtitle && ODR.subtitle.signing ) {
-        ODR.subtitle = null;
-      }
-      */
     }
   }
 };
@@ -346,7 +341,7 @@ class Entity {
     this.minX = 25 + distance;
 
     if( this.minX < 590 ) {
-      console.log( 'Late:', this.minX, this );
+      console.log('Late:', this.minX, this );
     }
 
   }
@@ -2473,36 +2468,67 @@ A8e.animFrames = {
 };
 
 class Text {
-  constructor(maxLength,alignment,text) {
+  static initialize(){
+    this.generateSymbolMap();
+  }
+
+  constructor( maxLength = 20, alignment = -1, text ){
+    this.glyphs = null;
     this.alignment = alignment;
     this.maxLength = maxLength;
-    this.glyphs = [];
     this.minLength = 0;
+    this.numberOfLines = 0;
     if (text) {
       this.setText(text);
     }
   }
 
-  //TODO Consider a rewrite to use word-breaker
-  setText(messageStr) {
-    messageStr = messageStr.split('##').join(String.fromCharCode(0xe000));
-    messageStr = messageStr.split('#natA').join(String.fromCharCode(0xe001));
-    messageStr = messageStr.split('#natB').join(String.fromCharCode(0xe002));
-    messageStr = messageStr.split('#slide').join(String.fromCharCode(0xe003));
-    messageStr = messageStr.split('#jump').join(String.fromCharCode(0xe004));
-    messageStr = messageStr.split('#google').join(String.fromCharCode(0xe00a));
-    messageStr = messageStr.split('#facebook').join(String.fromCharCode(0xe00b));
-    messageStr = messageStr.split('#twitter').join(String.fromCharCode(0xe00c));
-    messageStr = messageStr.split('#redcross').join(String.fromCharCode(0xe00d));
-    messageStr = messageStr.split('#tangerine').join(String.fromCharCode(0xe00e));
-    messageStr = messageStr.split('#a').join(String.fromCharCode(0xe00f));
-    messageStr = messageStr.split('#trophy').join(String.fromCharCode(0xe010));
-    messageStr = messageStr.split('#<3').join(String.fromCharCode(0xe011));
+ /**
+  * Text
+  * Map for substitute symbol codes.
+  */
+  static generateSymbolMap(){
+    this.symbolMap = [];
+    [ [ '##', 0xe000 ],
+      [ '#natA', 0xe001 ],
+      [ '#natB', 0xe002 ],
+      [ '#slide', 0xe003 ],
+      [ '#jump', 0xe004 ],
+      [ '#google', 0xe00a ],
+      [ '#facebook', 0xe00b ],
+      [ '#twitter', 0xe00c ],
+      [ '#redcross', 0xe00d ],
+      [ '#tangerine', 0xe00e ],
+      [ '#a', 0xe00f ],
+      [ '#trophy', 0xe010 ],
+      [ '#<3', 0xe011 ],
+    ].forEach( sym =>
+      this.symbolMap.push({
+        char: String.fromCharCode( sym[ 1 ]),
+        regex: new RegExp( sym[ 0 ], 'g' ),
+      })
+    );
+  }
 
-    if (!messageStr.length) return this;
+  //TODO Consider a rewrite to use word-breaker
+  setText( messageStr ){
+
+    if( !messageStr ){
+      this.glyphs = null;
+      this.numberOfLines = 0;
+      this.minLength = 0;
+      return this;
+    }
+
+    for( let i = 0; i < Text.symbolMap.length; i++ ){
+      if( messageStr.includes('#')){
+        let symbol = Text.symbolMap[ i ];
+        messageStr = messageStr.replace( symbol.regex, symbol.char );
+      } else break;
+    }
 
  //TODO multi-widths,multi-offsets
-    let lineLength = this.maxLength || 20;
+    let lineLength = this.maxLength;
     let wordList = messageStr.toString().split(' ');
     let newList = [wordList[0]];
     this.minLength = Math.max(wordList[0].length,this.minLength);
@@ -2592,15 +2618,13 @@ class Text {
     return this;
   }
 
-  draw(canvasCtx, offsetX, offsetY, glyphW, glyphH, image) {
-    glyphW = glyphW || 14;
-    glyphH = glyphH || 20;
-    image = image || ODR.spriteGUI;
+  draw( canvasCtx, offsetX, offsetY, glyphW = 14, glyphH = 20, image = ODR.spriteGUI ) {
+    if( !this.glyphs ) return;
 
     switch (this.alignment) {
       case 0:
       case 1:
-        offsetX += glyphW * (this.maxLength - this.minLength)/2;
+        offsetX += glyphW*( this.maxLength - this.minLength )/2;
 
         for (let i = 0, cur = 0, l = 0; i <= this.glyphs.length; i++) {
           if (i != this.glyphs.length-1 && this.glyphs[i] != -10 ) {
@@ -2654,9 +2678,128 @@ class Text {
     this.draw(canvasCtx, offsetX, offsetY, glyphW, glyphH, image);
   }
 }
+Text.initialize();
+
+/**
+ * TODO
+ * - Use priority. When 2 or more messages are overlapped, a lower one will be discarded.
+ * - Multi-layers so we can push & pop back to the previous state, cancelling all in the current state.
+ */
+
+class Message {
+/**
+ * @param {string} string - string to be displayed.
+ * @param {number} time - relative time to the time message got appended.
+ * @param {number} duration - time for display.
+ * @param {Object} customInfo - custom information.
+ */
+  constructor( string, duration, time = 0, customInfo ){
+    this.string = string;
+    this.time = time;
+    this.duration = duration;
+    //this.duration = duration;
+    this.cancelled = false;
+    this.info = customInfo;
+  }
+
+  cancel(){
+    this.cancelled = true;
+  }
+}
 
 class Terminal {
-  constructor(canvas, spritePos) {
+  constructor( canvas, minX, minY ){
+    this.canvas = canvas;
+    this.canvasCtx = canvas.getContext('2d');
+    this.messages = [];
+    this.timer = 0;
+    //TODO make width configurable
+    this.text = new Text( 600/14, 0 );
+    this.endTime = Infinity;
+    this.minX = minX;
+    this.minY = minY;
+  }
+
+/**
+ * Terminal
+ * Flush all loaded messages.
+ */
+  flush(){
+    this.timer = 0;
+    this.messages = [];
+    this.text.setText('');
+    this.endTime = Infinity;
+  }
+
+/**
+ * Terminal
+ * apppend Message in sorted order.
+ * @param {Message} message - message object.
+ */
+ //TODO Please test sorting.
+  appendMessage( message ){
+    message.startTime = message.startTime || ( this.timer + message.time );
+    message.endTime = message.startTime + message.duration;
+
+    let i = this.messages.length;
+    while( i > 0 ){
+      i--;
+      let m = this.messages[ i ];
+      //TODO
+      if( message.startTime >= m.startTime ){
+        if( message.startTime == m.startTime ){
+          if( message.endTime == m.endTime ){
+            if( message.string != m.string ){
+              this.messages.splice( i, 1, message );
+            }
+            return;
+          }
+        }
+        i++;
+        break;
+      }
+    }
+    this.messages.splice( i, 0, message );
+  }
+
+/**
+ * Terminal
+ * @param {string} string - string to be displayed.
+ */
+  append( string, duration = Infinity, time = 0 ){
+    this.appendMessage( new Message( string, duration, time ));
+  }
+
+/**
+ * Terminal
+ * @param {number} deltaTime - time diff from last call.
+ */
+
+  forward( deltaTime ){
+    this.timer += deltaTime;
+
+    while( this.messages.length && this.messages[ 0 ].startTime < this.timer ){
+      let msg = this.messages.shift();
+
+      if( msg.cancelled ) continue;
+
+      if( msg.endTime > this.timer ){
+        this.endTime = msg.endTime;
+        this.text.setText( msg.string );
+      }
+    }
+
+    if( this.endTime < this.timer ){
+      this.text.setText('');
+      this.endTime = Infinity;
+    }
+
+    this.text.draw( this.canvasCtx, this.minX, this.minY );
+  }
+}
+
+class Notifier {
+  constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
     this.minY = 5;
@@ -2669,12 +2812,12 @@ class Terminal {
     this.opacity = 0;
   }
 
-  setMessages(messageStr, timer, opt_lineWidth) {
+  notify( messageStr, timer, opt_lineWidth ){
     this.timer = timer || 2000;
-    this.text.setText(messageStr);
+    this.text.setText( messageStr );
   }
 
-  forward(deltaTime) {
+  forward( deltaTime ) {
     if (this.timer > 0) {
 
       if (this.timer > 500) this.opacity += deltaTime/100;
@@ -3570,6 +3713,8 @@ class TextEditor {
   }
 }
 
+//FIXME set as menu and draw later
+//menu stack allow self-push
 class GameOverPanel {
   constructor(canvas, textImgPos, restartImgPos, dimensions) {
     this.canvas = canvas;
@@ -3584,10 +3729,8 @@ class GameOverPanel {
   draw(deltaTime) {
     //Hack
     if( this.timer == 0 ){
-      // Only play lyrics if a condition is met
       ODR.updateScore();
     }
-
 
     deltaTime = deltaTime ? deltaTime : 1;
     this.timer += deltaTime;
@@ -4664,7 +4807,8 @@ class OnDaRun extends LitElement {
       800, 'JUST DONT DIE!#natB',
     ];
 
-    this.terminal = new Terminal( this.canvas, this.spriteDef.TEXT_SPRITE );
+    this.notifier = new Notifier( this.canvas );
+    this.terminal = new Terminal( this.canvas, 0, 180 );
 
     this.actionIndex = 0;
 
@@ -4718,8 +4862,8 @@ class OnDaRun extends LitElement {
             let hname = ["ber", "cur", "der", "eer", "fur", "ger", "her", "hur", "jer", "kur", "kir", "ler", "mer", "mur", "ner", "ser", "tur", "ver", "wer", "yer", "zur", "bar", "car", "dar", "ear", "far", "gal", "har", "hor", "jul", "kel", "ker", "lur", "mir", "mor", "nir", "sur", "tar","ter", "val", "war", "you", "zir"];
             let rname = ["been", "cine", "dine", "dean", "deen", "fine", "gene", "hine", "jene", "kine", "line", "mean", "nene", "pine", "rine", "sene", "tine", "wine", "zine"];
             authUser.nickname = nname[getRandomNum(0,nname.length-1)] + hname[getRandomNum(0,hname.length-1)] + rname[getRandomNum(0,rname.length-1)];
-            authUser.ref.child('nickname').set(authUser.nickname);
-            this.terminal.setMessages('Welcome, '+authUser.nickname+'.\n[autogenerated_name]\nYou dont\'t like it, do you?\nchange in #trophy',20000);
+            authUser.ref.child('nickname').set( authUser.nickname );
+            this.notifier.notify( `Welcome, ${authUser.nickname}.\n[autogenerated_name]\nYou dont\'t like it, do you?\nchange in #trophy`, 20000 );
             this.introScriptTimer = 20000;
           }
 
@@ -4801,7 +4945,7 @@ class OnDaRun extends LitElement {
     if( this.config.PLAY_MUSIC ){
       this.music.stop();
       this.config.PLAY_MUSIC = false;
-      this.terminal.setMessages('♬ OFF', 2000);
+      this.notifier.notify('♬ OFF', 2000 );
     } else {
       this.config.PLAY_MUSIC = true;
       if (this.playing) {
@@ -4809,7 +4953,7 @@ class OnDaRun extends LitElement {
       } else {
         this.music.load('offline-intro-music', this.config.PLAY_MUSIC);
       }
-      this.terminal.setMessages('♬ ON', 2000);
+      this.notifier.notify('♬ ON', 2000 );
     }
   }
 
@@ -4910,7 +5054,7 @@ class OnDaRun extends LitElement {
           }
 
           if( entry.name == 'PLAY_MUSIC' ) {
-            ODR.terminal.setMessages(`♬ ${entry.value ? "ON" : "OFF"}`, 2000);
+            ODR.notifier.notify( `♬ ${entry.value ? "ON" : "OFF"}`, 2000 );
           }
 
           return null;
@@ -4946,7 +5090,7 @@ class OnDaRun extends LitElement {
 
           return null;
         }
-        this.terminal.setMessages('CUSTOM GRAPHICS MODE', 5000);
+        this.notifier.notify('CUSTOM GRAPHICS MODE', 5000 );
         this.setGraphicsMode( 3 );
         return null;
       },
@@ -4960,7 +5104,7 @@ class OnDaRun extends LitElement {
     this.distanceMeter.setHighScore( this.gameModeScore );
 
     this.config.ACCELERATION = choice.ACCELERATION;
-    this.terminal.setMessages( choice.title, 5000 );
+    this.notifier.notify( choice.title, 5000 );
 
     this.time = 0;
     this.runTime = 0;
@@ -4976,9 +5120,6 @@ class OnDaRun extends LitElement {
     this.playCount = 0;
     this.amandarine.reset();
     this.horizon.reset();
-
-    this.subtitle = null;
-    this.subtitleTimer = 0;
 
     this.playLyrics = false;
     this.runTime = 0;
@@ -5032,12 +5173,7 @@ class OnDaRun extends LitElement {
     let button = this.consoleButtons.CONSOLE_D;
     if( this.closeMenuForButton( button )) return;
 
-    if( N7e.signing.progress ){
-      this.playSound( this.soundFx.SOUND_ERROR, this.config.SOUND_SYSTEM_VOLUME/10, false, 0.2 );
-      this.subtitle = new Text(600/14,0).setText("signing in..please wait");
-      this.subtitle.signing = true;
-      return;
-    }
+    //console.assert( !N7e.signing.progress, N7e.signing );
 
     this.music.stop();
     let mainMenu = this.menu =
@@ -5062,7 +5198,7 @@ class OnDaRun extends LitElement {
             return new TextEditor(this.canvas, N7e.user.nickname?N7e.user.nickname:'', (text) => {
               N7e.user.ref.child('nickname').set(text);
               N7e.user.nickname = text;
-              this.terminal.setMessages('all hail '+text+'.',5000);
+              this.notifier.notify('all hail '+text+'.', 5000 );
               mainMenu.model.nickname = text;
               return mainMenu;
             });
@@ -5150,16 +5286,16 @@ class OnDaRun extends LitElement {
 
     switch (mode) {
       case 0:
-        this.terminal.setMessages('N#aTURING', 5000);
+        this.notifier.notify('N#aTURING', 5000 );
         break;
       case 1:
-        this.terminal.setMessages('STRIPES', 5000);
+        this.notifier.notify('STRIPES', 5000 );
         break;
       case 2:
-        this.terminal.setMessages('ROCK-BOTTOM', 5000);
+        this.notifier.notify('ROCK-BOTTOM', 5000 );
         break;
       case 3:
-        this.terminal.setMessages('CUSTOM GRAPHICS MODE', 5000);
+        this.notifier.notify('CUSTOM GRAPHICS MODE', 5000 );
       default:
         break;
     }
@@ -5410,9 +5546,9 @@ class OnDaRun extends LitElement {
         }
         this.lastAchievement = playAchievementSound;
 
-        if (playAchievementSound >= this.achievements[0]) {
+        if( playAchievementSound >= this.achievements[0] ){
           this.achievements.shift();
-          this.terminal.setMessages(this.achievements.shift(),6000);
+          this.notifier.notify( this.achievements.shift(), 6000 );
         }
       }
 
@@ -5450,27 +5586,14 @@ class OnDaRun extends LitElement {
 
     let a = this.actions[0];
     this.scheduleActionQueue(now, deltaTime, this.currentSpeed);
-    this.terminal.forward( deltaTime );
+    this.notifier.forward( deltaTime );
 
 
     if (this.playLyrics) {
-      let text = this.music.lyrics;
-      if (text === null) {
-        this.playLyrics = false;
-        this.subtitle = null;
-      } else {
-        this.subtitle = new Text(600/14,0).setText(text||"");
-      }
+      this.music.updateLyricsIfNeeded( this.terminal );
     }
 
-    if( this.subtitle ) {
-      this.subtitleTimer -= deltaTime;
-      if( this.subtitleTimer <= 0){
-        this.subtitle = null;
-      } else {
-        this.subtitle.draw( this.canvasCtx, 0, 180 );
-      }
-    }
+    this.terminal.forward( deltaTime );
 
     if( N7e.signing.progress ) {
       /* Draw starry spinner */
@@ -5588,8 +5711,7 @@ class OnDaRun extends LitElement {
 
             } else if( !this.menu ){
               this.setMusicMode(-1 );
-              let sub = this.subtitle = new Text(600/14,0).setText("hold the button for sound settings.");
-              this.subtitleTimer = 2000;
+              this.terminal.append("hold the button for settings.", 3000 );
             }
           break;
 
@@ -5602,8 +5724,7 @@ class OnDaRun extends LitElement {
 
             } else if( !this.menu ){
               this.setGraphicsMode(-1 );
-              let sub = this.subtitle = new Text(600/14,0).setText("hold the button for graphics settings.");
-              this.subtitleTimer = 2000;
+              this.terminal.append("hold the button for settings.", 3000 );
             }
             break;
 
@@ -5752,6 +5873,8 @@ class OnDaRun extends LitElement {
   updateScore(){
     let d = this.score;
 
+    // Only play lyrics if reaching a half of hiscore and more than 1000.
+    // FIXME Rethink for different difficulties.
     if( d > 1000 && this.distance > this.gameMode.distance / 2 )
       this.playLyrics = true;
 
@@ -5830,7 +5953,7 @@ GOOD JOB! #natB`, 15000 );
             this.shouldDropTangerines = true;
           } else {
             this.shouldDropTangerines = false;
-            this.terminal.setMessages(`no #tangerine today! [${tangerines.dayCount}/${maxPerDay}]`,5000);
+            this.notifier.notify( `no #tangerine today! [${tangerines.dayCount}/${maxPerDay}]`, 5000 );
           }
         } else {
           console.error('Data was not committed???');
@@ -5842,7 +5965,6 @@ GOOD JOB! #natB`, 15000 );
 
   restart() {
     if (!this.raqId) {
-      this.subtitle = null;
       this.actions = [];
       //this.playCount++;
       this.playLyrics = false;
@@ -6139,7 +6261,6 @@ GOOD JOB! #natB`, 15000 );
                       this.distanceMeter.reset();
                       this.horizon.reset();
                       this.amandarine.reset();
-                      this.subtitle = null;
                       setTimeout(() => { this.music.load('offline-play-music', this.config.PLAY_MUSIC); }, 500);
                       break HANDLE_ACTION_QUEUE;
                     }
@@ -6177,7 +6298,7 @@ GOOD JOB! #natB`, 15000 );
                   this.introScript.push(wait);
                   this.introScript.push(text);
 
-                  this.terminal.setMessages(text + ' #natB', dur);
+                  this.notifier.notify( text + ' #natB', dur );
                   this.introScriptTimer = wait;
                 }
 
@@ -6191,7 +6312,6 @@ GOOD JOB! #natB`, 15000 );
                       action.hasStoppedMusic = true;
                       this.music.stop();
                     } else if (nextAction.priority == 1) {
-                      this.subtitle = null;
                       this.shouldAddObstacle = true;
                       this.checkShouldDropTangerines();
                       this.shouldIncreaseSpeed = true;
@@ -6202,7 +6322,7 @@ GOOD JOB! #natB`, 15000 );
                       action.speed = this.config.SPEED;
                       action.priority = 1;
                       this.sky.setShade( ODR.config.SKY.DAY, 3000 );
-                      this.terminal.timer = 200;
+                      this.notifier.timer = 200;
                     } else if (nextAction.priority == 0) {
                     }
                   }
