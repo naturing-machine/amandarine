@@ -386,6 +386,7 @@ class Tangerine extends Entity {
 
   collide( collision ) {
     if( !this.collected ) {
+      ODR.showGameMode();
       ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
       ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/20 );
       this.collected = true;
@@ -452,6 +453,7 @@ Tangerine.collisionBoxes = [new CollisionBox( -5, -5, 24, 24)];
 
 class Obstacle extends Entity {
 
+  /*
   static getRandomObstacleSubtype( currentSpeed, history ) {
     let filtered = this.subtypes.filter(
       type => type.minSpeed <= currentSpeed
@@ -460,16 +462,21 @@ class Obstacle extends Entity {
 
     return filtered[ getRandomNum( 0, filtered.length - 1 )];
   }
+  */
 
+  /*
   static get subtypes() {
     this._subtypes = this._subtypes || [];
     return this._subtypes;
   }
+  */
 
   static registerType() {
-    this.replicaCount = 0;
+    //this.replicaCount = 0;
+    /*
     let classes = this.subtypes;
     Obstacle.subtypes.push( this );
+    */
 
     /* Remap sprite positions/collision boxes to match the animation sequence */
     if( this.animation ) {
@@ -710,6 +717,8 @@ class Liver extends DuckType {
 
     if( this.minX < 1000 && !this.alarmed ) {
       ODR.playSound( ODR.soundFx.SOUND_QUACK, 0.1 * ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, 1 );
+      if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
+        ODR.terminal.append('quack', 1000 );
       this.alarmed = true;
     }
   }
@@ -777,6 +786,8 @@ class Velota extends BicycleType {
 
     if( this.minX < 1000 && !this.alarmed ) {
       ODR.playSound( ODR.soundFx.SOUND_BICYCLE, 0.1 * ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, 1 );
+      if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
+        ODR.terminal.append('ring#bell', 1000 );
       this.alarmed = true;
     }
   }
@@ -2466,10 +2477,6 @@ A8e.animFrames = {
 };
 
 class Text {
-  static initialize(){
-    this.generateSymbolMap();
-  }
-
   constructor( maxLength = 20, alignment = -1, text ){
     this.glyphs = null;
     this.alignment = alignment;
@@ -2500,6 +2507,9 @@ class Text {
       [ '#a', 0xe00f ],
       [ '#trophy', 0xe010 ],
       [ '#<3', 0xe011 ],
+      [ '#note', 0xe012 ],
+      [ '#football', 0xe013 ],
+      [ '#bell', 0xe014 ],
     ].forEach( sym =>
       this.symbolMap.push({
         char: String.fromCharCode( sym[ 1 ]),
@@ -2508,8 +2518,26 @@ class Text {
     );
   }
 
+  static convertString( messageStr ){
+    if( !messageStr ){
+      return messageStr;
+    }
+
+    for( let i = 0; i < this.symbolMap.length; i++ ){
+      if( messageStr.includes('#')){
+        let symbol = Text.symbolMap[ i ];
+        messageStr = messageStr.replace( symbol.regex, symbol.char );
+      } else break;
+    }
+    return messageStr;
+  }
+
   //TODO Consider a rewrite to use word-breaker
   setText( messageStr ){
+    return this.setString( Text.convertString( messageStr ));
+  }
+
+  setString( messageStr ){
 
     if( !messageStr ){
       this.glyphs = null;
@@ -2518,12 +2546,14 @@ class Text {
       return this;
     }
 
+    /*
     for( let i = 0; i < Text.symbolMap.length; i++ ){
       if( messageStr.includes('#')){
         let symbol = Text.symbolMap[ i ];
         messageStr = messageStr.replace( symbol.regex, symbol.char );
       } else break;
     }
+    */
 
  //TODO multi-widths,multi-offsets
     let lineLength = this.maxLength;
@@ -2585,6 +2615,9 @@ class Text {
         case 0xe00f: return 644;
         case 0xe010: return 868;
         case 0xe011: return 616;
+        case 0xe012: return 602;
+        case 0xe013: return 756;
+        case 0xe014: return 966;
       }
 
       switch (ch) {
@@ -2676,7 +2709,7 @@ class Text {
     this.draw(canvasCtx, offsetX, offsetY, glyphW, glyphH, image);
   }
 }
-Text.initialize();
+Text.generateSymbolMap();
 
 /**
  * TODO
@@ -5106,8 +5139,8 @@ class OnDaRun extends LitElement {
   showGameMode(){
     if( this.totalTangerines ){
       let maxPerDay = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
-      this.terminal.append( `${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, 3000 );
-    } else this.terminal.append( this.gameMode.title, 3000 );
+      this.terminal.append( `#trophy:${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, 3000 );
+    } else this.terminal.append( this.gameMode.title, 2000 );
   }
 
   setGameMode( choice ){
@@ -5161,7 +5194,7 @@ class OnDaRun extends LitElement {
       entries.push({
         title: (this.gameMode === mode
           ? `${mode.title} #natB `
-          : `${mode.title}`)
+          : `${mode.title} `)
           + `[${Math.round(mode.distance * this.config.TO_SCORE)}]`,
         mode: mode,
       });
@@ -5981,7 +6014,7 @@ GOOD JOB! #natB`, 15000 );
             }
           } else {
             this.shouldDropTangerines = false;
-            this.notifier.notify( `no #tangerine today! [${tangerines.dayCount}/${maxPerDay}]`, 5000 );
+            //this.notifier.notify( `no #tangerine today! [${tangerines.dayCount}/${maxPerDay}]`, 5000 );
           }
         } else {
           console.error('Data was not committed???');
@@ -6488,10 +6521,12 @@ OnDaRun.Configurations = {
     },
   ],
   GRAPHICS_DISPLAY_INFO: 'NO',
+  GRAPHICS_SUBTITLES: 'YES',
   GRAPHICS_MODE_OPTIONS: {
     GRAPHICS_GROUND_TYPE: ['DIRT','STRIPES','GRASS'],
     GRAPHICS_DESKTOP_LIGHT: ['NONE','LIGHT'],
     GRAPHICS_CLOUDS: { min: 0, max: 10, step: 1 },
+    GRAPHICS_CLOUDS_TYPE: ['NORMAL','DEPTH'],
     GRAPHICS_CLOUDS_TYPE: ['NORMAL','DEPTH'],
     GRAPHICS_STARS:  { min: 0, max: 10, step: 1 },
     GRAPHICS_STARS_TYPE: ['NONE','NORMAL','SHINE'],
@@ -6503,6 +6538,7 @@ OnDaRun.Configurations = {
     GRAPHICS_SLIDE_STEPS: { min: 0, max: 6, step: 1 },
     GRAPHICS_DAY_LIGHT: { min: 0, max: 4, step: 1 },
     GRAPHICS_DUST: ['NONE','DUST'],
+    GRAPHICS_SUBTITLES: ['YES','NO'],
     GRAPHICS_DISPLAY_INFO: ['YES','NO'],
   },
   SOUND_EFFECTS_VOLUME: 5,
