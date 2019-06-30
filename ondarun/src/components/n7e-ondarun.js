@@ -5106,15 +5106,20 @@ class OnDaRun extends LitElement {
     }, button );
   }
 
-  setGameMode(choice) {
+  showGameMode(){
+    if( this.totalTangerines ){
+      let maxPerDay = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
+      this.terminal.append( `${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, 3000 );
+    } else this.terminal.append( this.gameMode.title, 3000 );
+  }
+
+  setGameMode( choice ){
     /* FIXME avoid modifying config */
     this.gameMode = choice;
 
     this.distanceMeter.setHighScore( this.gameModeScore );
 
     this.config.ACCELERATION = choice.ACCELERATION;
-    this.notifier.notify( choice.title, 5000 );
-
     this.time = 0;
     this.runTime = 0;
     this.currentSpeed = 0;
@@ -5144,6 +5149,8 @@ class OnDaRun extends LitElement {
     this.queueAction(defaultAction);
     this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
     this.sky.setShade( ODR.config.SKY.DAY, 0 );
+
+    this.showGameMode();
   }
 
   openGameMenu() {
