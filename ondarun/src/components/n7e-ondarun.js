@@ -383,8 +383,6 @@ class Tangerine extends Entity {
   }
 
   collide( collision ) {
-    ODR.checkShouldDropTangerines();
-
     if( !this.collected ) {
       ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
       ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/20 );
@@ -1692,7 +1690,7 @@ class Horizon {
     return situation ? situation : Obstacle.situation.Cactus;
   }
 
-  forwardEntities(deltaTime, currentSpeed, decrement) {
+  forwardEntities( deltaTime, currentSpeed, decrement ){
     // Obstacles, move to Horizon layer.
     for (let i = 0; i < this.entities.length; i++) {
       this.entities[i].forward( deltaTime, currentSpeed );
@@ -1726,6 +1724,8 @@ class Horizon {
 
         // Tangerine
         if( ODR.shouldDropTangerines && N7e.user && !getRandomNum(0,10)){
+          ODR.shouldDropTangerines = false;
+          ODR.tangerineTimer = 0;
           let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[getRandomNum(0,4)]);
           let minGap = Math.round( 50 * currentSpeed + 72 );
           let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
@@ -4607,6 +4607,7 @@ class OnDaRun extends LitElement {
     this.shouldAddObstacle = false;
     this.shouldIncreaseSpeed = false;
     this.shouldDropTangerines = false;
+    this.tangerineTimer = 0;
 
     this.playCount = 0;
     this.soundFx = {};
@@ -5517,6 +5518,15 @@ class OnDaRun extends LitElement {
         this.gameOverPanel.draw( deltaTime );
       } else {
         this.runTime += deltaTime;
+
+        //Drop tangerine
+        if( this.tangerineTimer < 5000 ){
+          this.tangerineTimer += deltaTime;
+          if( this.tangerineTimer >= 5000 ){
+            this.checkShouldDropTangerines();
+          }
+        }
+
         this.horizon.forward( deltaTime, this.currentSpeed, this.inverted, hasObstacles);
       }
 
@@ -5941,7 +5951,10 @@ GOOD JOB! #natB`, 15000 );
   }
 
   checkShouldDropTangerines() {
+    // Disable dropping until resolved.
+
     this.shouldDropTangerines = false;
+
     if( N7e.userSignedIn ){
       let d = new Date();
       let today = `${d.getFullYear()}/${d.getMonth()}/${d.getDate()}`;
@@ -5958,7 +5971,9 @@ GOOD JOB! #natB`, 15000 );
           let tangerines = complete.snapshot.val();
           let maxPerDay = Math.max( 1, ~~(this.gameModeTotalScore/100));
           if( tangerines.dayCount < maxPerDay ){
-            this.shouldDropTangerines = true;
+            if( this.tangerineTimer >= 5000 ){
+              this.shouldDropTangerines = true;
+            }
           } else {
             this.shouldDropTangerines = false;
             this.notifier.notify( `no #tangerine today! [${tangerines.dayCount}/${maxPerDay}]`, 5000 );
@@ -5971,6 +5986,7 @@ GOOD JOB! #natB`, 15000 );
     }
   }
 
+  /* Don't remove / For refs.
   restart() {
     if (!this.raqId) {
       this.actions = [];
@@ -5994,7 +6010,7 @@ GOOD JOB! #natB`, 15000 );
       this.gameOverPanel.timer = 0;
       this.music.stop();
     }
-  }
+  }*/
 
   invert(reset) {
     if (reset) {
