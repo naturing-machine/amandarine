@@ -4184,8 +4184,12 @@ class ConsoleN7EButton extends ConsoleButton {
   }
 }
 
+/**
+ * FIXME
+ * - Make sure not to setTimeout() to load music.
+ */
 class Music {
-  constructor(canvas) {
+  constructor( canvas ){
     if( Music.singletonInstance_ )
       return Music.singletonInstance_;
 
@@ -4194,7 +4198,7 @@ class Music {
     Music.singletonInstance_ = this;
   }
 
-  stop() {
+  stop(){
     this.currentSong = null;
     for( let name in this.songs ) {
       if (this.songs[name].audio) {
@@ -4206,13 +4210,23 @@ class Music {
     }
   }
 
-  get lyrics() {
-    if (this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length) {
+  /*
+  get lyrics(){
+    if( this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length ){
       let time = ODR.audioContext.currentTime - this.currentSong.startTime;
-      while (time >= this.currentSong.lyrics[2]) {
+      while( time >= this.currentSong.lyrics[2] ){
         this.currentSong.lyrics.splice(0,2);
       }
       return this.currentSong.lyrics[1];
+    }
+  }*/
+
+  updateLyricsIfNeeded( terminal ){
+    if( this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length ){
+      let time = ODR.audioContext.currentTime - this.currentSong.startTime - this.currentSong.delay/1000;
+      while( this.currentSong.lyrics.length && time >= this.currentSong.lyrics[0].info ){
+        terminal.appendMessage( this.currentSong.lyrics.shift());
+      }
     }
   }
 
@@ -4222,13 +4236,15 @@ class Music {
     }
   }
 
+
   /* TODO If the audio context is created late, music should
   recall load on the existing autoplayed song. */
-  load(name, autoplay, lyrics) {
+  load( name, autoplay, lyrics, delay = 0) {
     //console.log('load', name, autoplay)
     //if (IS_IOS) return;
-    let song = this.songs[name] || (this.songs[name] = {title:name, autoplay:autoplay, lyrics:lyrics});
-    song.lyrics = lyrics ? lyrics.slice(0) : null;
+    let song = this.songs[ name ] || ( this.songs[ name ] = { title: name, autoplay: autoplay, lyrics: lyrics});
+    song.lyrics = lyrics || null;
+    song.delay = delay;
 
     /*
     if( song.autoplay ) {
@@ -4258,15 +4274,10 @@ class Music {
     /* The song has data ready, just play it. */
       if( !song.audio ) {
         this.currentSong = song;
-        song.audio = ODR.playSound( song.data, ODR.config.SOUND_MUSIC_VOLUME/10 );
+        song.audio = ODR.playSound( song.data, ODR.config.SOUND_MUSIC_VOLUME/10, false, song.delay );
         song.startTime = ODR.audioContext.currentTime;
-        /*
-        if( song.lyrics ) {
-          song.playLyrics = song.lyrics.slice(0);
-        }
-        */
       }
-    } else if( !song.hasOwnProperty( 'progress' )) {
+    } else if( !song.hasOwnProperty('progress')) {
     /* The song has not started being loaded. */
       song.progress = 0;
       var resourceTemplate = document.getElementById(ODR.config.RESOURCE_TEMPLATE_ID).content;
@@ -5389,7 +5400,7 @@ class OnDaRun extends LitElement {
 
       if (loop) sourceNode.loop = true;
 
-      sourceNode.start(this.audioContext.currentTime + delay);
+      sourceNode.start(this.audioContext.currentTime + delay/1000);
       return {
         node: sourceNode,
         _gain: vnode,
@@ -6220,9 +6231,15 @@ GOOD JOB! #natB`, 15000 );
 
                 //this.amandarine.activateAction(action, deltaTime, speed);
 
-                if (action.timer > 3000 && !action.playEndMusic) {
-                  action.playEndMusic = true;
-                  this.music.load('offline-intro-music', this.config.PLAY_MUSIC, this.config.NATHERINE_LYRICS);
+                if( !action.playedEndMusic ){
+                  action.playedEndMusic = true;
+                  let lyrics = [];
+                  for( let i = 0, l = this.config.NATHERINE_LYRICS; i < l.length; i+= 2 ){
+                    let string = l[ i + 1 ];
+                    let duration = (l[ i + 2 ] || 5)*1000;
+                    lyrics.push( new Message( string, 10000, 0, l[ i ]));
+                  }
+                  this.music.load('offline-intro-music', this.config.PLAY_MUSIC, lyrics, 3000 );
                 }
 
                 // Waiting for a restart
