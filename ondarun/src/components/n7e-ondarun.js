@@ -340,9 +340,11 @@ class Entity {
     let distance = (duration + interval) * absSpeed * FPS/1000;
     this.minX = 25 + distance;
 
+    /*
     if( this.minX < 590 ) {
       console.log('Late:', this.minX, this );
     }
+    */
 
   }
 }
@@ -1667,7 +1669,6 @@ class Horizon {
   addEntity( ...theArgs ) {
     theArgs.forEach( anEntity => {
       if( this.entities.length >= 25 ) {
-        console.log('discard', anEntity)
         return;
       }
 
@@ -1818,7 +1819,6 @@ class Horizon {
           /* Extra */
 
           case Obstacle.situation.SituationA: {
-            console.log('A')
             let space = new Space( currentSpeed * 300 );
             space.follow( lastEntity, 0, currentSpeed );
             this.addEntity( space );
@@ -1851,7 +1851,6 @@ class Horizon {
           } break;
 
           case Obstacle.situation.SituationB: {
-            console.log('B')
             let space = new Space( currentSpeed * 150 );
             space.follow( lastEntity, 0, currentSpeed );
             this.addEntity( space );
@@ -1886,7 +1885,6 @@ class Horizon {
           } break;
 
           case Obstacle.situation.SituationC: {
-            console.log('C')
             let i,cactus;
             for( i = 0; i < 8; i++) {
               cactus = new SmallCactus( this.canvasCtx, 0, getRandomNum(1,3));
@@ -3218,12 +3216,25 @@ the Thai Redcross Society #redcross
   }
 
   handleEvent( e ){
-    if( this.dataReadyTime && !this.ender ){
-      this.ender = this.timer;
-      ODR.sky.setShade( ODR.config.SKY.DAY, 3000 );
-      ODR.loadSounds();
+    super.handleEvent( e );
+
+    switch( e.type ){
+      case OnDaRun.events.CONSOLEDOWN:
+        return true;
+      case OnDaRun.events.CONSOLEUP:
+        // Make sure all control buttons are released.
+        if( 0 == this.buttonUpTime[ 0 ]
+            && 0 == this.buttonUpTime[ 1 ]
+            && this.dataReadyTime && !this.ender ){
+
+          this.ender = this.timer;
+          ODR.sky.setShade( ODR.config.SKY.DAY, 3000 );
+          ODR.loadSounds();
+        }
+        return true;
+      default:
+        return false;
     }
-    return true;
   }
 
 /**
@@ -3232,10 +3243,10 @@ the Thai Redcross Society #redcross
  * @return {Panel} - a subsitute or null.
  */
   forward( deltaTime ) {
+    this.timer += deltaTime;
 
     ODR.sky.forward( deltaTime, this.canvasCtx );
 
-    this.timer += deltaTime;
     let factorA = Math.sin(this.timer / 400);
     let factorB = Math.sin(this.timer / 300);
     let factorC = Math.sin(this.timer / 400);
@@ -4202,24 +4213,12 @@ class Music {
     this.currentSong = null;
     for( let name in this.songs ) {
       if (this.songs[name].audio) {
-        //console.log('stopping', name)
         this.songs[name].autoplay = false;
         this.songs[name].audio.fadeout();
         this.songs[name].audio = null;
       }
     }
   }
-
-  /*
-  get lyrics(){
-    if( this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length ){
-      let time = ODR.audioContext.currentTime - this.currentSong.startTime;
-      while( time >= this.currentSong.lyrics[2] ){
-        this.currentSong.lyrics.splice(0,2);
-      }
-      return this.currentSong.lyrics[1];
-    }
-  }*/
 
   updateLyricsIfNeeded( terminal ){
     if( this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length ){
@@ -4901,7 +4900,6 @@ class OnDaRun extends LitElement {
           this.gameModeList.forEach( mode => {
             if( mode.distance && mode.distance > (distances[ mode.key ] || 0)){
               distances = distances || {};
-              console.log('Updating server hiscore:',mode.key, mode.distance);
               distances[ mode.key ] = mode.distance;
             }
           });
@@ -4917,7 +4915,6 @@ class OnDaRun extends LitElement {
             this.gameModeList.forEach( mode => {
               let serverDistance = distances[ mode.key ];
               if( serverDistance > mode.distance ){
-                console.log(`Updating client hiscore: ${mode.key} ${serverDistance} (${serverDistance * this.config.TO_SCORE})`);
                 mode.distance = serverDistance;
                 if( mode === this.gameMode ){
                   this.distanceMeter.setHighScore( Math.round( serverDistance * this.config.TO_SCORE ));
@@ -5176,7 +5173,6 @@ class OnDaRun extends LitElement {
       entries: entries,
       enter: ( entryIndex, choice ) => {
         if( !choice.exit ) {
-          console.log(choice.mode, 'set mode');
           this.setGameMode(choice.mode);
         }
 
@@ -5655,10 +5651,6 @@ class OnDaRun extends LitElement {
 
   handleEvent(e) {
 
-    if( this.menu && this.menu.handleEvent && this.menu.handleEvent( e )){
-      return;
-    }
-
     switch( e.type ){
       case OnDaRun.events.KEYDOWN:{
         let button = this.consoleButtonForKeyboardCodes[ e.code ];
@@ -5667,7 +5659,7 @@ class OnDaRun extends LitElement {
           if( !e.repeat ){
             button.handleEvent( e );
           }
-        } else {
+        } else if( !this.menu || !this.menu.handleEvent || !this.menu.handleEvent( e )){
           this.onKeyDown( e );
         }
 
@@ -5679,12 +5671,15 @@ class OnDaRun extends LitElement {
           if( !e.repeat ){
             button.handleEvent( e );
           }
-        } else {
+        } else if( !this.menu || !this.menu.handleEvent || !this.menu.handleEvent( e )){
           this.onKeyUp( e );
         }
       } break;
 
       case OnDaRun.events.CONSOLEDOWN: {
+        if( this.menu && this.menu.handleEvent && this.menu.handleEvent( e )){
+          return;
+        }
 
         this.introScriptTimer = 20000;
         let button = e.detail.consoleButton;
@@ -5713,6 +5708,9 @@ class OnDaRun extends LitElement {
       } break;
 
       case OnDaRun.events.CONSOLEUP:{
+        if( this.menu && this.menu.handleEvent && this.menu.handleEvent( e )){
+          return;
+        }
 
         let button = e.detail.consoleButton;
 
