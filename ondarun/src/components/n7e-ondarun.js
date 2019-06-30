@@ -3254,7 +3254,7 @@ the Thai Redcross Society #redcross
       this.canvasCtx.restore();
 
       if (ODR.soundFx.SOUND_SCORE && runout < -200) {
-        ODR.music.load('offline-intro-music', ODR.config.PLAY_MUSIC);
+        ODR.music.load('offline-intro-music', ODR.config.PLAY_MUSIC );
         let defaultAction = new DefaultAction(1);
         defaultAction.setX = -100;
         ODR.queueAction(defaultAction);
@@ -4239,11 +4239,11 @@ class Music {
 
   /* TODO If the audio context is created late, music should
   recall load on the existing autoplayed song. */
-  load( name, autoplay, lyrics, delay = 0) {
+  load( name, autoplay, delay = 0, lyrics = null ){
     //console.log('load', name, autoplay)
     //if (IS_IOS) return;
     let song = this.songs[ name ] || ( this.songs[ name ] = { title: name, autoplay: autoplay, lyrics: lyrics});
-    song.lyrics = lyrics || null;
+    song.lyrics = lyrics;
     song.delay = delay;
 
     /*
@@ -4783,7 +4783,7 @@ class OnDaRun extends LitElement {
 /**
  * OnDarun initialize the game parameters & game-play graphics.
  */
-  init() {
+  init(){
 
     //this.generateShadowCache();
     Mountain.generateMountainImages();
@@ -4834,11 +4834,11 @@ class OnDaRun extends LitElement {
     this.introScriptTimer = 200;
   }
 
-  setSpeed(opt_speed) {
+  setSpeed( opt_speed ){
     this.currentSpeed = opt_speed === undefined ? this.currentSpeed : opt_speed;
   }
 
-  signIn() {
+  signIn(){
     N7e.userSignedIn = false;
     N7e.signing.progress = true;
 
@@ -4958,9 +4958,9 @@ class OnDaRun extends LitElement {
     } else {
       this.config.PLAY_MUSIC = true;
       if (this.playing) {
-        this.music.load('offline-play-music', this.config.PLAY_MUSIC);
+        this.music.load('offline-play-music', this.config.PLAY_MUSIC );
       } else {
-        this.music.load('offline-intro-music', this.config.PLAY_MUSIC);
+        this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
       }
       this.notifier.notify('♬ ON', 2000 );
     }
@@ -5053,13 +5053,13 @@ class OnDaRun extends LitElement {
       },
       enter: ( entryIndex, entry ) => {
         if( entry.name == 'SOUND_MUSIC_VOLUME' ) {
-          ODR.music.load('offline-play-music', this.config.PLAY_MUSIC);
+          ODR.music.load('offline-play-music', this.config.PLAY_MUSIC );
         }
 
         if( entry.value != this.config[ entry.name ] ) {
           this.config[ entry.name ] = entry.value;
           if (N7e.user) {
-            N7e.user.odrRef.child('settings/'+entry.name).set(entry.value);
+            N7e.user.odrRef.child('settings/' + entry.name ).set( entry.value );
           }
 
           if( entry.name == 'PLAY_MUSIC' ) {
@@ -5138,7 +5138,7 @@ class OnDaRun extends LitElement {
       this.gameOverPanel.timer = 0;
 
     //FIXME dup screen forward
-    this.music.load('offline-intro-music', this.config.PLAY_MUSIC);
+    this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
     let defaultAction = new DefaultAction(1);
     defaultAction.setX = -100;
     this.queueAction(defaultAction);
@@ -6255,17 +6255,17 @@ GOOD JOB! #natB`, 15000 );
                     let duration = (l[ i + 2 ] || 5)*1000;
                     lyrics.push( new Message( string, 10000, 0, l[ i ]));
                   }
-                  this.music.load('offline-intro-music', this.config.PLAY_MUSIC, lyrics, 3000 );
+                  this.music.load('offline-intro-music', this.config.PLAY_MUSIC, 3000, lyrics );
                 }
 
                 // Waiting for a restart
                 // Clear the buttons during clear time or restart afterwards.
                 queueIndex++;
                 let nextAction;
-                while (nextAction = actionQueue[queueIndex]) {
-                  if (nextAction.type == A8e.status.SLIDING
+                while( nextAction = actionQueue[ queueIndex ]){
+                  if( nextAction.type == A8e.status.SLIDING
                       || nextAction.type == A8e.status.JUMPING) {
-                    if (action.timer < this.config.GAMEOVER_CLEAR_TIME)  {
+                    if( action.timer < this.config.GAMEOVER_CLEAR_TIME ){
                       nextAction.priority = -1;
                     } else {
                       this.music.stop();
@@ -6291,7 +6291,8 @@ GOOD JOB! #natB`, 15000 );
                       this.distanceMeter.reset();
                       this.horizon.reset();
                       this.amandarine.reset();
-                      setTimeout(() => { this.music.load('offline-play-music', this.config.PLAY_MUSIC); }, 500);
+                      this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
+                      this.showGameMode();
                       break HANDLE_ACTION_QUEUE;
                     }
                   }
@@ -6347,8 +6348,8 @@ GOOD JOB! #natB`, 15000 );
                       this.shouldIncreaseSpeed = true;
                       this.setSpeed(this.config.SPEED);
                       this.playing = true;
-                      //this.music.load('offline-play-music', this.config.PLAY_MUSIC);
-                      setTimeout(() => { this.music.load('offline-play-music', this.config.PLAY_MUSIC); }, 500);
+                      this.showGameMode();
+                      this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
                       action.speed = this.config.SPEED;
                       action.priority = 1;
                       this.sky.setShade( ODR.config.SKY.DAY, 3000 );
