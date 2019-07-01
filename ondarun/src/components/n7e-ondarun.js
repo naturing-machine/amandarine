@@ -3475,6 +3475,7 @@ class Menu extends Panel {
 
   forward( deltaTime, depth ) {
     this.timer += deltaTime;
+    this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
 
     if( this.offset ){
 
@@ -5017,9 +5018,7 @@ class OnDaRun extends LitElement {
     return false;
   }
 
-  openSoundMenu(){
-    let button = this.consoleButtons.CONSOLE_A;
-
+  createSoundMenu( button ){
     //this.config.PLAY_MUSIC = true;
     this.music.stop();
     let entries = [];
@@ -5062,11 +5061,11 @@ class OnDaRun extends LitElement {
 
     entries.push({title:'exit', exit:true});
 
-    this.menu = new Menu( this.canvas, {
+    let mainMenu = new Menu( this.canvas, {
       title: 'sounds',
       entries: entries,
       select: ( entry, vol, model ) => {
-        if( this.menu.model === model || vol > 10) {
+        if( mainMenu.model === model || vol > 10) {
           if( model.name == 'SOUND_MUSIC_VOLUME' && vol == 11) {
             this.music.volume = ODR.config.SOUND_MUSIC_VOLUME;
           } else {
@@ -5114,12 +5113,11 @@ class OnDaRun extends LitElement {
         return null;
       },
     }, button );
+
+    return mainMenu;
   }
 
-  openGraphicsMenu(){
-    let button = this.consoleButtons.CONSOLE_B;
-    if( this.closeMenuForButton( button )) return;
-
+  createGraphicsMenu( button ){
     this.music.stop();
     let entries = [];
     for (let key in this.config.GRAPHICS_MODE_OPTIONS) {
@@ -5128,7 +5126,8 @@ class OnDaRun extends LitElement {
     }
 
     entries.push({title:'exit', exit:true});
-    this.menu = new Menu( this.canvas, {
+
+    return new Menu( this.canvas, {
       title: 'graphics',
       entries: entries,
       enter: ( entryIndex, entry ) => {
@@ -5196,8 +5195,7 @@ class OnDaRun extends LitElement {
     this.showGameMode();
   }
 
-  openGameMenu() {
-    let button = this.consoleButtons.CONSOLE_C;
+  createGameMenu( button ){
     if( this.closeMenuForButton( button )) return;
 
     this.music.stop();
@@ -5214,7 +5212,7 @@ class OnDaRun extends LitElement {
     });
     entries.push({ title:'EXIT', exit: true })
 
-    let mainMenu = this.menu = new Menu( this.canvas, {
+    return new Menu( this.canvas, {
       title: 'games',
       entries: entries,
       enter: ( entryIndex, choice ) => {
@@ -5227,14 +5225,9 @@ class OnDaRun extends LitElement {
     }, button );
   }
 
-  openUserMenu() {
-    let button = this.consoleButtons.CONSOLE_D;
-    if( this.closeMenuForButton( button )) return;
-
-    //console.assert( !N7e.signing.progress, N7e.signing );
-
+  createUserMenu( button ) {
     this.music.stop();
-    let mainMenu = this.menu =
+    let mainMenu =
       /* User has signed in */
       N7e.user
       ? new Menu( this.canvas, {
@@ -5328,6 +5321,8 @@ class OnDaRun extends LitElement {
           }, button );
         },
       }, button );
+
+    return mainMenu;
   }
 
   setGraphicsMode(mode) {
@@ -5369,7 +5364,7 @@ class OnDaRun extends LitElement {
     this.canvas.style.opacity = 1 - this.config.GRAPHICS_DAY_LIGHT/5;
 
     //Generate caches
-    this.horizon.forward( 0, 0, 0, false, 0);
+    //this.horizon.forward( 0, 0, 0, false, 0);
   }
 
   loadSounds() {
@@ -5529,21 +5524,18 @@ class OnDaRun extends LitElement {
     }
     */
 
-    if( this.menu ){
-      this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
-      this.menu = this.menu.forward(deltaTime);
+    if( this.menu && !this.menu.passthrough ){
+      //this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
+      this.menu = this.menu.forward( deltaTime );
       this.scheduleNextRepaint();
-      if( this.menu && !this.menu.passthrough ){
-        return;
-      }
+      return;
     }
 
     if( this.playing ){
 
       let hasObstacles = this.runTime > this.config.CLEAR_TIME ? 1 : 0;
 
-      if( this.crashed && this.gameOverPanel ) {
-        this.gameOverPanel.draw(deltaTime);
+      if( this.crashed ){
 
         //Define existence as a timing ratio used to by the gameover animations.
         let existence = Math.max( 0,
@@ -5662,14 +5654,20 @@ class OnDaRun extends LitElement {
 
     this.terminal.forward( deltaTime );
 
+    /*
     if( N7e.signing.progress ) {
-      /* Draw starry spinner */
+      // Draw starry spinner
       this.canvasCtx.drawImage(this.spriteGUI,
         38 + ~~(now/100)%4 * 22, 73, 22, 22,
         600-25, 200-25, 22, 22);
     }
+    */
 
-    if (this.config.GRAPHICS_DISPLAY_INFO == 'YES') {
+    if( this.menu && this.menu.passthrough ){
+      this.menu = this.menu.forward( deltaTime );
+    }
+
+    if( this.config.GRAPHICS_DISPLAY_INFO == 'YES'){
       this.paintRound = this.paintRound || 0;
       this.paintCounter = this.paintCounter || 0;
       this.paintCounter++;
@@ -5776,7 +5774,7 @@ class OnDaRun extends LitElement {
             if( e.detail.timeOut || this.menu ){
 
               if( !this.closeMenuForButton( button ))
-                this.openSoundMenu();
+                this.menu = this.createSoundMenu( button );
 
             } else if( !this.menu ){
               this.setMusicMode(-1 );
@@ -5789,7 +5787,7 @@ class OnDaRun extends LitElement {
             if( e.detail.timeOut || this.menu ){
 
               if( !this.closeMenuForButton( button ))
-                this.openGraphicsMenu();
+                this.menu = this.createGraphicsMenu( button );
 
             } else if( !this.menu ){
               this.setGraphicsMode(-1 );
@@ -5799,12 +5797,12 @@ class OnDaRun extends LitElement {
 
           case this.consoleButtons.CONSOLE_C:
             if( !this.closeMenuForButton( button ))
-              this.openGameMenu();
+              this.menu = this.createGameMenu( button );
             break;
 
           case this.consoleButtons.CONSOLE_D:
             if( !this.closeMenuForButton( button ))
-              this.openUserMenu();
+              this.menu = this.createUserMenu( button );
             break;
 
           case this.consoleButtons.CONSOLE_RESET:
