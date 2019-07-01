@@ -4658,56 +4658,38 @@ class OnDaRun extends LitElement {
     this.dimensions = OnDaRun.defaultDimensions;
     this.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
     //this.scene = null;
-    this.menu = null;
 
     this.canvas = null;
     this.canvasCtx = null;
-    this.sky = null;
 
+    this.menu = null;
+    this.sky = null;
     this.amandarine = null;
     this.distanceMeter = null;
-    this.distance = 0;
+
+    this.time = 0;
     this.totalTangerines = 0;
     this.dailyTangerines = 0;
 
     this.gameModeList = [];
-    Object.values( OnDaRun.gameModes ).forEach( mode => {
-      this.gameModeList.push( mode );
-      mode.distance = 0;
-    });
-    this.gameMode = OnDaRun.gameModes[ this.config.GAME_MODE ];
+    this.gameMode = null;
 
     this.achievements = [];
-    this.time = 0;
-    this.runTime = 0;
     this.msPerFrame = 1000/FPS;
-    this.currentSpeed = 0;
-    this.actions = [];
-    this.activeAction = null;
 
-    this.activated = false;
-    this.playing = false;
-    this.inverted = false;
-    this.invertTimer = 0;
-
-    this.shouldAddObstacle = false;
-    this.shouldIncreaseSpeed = false;
-    this.shouldDropTangerines = false;
-    this.tangerineTimer = 0;
-
-    this.playCount = 0;
     this.soundFx = {};
-
     this.audioContext = null;
     this.music = null;
 
     this.images = {};
 
     this.consoleButtonForKeyboardCodes = {};
+
+    this.restoreBaseValues();
   }
 
-/**
- * OnDarun lithtml first update.
+/** Class OnDarun
+ * lithtml first update.
  * - Prepare the console graphics.
  * - Load image sprites.
  * @param {Map} changedProperties
