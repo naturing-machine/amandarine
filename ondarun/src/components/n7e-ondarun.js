@@ -403,7 +403,6 @@ class Tangerine extends Entity {
 
   static increaseTangerine( number ) {
     if( N7e.user ){
-
       N7e.user.odrRef.child('items/tangerines').transaction( function( tangerines ){
         if( tangerines ){
           tangerines.dayCount += number;
@@ -627,7 +626,7 @@ class SmallCactus extends MultiWidth {
   }
 
 }
-SmallCactus.spriteXList = [266,283,317,368];
+SmallCactus.spriteXList = [ 0, 17, 51, 102 ].map( x => x + 296 );
 SmallCactus.spriteYOffset = 0;
 SmallCactus.width = 17;
 SmallCactus.height = 35;
@@ -651,7 +650,7 @@ class LargeCactus extends MultiWidth {
     ];
   }
 }
-LargeCactus.spriteXList = [266,291,341,416];
+LargeCactus.spriteXList = [ 0, 25, 75, 150 ].map( x => x + 296 );
 LargeCactus.spriteYOffset = 35;
 LargeCactus.width = 25;
 LargeCactus.height = 50;
@@ -878,10 +877,10 @@ class Cloud {
     this.canvas = canvas;
     this.canvasCtx = this.canvas.getContext('2d');
     this.type = type;
-    this.spritePos = {
-      x: OnDaRun.spriteDefinition.CLOUD.x,
-      y: OnDaRun.spriteDefinition.CLOUD.y[type],
-    };
+    this.spritePos = [
+      Cloud.spriteXList[ getRandomNum( 0, 1 )],
+      Cloud.spriteYList[ type ],
+    ];
     this.minX = minX;
     this.minY = minY;
     this.removed = false;
@@ -889,24 +888,19 @@ class Cloud {
   }
 
   get maxX(){
-    return this.minX + Cloud.config.WIDTH;
+    return this.minX + Cloud.width;
   }
 
   get maxY(){
-    return this.minY + Cloud.config.HEIGHTS[ this.type ];
+    return this.minY + Cloud.heightList[ this.type ];
   }
 
   draw() {
-
-      var sourceWidth = Cloud.config.WIDTH;
-      var sourceHeight = Cloud.config.HEIGHTS[ this.type ];
-
-      this.canvasCtx.drawImage(ODR.spriteScene, this.spritePos.x,
-        this.spritePos.y,
-        sourceWidth, sourceHeight,
-        Math.ceil(this.minX), this.minY,
-        Cloud.config.WIDTH, Cloud.config.HEIGHTS[this.type]);
-
+      this.canvasCtx.drawImage( ODR.spriteScene,
+        this.spritePos[ 0 ], this.spritePos[ 1 ],
+        Cloud.width, Cloud.heightList[ this.type ],
+        Math.ceil( this.minX ), this.minY,
+        Cloud.width, Cloud.heightList[ this.type ]);
   }
 
   forward( deltaTime, currentSpeed ) {
@@ -916,7 +910,7 @@ class Cloud {
       this.draw();
 
       // Mark as removeable if no longer in the canvas.
-      if( this.minX + Cloud.config.WIDTH < 0 ){
+      if( this.minX + Cloud.width < 0 ){
         this.removed = true;
       }
     }
@@ -937,7 +931,22 @@ class Cloud {
   }
 
 }
+
 Cloud.cycleType = 0;
+Cloud.spriteXList = [ 176, 176 + 60 ];
+Cloud.spriteYList = [ 1, 20, 46, 61, 76, 95 ];
+Cloud.heightList = [ 18, 24, 12, 14, 18, 9];
+Cloud.width = 60;
+
+Cloud.config = {
+  HEIGHTS: [18,24,12,14,18,9],
+  MAX_CLOUD_GAP: 400,
+  MAX_SKY_LEVEL: 30,
+  MIN_CLOUD_GAP: 50,
+  MIN_SKY_LEVEL: DEFAULT_HEIGHT - 79,
+  WIDTH: 60,
+};
+
 
 // Generate mountains.
 
@@ -6643,15 +6652,6 @@ HorizonLine.dimensions = {
   WIDTH: 600,
   HEIGHT: 23,
   YPOS: DEFAULT_HEIGHT-23
-};
-
-Cloud.config = {
-  HEIGHTS: [18,24,12,14,18,9],
-  MAX_CLOUD_GAP: 400,
-  MAX_SKY_LEVEL: 30,
-  MIN_CLOUD_GAP: 50,
-  MIN_SKY_LEVEL: DEFAULT_HEIGHT - 79,
-  WIDTH: 60,
 };
 
 NightMode.config = {
