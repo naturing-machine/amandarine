@@ -392,9 +392,9 @@ class Tangerine extends Entity {
       this.collectedY = this.minY;
       this.collectedTimer = 0;
 
-      ODR.showGameMode( 500 );
+      ODR.showGameModeInfo( 500 );
       ODR.dailyTangerines++;
-      ODR.showGameMode( 500, 500 );
+      ODR.showGameModeInfo( 500, 500 );
 
       Tangerine.increaseTangerine( 1 );
     }
@@ -885,6 +885,7 @@ class Cloud {
     this.minY = minY;
     this.removed = false;
     this.timer = ODR.time;
+    this.speedModifier = 0.7 + 0.3*Math.random();
   }
 
   get maxX(){
@@ -906,7 +907,7 @@ class Cloud {
   forward( deltaTime, currentSpeed ) {
     if( !this.removed ){
 
-      this.minX -= currentSpeed * FPS / 1000 * deltaTime;
+      this.minX -= currentSpeed*this.speedModifier * FPS / 1000 * deltaTime;
       this.draw();
 
       // Mark as removeable if no longer in the canvas.
@@ -1112,9 +1113,9 @@ class NightMode {
     this.placeStars();
   }
 
-  forward(activated, delta) {
+  forward( activated, delta ) {
     // Moon phase.
-    if (activated && 0 == this.opacity) {
+    if( activated && 0 == this.opacity ){
       this.currentPhase = this.nextPhase;
       this.nextPhase--;
 
@@ -1526,6 +1527,9 @@ class Horizon {
     this.init();
   }
 
+/** Class Horizon
+ * Initialize the starting scenery.
+ */
   init() {
 
     this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
@@ -4803,7 +4807,7 @@ class OnDaRun extends LitElement {
     });
   }
 
-  /*
+  /* TODO
   generateShadowCache() {
     // Generate A8e shadows.
 
@@ -5189,7 +5193,7 @@ class OnDaRun extends LitElement {
     }, button );
   }
 
-  showGameMode( duration = 2000, delay = 0 ){
+  showGameModeInfo( duration = 2000, delay = 0 ){
     if( this.totalTangerines ){
       let maxPerDay = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
       this.terminal.append( `#trophy:${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, duration, delay );
@@ -5240,7 +5244,7 @@ class OnDaRun extends LitElement {
     this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
     this.sky.setShade( ODR.config.SKY.DAY, 0 );
 
-    this.showGameMode();
+    this.showGameModeInfo();
   }
 
   createGameMenu( button ){
@@ -6405,7 +6409,7 @@ GOOD JOB! #natB`, 15000 );
                       this.horizon.reset();
                       this.amandarine.reset();
                       this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
-                      this.showGameMode();
+                      this.showGameModeInfo();
                       break HANDLE_ACTION_QUEUE;
                     }
                   }
@@ -6462,7 +6466,7 @@ GOOD JOB! #natB`, 15000 );
                       this.shouldIncreaseSpeed = true;
                       this.setSpeed(this.config.SPEED);
                       this.playing = true;
-                      this.showGameMode();
+                      this.showGameModeInfo();
                       this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
                       action.speed = this.config.SPEED;
                       action.priority = 1;
