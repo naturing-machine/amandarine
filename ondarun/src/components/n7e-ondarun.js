@@ -386,12 +386,16 @@ class Tangerine extends Entity {
 
   collide( collision ) {
     if( !this.collected ) {
-      ODR.showGameMode();
       ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
       ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/20 );
       this.collected = true;
       this.collectedY = this.minY;
       this.collectedTimer = 0;
+
+      ODR.showGameMode( 500 );
+      ODR.dailyTangerines++;
+      ODR.showGameMode( 500, 500 );
+
       Tangerine.increaseTangerine( 1 );
     }
     return false;
@@ -5136,11 +5140,11 @@ class OnDaRun extends LitElement {
     }, button );
   }
 
-  showGameMode(){
+  showGameMode( duration = 2000, delay = 0 ){
     if( this.totalTangerines ){
       let maxPerDay = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
-      this.terminal.append( `#trophy:${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, 3000 );
-    } else this.terminal.append( this.gameMode.title, 2000 );
+      this.terminal.append( `#trophy:${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, duration, delay );
+    } else this.terminal.append( this.gameMode.title, duration, delay );
   }
 
   setGameMode( choice ){
