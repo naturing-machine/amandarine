@@ -2117,7 +2117,7 @@ class A8e {
     }
   }
 
-  activateAction(action, deltaTime, speed) {
+  activateAction( action, deltaTime, speed ){
     console.assert(action && action.priority != -1, action);
 
     let adjustXToStart = () => {
@@ -2405,6 +2405,7 @@ class A8e {
     this.minX = -40;// this.config.START_X_POS;
     this.dust.reset();
 
+    /*
     let endTime = getTimeStamp();
     let startingSlide = new SlideAction(endTime - ODR.config.MAX_ACTION_PRESS, 7.2);
     startingSlide.priority = 1;
@@ -2414,6 +2415,7 @@ class A8e {
       startingSlide.maxPressDuration = 1500;
 
     ODR.queueAction(startingSlide);
+    */
 //    ODR.queueAction(ODR.defaultAction);
   }
 }
@@ -3060,6 +3062,7 @@ class Panel {
 
 /**
  * Panel event handler.
+ * Manage Left & Right console buttons.
  * @param {Event} e - an event.
  * @return {boolean} - true if the event was handled and shouldn't be handled again.
  */
@@ -3768,8 +3771,6 @@ class TextEditor extends Panel {
   }
 }
 
-//FIXME set as menu and draw later
-//menu stack allow self-push
 class GameOverPanel extends Panel {
   constructor( canvas, textImgPos, restartImgPos, dimensions ){
     super( canvas );
@@ -3780,33 +3781,41 @@ class GameOverPanel extends Panel {
     this.restartImgPos = restartImgPos;
     this.timer = 0;
     this.passthrough = true;
+    this.willRestart = false;
   }
 
   handleEvent( e ){
-    super.handleEvent( e );
-
-    switch( e.type ){
-      case OnDaRun.events.CONSOLEDOWN:
-        if( this.buttonUpTime[ 0 ] || this.buttonUpTime[ 1 ]){
-          this.willRestart = true;
-          console.log('will start');
-          return false;
-        }
-        return true;
-      case OnDaRun.events.CONSOLEUP:
-        // Make sure all control buttons are released.
-        if( 0 == this.buttonUpTime[ 0 ]
-            && 0 == this.buttonUpTime[ 1 ]
-            && this.willRestart ){
-          return false;
-        }
-        return true;
-      default:
-        return false;
+    if( this.willRestart || !super.handleEvent( e )){
+      return false;
     }
+
+    if( e.type == OnDaRun.events.CONSOLEUP
+      && this.timer > ODR.config.GAMEOVER_CLEAR_TIME
+      && 0 == this.buttonUpTime[ 0 ]
+      && 0 == this.buttonUpTime[ 1 ]){
+
+      this.willRestart = true;
+      ODR.restart();
+
+    }
+    return true;
   }
 
   forward( deltaTime ){
+    if( this.willRestart ){
+      return this.forwardRestart( deltaTime );
+    } else {
+      this.forwardGameOver( deltaTime );
+      return this;
+    }
+  }
+
+  forwardRestart( deltaTime ){
+    //TODO transition
+    return null;
+  }
+
+  forwardGameOver( deltaTime ){
     //Hack
     if( this.timer == 0 ){
       ODR.updateScore();
@@ -3863,11 +3872,6 @@ class GameOverPanel extends Panel {
         23, 19);
     this.canvasCtx.restore();
 
-    if( this.willRestart ){
-      return null;
-    }
-
-    return this;
   }
 }
 
@@ -3939,7 +3943,7 @@ class Action {
 
 
 class DefaultAction extends Action {
-  constructor( newSpeed ) {
+  constructor( newSpeed = 0 ) {
     super();
     this.speed = newSpeed;
     this.index = Infinity;
@@ -4858,10 +4862,15 @@ class OnDaRun extends LitElement {
   }
   */
 
-/**
- * OnDarun initialize the game parameters & game-play graphics.
+/** Class OnDarun
+ * Initialize the game parameters & game-play graphics.
  */
   init(){
+    Object.values( OnDaRun.gameModes ).forEach( mode => {
+      this.gameModeList.push( mode );
+      mode.distance = 0;
+    });
+    this.gameMode = OnDaRun.gameModes[ this.config.GAME_MODE ];
 
     //this.generateShadowCache();
     Mountain.generateMountainImages();
@@ -5187,6 +5196,27 @@ class OnDaRun extends LitElement {
     } else this.terminal.append( this.gameMode.title, duration, delay );
   }
 
+  crash( action ){
+    console.assert( !this.crashed, 'crash reentry', this.crashed );
+    this.crashed = true;
+    vibrate(200);
+    this.distanceMeter.flashIterations = 0;
+    this.music.stop();
+    this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    this.sky.setShade( this.config.SKY.SUNSET, 3000 );
+    this.shouldAddObstacle = false;
+    this.shouldIncreaseSpeed = false;
+
+    // Load lyrics, FIXME if needed.
+    let lyrics = [];
+    for( let i = 0, l = this.config.NATHERINE_LYRICS; i < l.length; i+= 2 ){
+      let string = l[ i + 1 ];
+      let duration = (l[ i + 2 ] || 5)*1000;
+      lyrics.push( new Message( string, 10000, 0, l[ i ]));
+    }
+    this.music.load('offline-intro-music', this.config.PLAY_MUSIC, 3000, lyrics );
+  }
+
   setGameMode( choice ){
     /* FIXME avoid modifying config */
     this.gameMode = choice;
@@ -5194,24 +5224,12 @@ class OnDaRun extends LitElement {
     this.distanceMeter.setHighScore( this.gameModeScore );
 
     this.config.ACCELERATION = choice.ACCELERATION;
-    this.time = 0;
-    this.runTime = 0;
-    this.currentSpeed = 0;
-    this.actions = [];
-    this.activeAction = null;
-    this.activated = false;
-    this.playing = false;
-    this.inverted = false;
-    this.invertTimer = 0;
-    this.shouldAddObstacle = false;
-    this.shouldIncreaseSpeed = false;
-    this.playCount = 0;
+
+    this.restoreBaseValues();
+
     this.amandarine.reset();
     this.horizon.reset();
 
-    this.playLyrics = false;
-    this.runTime = 0;
-    this.distance = 0;
     this.invert(true);
 
     //FIXME dup screen forward
@@ -5567,6 +5585,14 @@ class OnDaRun extends LitElement {
 
       if( this.crashed ){
 
+        if( !this.menu ){
+          this.menu = new GameOverPanel(this.canvas,
+            this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
+            this.dimensions);
+          this.scheduleNextRepaint();
+          return;
+        }
+
         //Define existence as a timing ratio used to by the gameover animations.
         let existence = Math.max( 0,
           this.actions[0]
@@ -5615,7 +5641,7 @@ class OnDaRun extends LitElement {
         }
       }
 
-      if (!this.crashed) {
+      if( !this.crashed ){
         this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
       }
 
@@ -5928,12 +5954,6 @@ class OnDaRun extends LitElement {
  * OnDarun test crashed state.
  * @returns {boolean} crash state.
  */
-  get crashed() {
-    if( this.activeAction && this.activeAction.type == A8e.status.CRASHED ) {
-      return true;
-    }
-    return false;
-  }
 
   isRunning() {
     return !!this.raqId;
@@ -6034,6 +6054,68 @@ GOOD JOB! #natB`, 15000 );
 
       });
     }
+  }
+
+  restoreBaseValues(){
+
+    this.crashed = false;
+    this.playing = false;
+    this.currentSpeed = 0;
+    this.runTime = 0;
+    this.distance = 0;
+
+    this.shouldAddObstacle = false;
+    this.shouldIncreaseSpeed = false;
+
+    this.shouldDropTangerines = false;
+    this.tangerineTimer = 0;
+
+    this.inverted = false;
+    this.invertTimer = 0;
+
+    this.actions = [];
+    this.consoleButtonActionMap = new Map();
+    this.activeAction = null;
+    this.playLyrics = false;
+  }
+
+
+  restart(){
+    //this.music.stop();
+    console.assert(this.activeAction.type == 'CRASHED', 'Active action should be CRASHED')
+
+    //Dequeue the crashed action.
+    this.activeAction.priority = -1;
+
+    this.restoreBaseValues();
+
+    this.horizon.reset();
+    this.distanceMeter.reset();
+    this.sky.setShade( ODR.config.SKY.DAY,  3000 );
+    this.invert( true );
+
+    this.shouldAddObstacle = true;
+    this.shouldIncreaseSpeed = true;
+    this.playing = true;
+
+    this.setSpeed( this.config.SPEED );
+    this.playSound( this.soundFx.SOUND_SCORE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
+    this.checkShouldDropTangerines();
+    this.showGameModeInfo();
+
+    this.amandarine.reset();
+
+    let startingSlide = new SlideAction( this.time - ODR.config.MAX_ACTION_PRESS, 7.2);
+    startingSlide.priority = 1;
+    startingSlide.end = this.time;
+    startingSlide.maxPressDuration = 1500;
+
+    this.queueAction( startingSlide );
+    let defaultAction = new DefaultAction( this.config.SPEED );
+    defaultAction.priority = 1;
+    this.queueAction( defaultAction );
+
   }
 
   /* Don't remove / For refs.
@@ -6161,7 +6243,7 @@ GOOD JOB! #natB`, 15000 );
               case A8e.status.JUMPING:
                 this.activeAction = action;
 
-                    if (this.crashed) {
+                    if( this.crashed ) {
                       console.trace();
                       /* crash action should have locked the scheduler */
                       console.error('Shoud never be here.')
@@ -6181,6 +6263,9 @@ GOOD JOB! #natB`, 15000 );
                 this.activeAction = action;
                 action.minX = this.amandarine.minX;
                 break;
+
+              case A8e.status.WAITING:
+              //Not sure but... this should turn default waiting into running I guess?
 
               // These background-type actions (priority 1 without specific
               // duration) below will 'continue' through the action queue
@@ -6256,11 +6341,6 @@ GOOD JOB! #natB`, 15000 );
                 if( this.amandarine.minX > this.amandarine.config.START_X_POS ) {
                   action.speed = 0;
                   this.amandarine.minX = this.amandarine.config.START_X_POS;
-                  /* Setting speed to 0 turn DefaultAction into a waiting.
-                  This is not very generic; that we may allow queue.replaceAction()
-                  to replace a default with another that one may assign specific
-                  scripts to the replacing action class. ie. since some actions
-                  conceptually don't allow -1 priority */
                 }
                 // Don't proceed action while walking in.
                 break HANDLE_ACTION_QUEUE;
@@ -6268,24 +6348,16 @@ GOOD JOB! #natB`, 15000 );
                 //NYI
                 break HANDLE_ACTION_QUEUE;
               case A8e.status.CRASHED: {
-                if (0 == action.timer) {
-                  this.distanceMeter.flashIterations = 0;
+
+                //Start the crash animation.
+                if( !this.crashed ){
                   //TOOD this.dispatchEvent(new CustomEvent('odr-crash', { bubbles: false, detail: { action: action } }));
-                  vibrate(200);
+                  this.crash();
 
-                  this.menu = new GameOverPanel(this.canvas,
-                      this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
-                      this.dimensions);
-
-                  this.music.stop();
-                  this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-                  this.sky.setShade( this.config.SKY.SUNSET, 3000 );
-                  this.shouldAddObstacle = false;
-                  this.shouldIncreaseSpeed = false;
-
+                  // Prepare crash animation.
                   let crashPoint = action.boxes.C.center();
                   //TODO 4 dirs
-                  if (crashPoint.minY - this.amandarine.minY < 20) {
+                  if( crashPoint.minY - this.amandarine.minY < 20 ){
                     action.dir = -1;
                   } else {
                     action.dir = 1;
@@ -6293,27 +6365,15 @@ GOOD JOB! #natB`, 15000 );
 
                   action.duration = 200;
                   action.top = action.duration / 1000;
-                  action.halfTime = Math.sqrt(2000 * action.duration / A8e.config.GRAVITY);
+                  action.halfTime = Math.sqrt( 2000 * action.duration / A8e.config.GRAVITY );
                   action.timer = 0;
                   action.crashedMinY = this.amandarine.minY;
                   action.lagging = speed;
                 }
 
-                //this.amandarine.activateAction(action, deltaTime, speed);
-
-                if( !action.playedEndMusic ){
-                  action.playedEndMusic = true;
-                  let lyrics = [];
-                  for( let i = 0, l = this.config.NATHERINE_LYRICS; i < l.length; i+= 2 ){
-                    let string = l[ i + 1 ];
-                    let duration = (l[ i + 2 ] || 5)*1000;
-                    lyrics.push( new Message( string, 10000, 0, l[ i ]));
-                  }
-                  this.music.load('offline-intro-music', this.config.PLAY_MUSIC, 3000, lyrics );
-                }
-
                 // Waiting for a restart
                 // Clear the buttons during clear time or restart afterwards.
+                /*
                 queueIndex++;
                 let nextAction;
                 while( nextAction = actionQueue[ queueIndex ]){
@@ -6351,8 +6411,9 @@ GOOD JOB! #natB`, 15000 );
                   }
                   queueIndex++;
                 }
-              } //break HANDLE_ACTION_QUEUE;
-              break;
+                */
+              } break HANDLE_ACTION_QUEUE;
+              //break;
               case A8e.status.WAITING:
                 this.introScript = this.introScript || [
                   20000, `Hi${(N7e.user||{}).nickname ? '_'+N7e.user.nickname.split(' ').join('_') : ''}!\nPress_#slide/#jump_to_start!`,
@@ -6430,7 +6491,7 @@ GOOD JOB! #natB`, 15000 );
     }
 
     if (this.activeAction)
-      this.amandarine.activateAction(this.activeAction, deltaTime, speed);
+      this.amandarine.activateAction( this.activeAction, deltaTime, speed );
     else {
       //console.log('No active action for repainting.');
       //N7e.freeze = true;
