@@ -2409,7 +2409,7 @@ class A8e {
     let startingSlide = new SlideAction(endTime - ODR.config.MAX_ACTION_PRESS, 7.2);
     startingSlide.priority = 1;
     //FIXME playCount is used for deciding if it should draw guides or not at start.
-    startingSlide.start = ODR.gameOverPanel ? true : false;
+    startingSlide.start = ODR.crashed ? true : false;
     startingSlide.end = endTime;
       startingSlide.maxPressDuration = 1500;
 
@@ -3770,25 +3770,51 @@ class TextEditor extends Panel {
 
 //FIXME set as menu and draw later
 //menu stack allow self-push
-class GameOverPanel {
-  constructor(canvas, textImgPos, restartImgPos, dimensions) {
+class GameOverPanel extends Panel {
+  constructor( canvas, textImgPos, restartImgPos, dimensions ){
+    super( canvas );
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
     this.canvasDimensions = dimensions;
     this.textImgPos = textImgPos;
     this.restartImgPos = restartImgPos;
     this.timer = 0;
-    this.draw(0);
+    this.passthrough = true;
   }
 
-  draw(deltaTime) {
+  handleEvent( e ){
+    super.handleEvent( e );
+
+    switch( e.type ){
+      case OnDaRun.events.CONSOLEDOWN:
+        if( this.buttonUpTime[ 0 ] || this.buttonUpTime[ 1 ]){
+          this.willRestart = true;
+          console.log('will start');
+          return false;
+        }
+        return true;
+      case OnDaRun.events.CONSOLEUP:
+        // Make sure all control buttons are released.
+        if( 0 == this.buttonUpTime[ 0 ]
+            && 0 == this.buttonUpTime[ 1 ]
+            && this.willRestart ){
+          return false;
+        }
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  forward( deltaTime ){
     //Hack
     if( this.timer == 0 ){
       ODR.updateScore();
     }
 
-    deltaTime = deltaTime ? deltaTime : 1;
     this.timer += deltaTime;
+
+    deltaTime = deltaTime ? deltaTime : 1;
     let dist = this.timer/100;
       if (dist > 1) dist = 1;
 
@@ -3836,6 +3862,12 @@ class GameOverPanel {
         restartTargetX + 7, restartTargetY + 8,
         23, 19);
     this.canvasCtx.restore();
+
+    if( this.willRestart ){
+      return null;
+    }
+
+    return this;
   }
 }
 
@@ -5181,8 +5213,6 @@ class OnDaRun extends LitElement {
     this.runTime = 0;
     this.distance = 0;
     this.invert(true);
-    if( this.gameOverPanel )
-      this.gameOverPanel.timer = 0;
 
     //FIXME dup screen forward
     this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
@@ -5556,7 +5586,6 @@ class OnDaRun extends LitElement {
               this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
         }
 
-        this.gameOverPanel.draw( deltaTime );
       } else {
         this.runTime += deltaTime;
 
@@ -5631,16 +5660,9 @@ class OnDaRun extends LitElement {
         }
       }
 
-    } else if (!this.crashed) {
+    } else{
       // Initial idling
       this.horizon.forward( deltaTime, 0, this.inverted, 1);
-    } else {
-      // Game over suspending
-        this.horizon.forward( 0, 0, this.inverted, 0);
-        if (this.gameOverPanel) {
-          this.gameOverPanel.draw( deltaTime );
-        }
-        this.distanceMeter.forward( 0, this.score );
     }
 
     let a = this.actions[0];
@@ -5917,26 +5939,6 @@ class OnDaRun extends LitElement {
     return !!this.raqId;
   }
 
-  gameOver(){
-
-    this.distanceMeter.flashIterations = 0;
-
-    //FIXME
-    /*
-    console.trace();
-    this.amandarine.forward(100, this.currentSpeed, this.actions[0]);
-    */
-
-    if (!this.gameOverPanel) {
-      this.gameOverPanel = new GameOverPanel(this.canvas,
-        this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
-        this.dimensions);
-    }
-
-    this.gameOverPanel.draw( 0 );
-
-  }
-
   updateScore(){
     let d = this.score;
 
@@ -5953,7 +5955,6 @@ class OnDaRun extends LitElement {
       ];
     } else {
 
-      //FIXME should be called once
       if( this.distance > this.gameMode.distance )
         this.notifier.notify( `A NEW HIGH!
 ${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_SCORE )} ▻ ${Math.round( this.distance * this.config.TO_SCORE )}
@@ -6268,9 +6269,13 @@ GOOD JOB! #natB`, 15000 );
                 break HANDLE_ACTION_QUEUE;
               case A8e.status.CRASHED: {
                 if (0 == action.timer) {
-                  this.gameOver();
+                  this.distanceMeter.flashIterations = 0;
                   //TOOD this.dispatchEvent(new CustomEvent('odr-crash', { bubbles: false, detail: { action: action } }));
                   vibrate(200);
+
+                  this.menu = new GameOverPanel(this.canvas,
+                      this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
+                      this.dimensions);
 
                   this.music.stop();
                   this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10 );
@@ -6332,7 +6337,6 @@ GOOD JOB! #natB`, 15000 );
                       this.runTime = 0;
                       this.playing = true;
                       this.distance = 0;
-                      this.gameOverPanel.timer = 0;
                       this.invert( true );
 
                       this.setSpeed( this.config.SPEED );
