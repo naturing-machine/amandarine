@@ -5471,7 +5471,8 @@ class OnDaRun extends LitElement {
     this.canvasCtx.restore();
     this.canvasCtx.save();
 
-    switch (mode) {
+    if( notify )
+    switch( mode ){
       case 0:
         this.notifier.notify('N#aTURING', 5000 );
         break;
@@ -5708,43 +5709,41 @@ class OnDaRun extends LitElement {
         }
 
         this.horizon.forward( deltaTime, this.currentSpeed, this.inverted, hasObstacles);
-      }
 
-      // Check for collisions.
+        if( hasObstacles ) {
+          for( let i = 0, entity; entity = this.horizon.entities[i]; i++ ) {
 
-      //FIXME Why not testing in Horizon?
-      if( hasObstacles && !this.crashed ) {
-        for( let i = 0, entity; entity = this.horizon.entities[i]; i++ ) {
+            let crashBoxes = this.amandarine.hitTest(entity, this.amandarine);
 
-          let crashBoxes = this.amandarine.hitTest(entity, this.amandarine);
-
-          if( crashBoxes && entity.collide( crashBoxes )) {
-            // if collide() return true then gameover
-            break;
+            if( crashBoxes && entity.collide( crashBoxes )) {
+              // if collide() return true then gameover
+              break;
+            }
           }
         }
-      }
 
-      if( !this.crashed ){
         this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
+
+        if( this.shouldIncreaseSpeed ){
+          this.currentSpeed = this.config.SPEED + this.runTime * this.config.ACCELERATION;
+          if( this.currentSpeed > this.config.MAX_SPEED )
+            this.currentSpeed = this.config.MAX_SPEED;
+        }
+
+
+
       }
 
-      if (this.shouldIncreaseSpeed ) {
-        this.currentSpeed = this.config.SPEED + this.runTime * this.config.ACCELERATION;
-        if( this.currentSpeed > this.config.MAX_SPEED )
-          this.currentSpeed = this.config.MAX_SPEED;
-      }
 
       // Meter & Score
       let playAchievementSound = this.distanceMeter.forward( deltaTime, this.score );
-
-      if (playAchievementSound) {
+      if( playAchievementSound ){
         if (playAchievementSound != this.lastAchievement) {
           this.playSound( this.soundFx.SOUND_SCORE, 0.8 * ODR.config.SOUND_EFFECTS_VOLUME/10 );
         }
         this.lastAchievement = playAchievementSound;
 
-        if( playAchievementSound >= this.achievements[0] ){
+        if( playAchievementSound >= this.achievements[ 0 ]){
           this.achievements.shift();
           this.notifier.notify( this.achievements.shift(), 6000 );
         }
@@ -5758,9 +5757,7 @@ class OnDaRun extends LitElement {
       } else if (this.invertTimer) {
         this.invertTimer += deltaTime;
       } else {
-        let score = this.score;
-
-        if( score > 0 ){
+        if( this.score > 0 ){
           this.invertTrigger = !(this.score % this.config.INVERT_DISTANCE);
 
           if (this.invertTrigger && this.invertTimer === 0) {
@@ -5779,8 +5776,7 @@ class OnDaRun extends LitElement {
     this.scheduleActionQueue(now, deltaTime, this.currentSpeed);
     this.notifier.forward( deltaTime );
 
-
-    if (this.playLyrics) {
+    if( this.playLyrics ){
       this.music.updateLyricsIfNeeded( this.terminal );
     }
 
