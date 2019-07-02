@@ -5129,7 +5129,7 @@ class OnDaRun extends LitElement {
       this.notifier.notify('♬ OFF', 2000 );
     } else {
       this.config.PLAY_MUSIC = true;
-      if (this.playing) {
+      if( 1 == this.playState ){
         this.music.load('offline-play-music', this.config.PLAY_MUSIC );
       } else {
         this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
@@ -5284,8 +5284,8 @@ class OnDaRun extends LitElement {
   }
 
   crash( action ){
-    console.assert( !this.crashed, 'crash reentry', this.crashed );
-    this.crashed = true;
+    console.assert( 2 != this.playState, 'crash reentry', this.playState );
+    this.playState = 2;
     vibrate(200);
     this.distanceMeter.flashIterations = 0;
     this.music.stop();
@@ -5649,36 +5649,19 @@ class OnDaRun extends LitElement {
       this.consoleButtons[ key ].forward( deltaTime );
     }
 
-    /*
-    if( this.scene ){
-      //this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
-      this.scene = this.scene.forward(deltaTime);
-      this.scheduleNextRepaint();
-      if( !this.scene.passthrough )
-        return;
-    }
-    */
-
     if( this.menu && !this.menu.passthrough ){
       //this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
-      this.menu = this.menu.forward( deltaTime );
+      this.setMenu( this.menu.forward( deltaTime ));
       this.scheduleNextRepaint();
       return;
     }
 
-    if( this.playing ){
+    if( 1 <= this.playState ){
 
       let hasObstacles = this.runTime > this.config.CLEAR_TIME ? 1 : 0;
 
-      if( this.crashed ){
-
-        if( !this.menu ){
-          this.menu = new GameOverPanel(this.canvas,
-            this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
-            this.dimensions);
-          this.scheduleNextRepaint();
-          return;
-        }
+      //CRASHED
+      if( 2 == this.playState ){
 
         //Define existence as a timing ratio used to by the gameover animations.
         let existence = Math.max( 0,
@@ -5773,8 +5756,8 @@ class OnDaRun extends LitElement {
         }
       }
 
-    } else{
-      // Initial idling
+    } else {
+      // this.playState == 0 Initial waiting
       this.horizon.forward( deltaTime, 0, this.inverted, 1);
     }
 
@@ -6144,8 +6127,8 @@ GOOD JOB! #natB`, 15000 );
 
   restoreBaseValues(){
 
-    this.crashed = false;
-    this.playing = false;
+    this.playState = 0;
+
     this.currentSpeed = 0;
     this.runTime = 0;
     this.distance = 0;
@@ -6182,7 +6165,8 @@ GOOD JOB! #natB`, 15000 );
 
     this.shouldAddObstacle = true;
     this.shouldIncreaseSpeed = true;
-    this.playing = true;
+
+    this.playState = 1;
 
     this.setSpeed( this.config.SPEED );
     this.playSound( this.soundFx.SOUND_SCORE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
@@ -6329,7 +6313,7 @@ GOOD JOB! #natB`, 15000 );
               case A8e.status.JUMPING:
                 this.activeAction = action;
 
-                    if( this.crashed ) {
+                    if( 2 == this.playState ) {
                       console.trace();
                       /* crash action should have locked the scheduler */
                       console.error('Shoud never be here.')
@@ -6436,7 +6420,7 @@ GOOD JOB! #natB`, 15000 );
               case A8e.status.CRASHED: {
 
                 //Start the crash animation.
-                if( !this.crashed ){
+                if( 2 != this.playState ){
                   //TOOD this.dispatchEvent(new CustomEvent('odr-crash', { bubbles: false, detail: { action: action } }));
                   this.crash();
 
