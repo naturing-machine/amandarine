@@ -1113,7 +1113,7 @@ class NightMode {
     this.placeStars();
   }
 
-  forward( activated, delta ) {
+  forward( activated, delta, lightness ) {
     // Moon phase.
     if( activated && 0 == this.opacity ){
       this.currentPhase = this.nextPhase;
@@ -1145,7 +1145,7 @@ class NightMode {
           star.minX = this.adjustXPos(star.minX, NightMode.config.STAR_SPEED);
         }
       }
-      this.draw();
+      this.draw( 255 - lightness );
     }
   }
 
@@ -1158,13 +1158,13 @@ class NightMode {
     return currentPos;
   }
 
-  draw() {
+  draw( darkness = 255 ) {
     var starSize = NightMode.config.STAR_SIZE;
     var starSourceX = OnDaRun.spriteDefinition.STAR.x;
 
     this.canvasCtx.save();
 
-    this.canvasCtx.globalAlpha = this.opacity;
+    this.canvasCtx.globalAlpha = this.opacity;// * (( 255 + darkness )>>>1)/255;
 
     let mx = Infinity, my = Infinity;
 
@@ -1204,6 +1204,8 @@ class NightMode {
     this.canvasCtx.globalAlpha = 1;
     // Stars.
 
+    let opacity = this.opacity * darkness/255;
+
     if (ODR.config.GRAPHICS_STARS_TYPE != 'NONE') {
       for (var i = 0, star; star = this.stars[i]; i++) {
 
@@ -1213,11 +1215,11 @@ class NightMode {
             + 0.8 * (twinkle > 1.0
               ? 2 - twinkle
               : twinkle);
-          let alpha = this.opacity * star.opacity * twinkle;
-          let dt = Math.abs(star.minX - mx) + Math.abs(star.minY - my) - 50;
-            if (dt < 0) dt = 0; else if (dt > 50) dt = 50;
+          let alpha = opacity * star.opacity * twinkle;
+          let moonDist = Math.abs(star.minX - mx) + Math.abs(star.minY - my) - 50;
+            if (moonDist < 0) moonDist = 0; else if (moonDist > 50) moonDist = 50;
 
-          this.canvasCtx.globalAlpha = alpha * dt/50;
+          this.canvasCtx.globalAlpha = alpha * moonDist/50;
         }
 
         this.canvasCtx.drawImage(ODR.spriteScene,
@@ -1320,7 +1322,7 @@ class NightMode {
 }
 
 class HorizonLine {
-  constructor(canvas, spritePos) {
+  constructor( canvas, spritePos ) {
     this.spritePos = spritePos;
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
@@ -1670,7 +1672,8 @@ class Horizon {
     // Fill atmosphere
     this.canvasCtx.save();
     this.canvasCtx.globalCompositeOperation = 'destination-over';
-    this.nightMode.forward(showNightMode,deltaTime);
+
+    this.nightMode.forward( showNightMode, deltaTime, ODR.sky.shade[6] );
     ODR.sky.repaint( this.canvasCtx );
     this.canvasCtx.restore();
 
@@ -3281,8 +3284,7 @@ the Thai Redcross Society #redcross
             && this.dataReadyTime && !this.ender ){
 
           this.ender = this.timer;
-          ODR.sky.setShade( ODR.config.SKY.DAY, 3000 );
-          ODR.loadSounds();
+          ODR.sky.setShade( Sky.config.DAY, 3000 );
         }
         return true;
       default:
@@ -4424,9 +4426,9 @@ class Layer {
 class Sky extends Layer {
   constructor(){
     super();
-
-    this.sourceShade = [0,0,0,0,0,0];
-    this.targetShade = [0,0,0,0,0,0];
+                      //R G B R G B L ( L = Lightness/Less night )
+    this.sourceShade = [0,0,0,0,0,0,0];
+    this.targetShade = [0,0,0,0,0,0,0];
     this.shade = [0,0,0,0,0,0];
     this.fromRGB = '000000';
     this.toRGB = '000000';
@@ -4492,9 +4494,10 @@ class Sky extends Layer {
 
   forward( deltaTime, displayCtx ) {
     if( 0 != this.shadingDuration ){
+      this.shadingTimer += deltaTime;
+
       let ratio;
       let dur = this.shadingTimer - this.shadingDuration;
-      this.shadingTimer += deltaTime;
 
       if( dur >= 0 ){
         ratio = 1;
@@ -4503,7 +4506,7 @@ class Sky extends Layer {
         this.shade = [ ...this.targetShade ];
       } else {
         ratio = this.shadingTimer/this.shadingDuration;
-        for( let i = 0; i < 6; i++ ){
+        for( let i = 0; i < 7; i++ ){
           this.shade[i] = ~~( this.sourceShade[ i ]
             + ratio*( this.targetShade[ i ] - this.sourceShade[ i ]));
         }
@@ -4521,8 +4524,15 @@ class Sky extends Layer {
     }
   }
 
-
 }
+
+Sky.config = {
+  DAY: [~~(221*0.8), ~~(238*0.8), ~~(255*0.9), 238, 238, 255, 255],
+  //NIGHT: [68,136,170,102,153,187],
+  NIGHT: [68,136,170,84,183,187,0],
+  START: [251,149,93,251,112,93,0],
+  SUNSET: [69,67,125,255,164,119,255],
+};
 
 class OnDaRun extends LitElement {
   static get styles() {
@@ -4874,7 +4884,7 @@ class OnDaRun extends LitElement {
     this.canvas.style.visibility = 'visible';
 
     this.sky = new Sky( this.canvas );
-    this.sky.setShade( ODR.config.SKY.START, 0 );
+    this.sky.setShade( Sky.config.START, 0 );
     this.horizon = new Horizon( this.canvas, this.spriteDef, this.dimensions );
 
     this.menu = new TitlePanel( this.canvas );
@@ -5189,7 +5199,7 @@ class OnDaRun extends LitElement {
     this.distanceMeter.flashIterations = 0;
     this.music.stop();
     this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-    this.sky.setShade( this.config.SKY.SUNSET, 3000 );
+    this.sky.setShade( Sky.config.SUNSET, 3000 );
     this.shouldAddObstacle = false;
     this.shouldIncreaseSpeed = false;
 
@@ -5224,7 +5234,7 @@ class OnDaRun extends LitElement {
     defaultAction.setX = -100;
     this.queueAction(defaultAction);
     this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
-    this.sky.setShade( ODR.config.SKY.DAY, 0 );
+    this.sky.setShade( Sky.config.DAY, 0 );
 
     this.showGameModeInfo();
   }
@@ -6077,7 +6087,7 @@ GOOD JOB! #natB`, 15000 );
 
     this.horizon.reset();
     this.distanceMeter.reset();
-    this.sky.setShade( ODR.config.SKY.DAY,  3000 );
+    this.sky.setShade( Sky.config.DAY,  3000 );
     this.invert( true );
 
     this.shouldAddObstacle = true;
@@ -6144,7 +6154,7 @@ GOOD JOB! #natB`, 15000 );
         : this.invertTrigger;
     }
 
-    this.sky.setShade( this.inverted ? ODR.config.SKY.NIGHT : ODR.config.SKY.DAY, 3000 );
+    this.sky.setShade( this.inverted ? Sky.config.NIGHT : Sky.config.DAY, 3000 );
   }
 
 
@@ -6452,7 +6462,7 @@ GOOD JOB! #natB`, 15000 );
                       this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
                       action.speed = this.config.SPEED;
                       action.priority = 1;
-                      this.sky.setShade( ODR.config.SKY.DAY, 3000 );
+                      this.sky.setShade( Sky.config.DAY, 3000 );
                       this.notifier.timer = 200;
                     } else if (nextAction.priority == 0) {
                     }
@@ -6610,13 +6620,6 @@ OnDaRun.Configurations = {
     SOUND_EFFECTS_VOLUME: { min: 0, max: 10, step: 1 },
     SOUND_MUSIC_VOLUME: { min: 0, max: 10, step: 1 },
     SOUND_SYSTEM_VOLUME: { min: 0, max: 10, step: 1 },
-  },
-  SKY: {
-    DAY: [~~(221*0.8), ~~(238*0.8), ~~(255*0.9), 238, 238, 255],
-    //NIGHT: [68,136,170,102,153,187],
-    NIGHT: [68,136,170,84,183,187],
-    START: [251,149,93,251,112,93],
-    SUNSET: [69,67,125,255,164,119],
   },
   NATHERINE_LYRICS: [
     0.7, "♬ Natherine ♬",
