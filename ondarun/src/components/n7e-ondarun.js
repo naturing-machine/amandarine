@@ -3277,6 +3277,7 @@ the Thai Redcross Society #redcross
 
     switch( e.type ){
       case OnDaRun.events.CONSOLEDOWN:
+        ODR.loadSounds();
         return true;
       case OnDaRun.events.CONSOLEUP:
         // Make sure all control buttons are released.
@@ -4753,7 +4754,7 @@ class OnDaRun extends LitElement {
     this.achievements = [];
     this.msPerFrame = 1000/FPS;
 
-    this.soundFx = {};
+    this.soundFx = null;
     this.audioContext = null;
     this.music = null;
 
@@ -5515,13 +5516,13 @@ class OnDaRun extends LitElement {
   }
 
   loadSounds() {
-    if (!IS_IOS) {
-      if (!this.audioContext) {
+    if( !this.soundFx && !IS_IOS ) {
+      if( !this.audioContext ){
         this.audioContext = new AudioContext();
       }
 
       var resourceTemplate =
-      document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
+      document.getElementById( this.config.RESOURCE_TEMPLATE_ID ).content;
 
       Object.entries(OnDaRun.sounds).forEach(([sound, id]) => {
         var soundSrc =
@@ -5537,6 +5538,7 @@ class OnDaRun extends LitElement {
         }
 
         // Async, so no guarantee of order in array.
+        this.soundFx = {};
         this.audioContext.decodeAudioData(bytes.buffer)
           .then( audioData => this.soundFx[sound] = audioData);
       });
