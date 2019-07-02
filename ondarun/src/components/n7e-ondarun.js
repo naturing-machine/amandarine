@@ -1332,14 +1332,16 @@ class HorizonLine {
     this.minX = 0;
     this.minY = HorizonLine.dimensions.YPOS;
     this.bumpThreshold = 0.5;
-    this.grMode = -1;
-
-
-    this.draw();
+    this.cachedGroundType = null;
   }
 
-  generateGroundCache() {
-    if (!this.groundCanvas) {
+  generateGroundCache( groundType ){
+    if( this.cachedGroundType == groundType )
+      return;
+
+    console.log(`Generating ${groundType}`);
+
+    if( !this.groundCanvas ){
       this.groundCanvas = document.createElement('canvas');
       this.groundCanvas.width = this.dimensions.WIDTH;
       this.groundCanvas.height = 25 * ODR.config.GROUND_WIDTH;
@@ -1347,13 +1349,13 @@ class HorizonLine {
     let ctx = this.groundCanvas.getContext('2d');
 
     ctx.clearRect(0, 0, this.dimensions.WIDTH, this.groundCanvas.height);
-    this.grMode = ODR.config.GRAPHICS_GROUND_TYPE;
+    this.cachedGroundType = groundType;
 
     ctx.save();
     ctx.translate(0,25 - DEFAULT_HEIGHT);
     for (let i = 0; i < ODR.config.GROUND_WIDTH; i++) {
 
-      if (ODR.config.GRAPHICS_GROUND_TYPE == 'STRIPES')
+      if( groundType == 'STRIPES')
         this.drawGround(ctx, i, 'STRIPES',227,191,139);
       else {
         this.drawGround(ctx, i, 'STRIPES',137,150,90);
@@ -1465,36 +1467,33 @@ class HorizonLine {
   }
 
   draw() {
-
-    this.canvasCtx.drawImage(ODR.spriteScene, ~~-this.minX,
-      104,
-      600, 46,
-      0, 170,
-      600, 46);
-
-    if (ODR.config.GRAPHICS_GROUND_TYPE == 'DIRT') return;
-
-    if (ODR.config.GRAPHICS_GROUND_TYPE != this.grMode) {
-      this.generateGroundCache();
-    }
-
-    this.canvasCtx.drawImage(this.groundCanvas,
-        0, 3 * (~~this.minX+1800) % ODR.config.GROUND_WIDTH * 25 + 2,
-        DEFAULT_WIDTH, 22,
-        0, DEFAULT_HEIGHT - 22,
-        DEFAULT_WIDTH, 22);
-
+    console.trace();
   }
 
   forward( deltaTime, screenIncrement ){
-    if (ODR.config.GRAPHICS_GROUND_TYPE != 'DIRT') screenIncrement /= 3;
+    if( ODR.config.GRAPHICS_GROUND_TYPE != 'DIRT' ){
+      screenIncrement /= 3;
+    }
 
     this.minX += screenIncrement;
     if (-this.minX > 1800) {
       this.minX += 1800;
     }
 
-    this.draw();
+    //Draw dirt.
+    this.canvasCtx.drawImage( ODR.spriteScene,
+      ~~-this.minX, 104, 600, 46,
+      0, 170, 600, 46);
+
+    if( ODR.config.GRAPHICS_GROUND_TYPE == 'DIRT') return;
+
+    this.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
+
+    this.canvasCtx.drawImage( this.groundCanvas,
+        0, 3 * (~~this.minX + 1800 ) % ODR.config.GROUND_WIDTH * 25 + 2,
+          DEFAULT_WIDTH, 22,
+        0, DEFAULT_HEIGHT - 22,
+          DEFAULT_WIDTH, 22 );
   }
 
   reset() {
@@ -4972,8 +4971,9 @@ class OnDaRun extends LitElement {
     this.actionIndex = 0;
 
     /* Set default custom mode to setting 0 */
-    this.config.GRAPHICS_MODE_SETTINGS[3] = JSON.parse(JSON.stringify(OnDaRun.Configurations.GRAPHICS_MODE_SETTINGS[0]));
-    this.setGraphicsMode(3);
+    this.config.GRAPHICS_MODE_SETTINGS[ 3 ] = JSON.parse( JSON.stringify( OnDaRun.Configurations.GRAPHICS_MODE_SETTINGS[ 0 ]));
+    this.setGraphicsMode( 3, false );
+    this.horizon.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
 
     this.style.opacity = 1;
 
@@ -5117,10 +5117,11 @@ class OnDaRun extends LitElement {
         // load custom graphics configs.
         authUser.odrRef.once('value', snapshot => {
           let odr = snapshot.val();
-          if (odr) {
-            Object.assign(this.config.GRAPHICS_MODE_SETTINGS[3], odr.settings);
-            if (this.config.GRAPHICS_MODE == 3) {
-              this.setGraphicsMode(3);
+          if( odr ){
+            Object.assign( this.config.GRAPHICS_MODE_SETTINGS[ 3 ], odr.settings);
+            if( this.config.GRAPHICS_MODE == 3 ){
+              this.setGraphicsMode( 3, false );
+              this.horizon.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
             }
           }
         });
