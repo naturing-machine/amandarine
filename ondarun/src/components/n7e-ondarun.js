@@ -2161,10 +2161,12 @@ class A8e {
           action.currentFrame = 72 + ~~((action.timer - action.heldStart)/150);
         } else if (!IS_MOBILE){
           //let xMap = [2,1,-2,-3,-2,1], yMap = [1,0,-2,-2,-2,0];
+          /*
           let yMap = [0,2,3,2,0];
           this.canvasCtx.drawImage(ODR.spriteGUI, 0, 96, 105, 54,
             Math.round(this.minX + 20),
             Math.round(this.minY + yMap[(action.timer>>7)%5] - 50), 105, 54);
+            */
         }
         break;
       case A8e.status.RUNNING: {
@@ -3827,68 +3829,134 @@ class GameOverPanel extends Panel {
       ODR.updateScore();
     }
 
-    this.timer += deltaTime;
-
     deltaTime = deltaTime ? deltaTime : 1;
     let dist = this.timer/100;
       if (dist > 1) dist = 1;
-
-    var dimensions = GameOverPanel.dimensions;
-
-    var centerX = this.canvasDimensions.WIDTH / 2;
-
-    // Game over text.
-    var textSourceX = dimensions.TEXT_X;
-    var textSourceY = dimensions.TEXT_Y;
-    var textSourceWidth = dimensions.TEXT_WIDTH;
-    var textSourceHeight = dimensions.TEXT_HEIGHT;
-
-    var textTargetX = Math.round(centerX - (dimensions.TEXT_WIDTH / 2));
-    var textTargetY = Math.round((this.canvasDimensions.HEIGHT - 25) / 3);
-    var textTargetWidth = dimensions.TEXT_WIDTH;
-    var textTargetHeight = dimensions.TEXT_HEIGHT;
-
-    var restartSourceWidth = dimensions.RESTART_WIDTH;
-    var restartSourceHeight = dimensions.RESTART_HEIGHT;
-    var restartTargetX = centerX - (dimensions.RESTART_WIDTH / 2);
-    var restartTargetY = this.canvasDimensions.HEIGHT / 2;
-
-    textSourceX += this.textImgPos.x;
-    textSourceY += this.textImgPos.y;
 
     // OGG
     this.canvasCtx.save();
     this.canvasCtx.globalAlpha = dist;
     this.canvasCtx.drawImage(ODR.spriteGUI,
-        textSourceX, textSourceY, textSourceWidth, textSourceHeight,
-        textTargetX, textTargetY + 20*(1-dist),
-        textTargetWidth, textTargetHeight * dist);
+        0, 150, 86, 26,
+        257, 58 + 20*(1-dist),
+        86, 26 * dist);
 
     // Restart button.
     this.canvasCtx.drawImage(ODR.spriteGUI,
         0, 40,
         38, 34,
-        restartTargetX + (1-dist) * dimensions.RESTART_WIDTH/2,
-        restartTargetY + (1-dist) * dimensions.RESTART_HEIGHT/2,
+        281 + (1-dist) * 38/2,
+        100 + (1-dist) * 28/2,
         38 * dist, 34 * dist);
     this.canvasCtx.drawImage(ODR.spriteGUI,
         7, 74,
         23, 19,
-        restartTargetX + 7, restartTargetY + 8,
+        281 + 7, 100 + 8,
         23, 19);
     this.canvasCtx.restore();
 
   }
 }
 
-GameOverPanel.dimensions = {
-  TEXT_X: 0,
-  TEXT_Y: 150,
-  TEXT_WIDTH: 86,
-  TEXT_HEIGHT: 26,
-  RESTART_WIDTH: 38,
-  RESTART_HEIGHT: 28
-};
+class Greeter extends Panel {
+  constructor( canvas, notifier ){
+    super( canvas );
+    this.timer = 0;
+    this.passthrough = true;
+    this.willStart = false;
+    this.willStartTimer = 200;
+
+    this.notifier = notifier;
+    this.introScriptTimer = 2000;
+    this.introScript = this.introScript || [
+      20000, `Hi${(N7e.user||{}).nickname ? '_'+N7e.user.nickname.split(' ').join('_') : ''}!\nPress_#slide/#jump_to_start!`,
+      20000, (N7e.user||{}).nickname ? "Just play already!" : "What's your name? You can login by pressing #trophy button.",
+      20000, "Didn't know you love the song that much!",
+      20000, "Allow yourself to be a beginner. No one starts at the top.#<3",
+      20000, "Man.City will win ⚽\nYou know.",
+      20000, "You have no idea of the amount of HAPPINESS you brought into my life.",
+      20000, 'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.#<3',
+      20000, 'Never give up on something you really want #<3',
+      20000, 'You are my sunshine ☼#<3',
+      20000, 'My love for you is a journey;\nStarting at forever,\nand ending at never.#<3',
+      20000, 'Glory in life is not in never failing,but rising each time we fail.#<3',
+      20000, 'Love this project?\nDonate_Thai_Redcross_#redcross!\nSee the bottom right for details.',
+    ];
+  }
+
+  handleEvent( e ){
+    if( this.willStart || !super.handleEvent( e )){
+      return false;
+    }
+
+    if( e.type == OnDaRun.events.CONSOLEUP
+      && this.timer > ODR.config.GAMEOVER_CLEAR_TIME
+      && 0 == this.buttonUpTime[ 0 ]
+      && 0 == this.buttonUpTime[ 1 ]){
+
+      this.willStart = true;
+
+      ODR.play();
+    }
+    return true;
+  }
+
+  forward( deltaTime ){
+    this.timer += deltaTime;
+
+    if( this.willStart ){
+      return this.forwardStarting( deltaTime );
+    } else {
+      this.forwardGreeting( deltaTime );
+      return this;
+    }
+  }
+
+  forwardStarting( deltaTime ){
+    this.willStartTimer -= deltaTime;
+    //TODO transition
+    if( this.willStartTimer < 0 ){
+      return null;
+    }
+
+    this.canvasCtx.save();
+    this.canvasCtx.globalAlpha = this.willStartTimer / 200;
+    this.canvasCtx.translate( this.willStartTimer/5 - 40, 0 )
+    this.drawTutorial();
+    this.canvasCtx.restore();
+
+    return this;
+  }
+
+  drawTutorial(){
+    let yMap = [0,2,3,2,0];
+    this.canvasCtx.drawImage(ODR.spriteGUI, 0, 96, 105, 54,
+      Math.round(ODR.amandarine.minX + 20),
+      Math.round(ODR.amandarine.minY + yMap[( this.timer>>7 )%5 ] - 50 ), 105, 54 );
+  }
+
+  forwardGreeting( deltaTime ){
+
+    this.drawTutorial();
+
+    this.introScriptTimer -= deltaTime;
+    if (this.introScriptTimer < 0) {
+      let wait = this.introScript.shift();
+      let text = this.introScript.shift();
+      let dur = 6000;
+      let wc = text.split(' ').length;
+      if (wc > 5) {
+        dur = wc * 1200;
+      }
+
+      this.introScript.push(wait);
+      this.introScript.push(text);
+
+      this.notifier.notify( text + ' #natB', dur );
+      this.introScriptTimer = wait;
+    }
+  }
+}
 
 class Action {
   constructor( type ) {
@@ -4272,7 +4340,6 @@ class ConsoleResetButton extends ConsoleButton {
 class ConsoleN7EButton extends ConsoleButton {
   constructor(x, y, w, h) { super('console-n7e', x, y, w, h); }
   handleReleased(e) {
-    ODR.introScriptTimer = 20000;
     if (!this.urlList || this.urlList.length == 0) {
       this.urlList = [
         {name:'IG', url:'https://www.instagram.com/natherine.bnk48official'},
@@ -4914,11 +4981,48 @@ class OnDaRun extends LitElement {
     this.signIn();
     this.scheduleNextRepaint();
 
-    this.introScriptTimer = 200;
   }
 
   setSpeed( opt_speed ){
     this.currentSpeed = opt_speed === undefined ? this.currentSpeed : opt_speed;
+  }
+
+/** Class OnDarun
+ * Amandarine walks into the scene.
+ */
+  start(){
+    this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
+
+    let defaultAction = new DefaultAction(1);
+    defaultAction.setX = -100;
+    this.queueAction(defaultAction);
+
+    this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
+
+    if( N7e.signing.progress ){
+      return new WaitingPanel( this.canvas, () => N7e.signing.progress );
+    }
+
+    return new Greeter( this.canvas, this.notifier );
+  }
+
+  play(){
+    this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
+    this.sky.setShade( Sky.config.DAY, 3000 );
+
+    this.setSpeed( this.config.SPEED )
+    this.activeAction.speed = ODR.config.SPEED;
+    this.activeAction.priority = 1;
+
+    this.checkShouldDropTangerines();
+    this.shouldAddObstacle = true;
+    this.shouldIncreaseSpeed = true;
+
+    this.showGameModeInfo();
+
+    this.playState = 1;
+    this.notifier.notify("go go go!!", 2000 );
+
   }
 
   signIn(){
@@ -4956,7 +5060,6 @@ class OnDaRun extends LitElement {
             authUser.nickname = nname[getRandomNum(0,nname.length-1)] + hname[getRandomNum(0,hname.length-1)] + rname[getRandomNum(0,rname.length-1)];
             authUser.ref.child('nickname').set( authUser.nickname );
             this.notifier.notify( `Welcome, ${authUser.nickname}.\n[autogenerated_name]\nYou dont\'t like it, do you?\nchange in #trophy`, 20000 );
-            this.introScriptTimer = 20000;
           }
 
           N7e.userSigningInfo('nickname', true );
@@ -5369,8 +5472,7 @@ class OnDaRun extends LitElement {
     return mainMenu;
   }
 
-  setGraphicsMode(mode) {
-//    this.introScriptTimer = 200;
+  setGraphicsMode( mode, notify = true){
 
     if (mode == -1) {
       mode = (this.config.GRAPHICS_MODE+1)%4;
@@ -5769,7 +5871,6 @@ class OnDaRun extends LitElement {
           return;
         }
 
-        this.introScriptTimer = 20000;
         let button = e.detail.consoleButton;
 
         switch( button ){
@@ -6367,83 +6468,12 @@ GOOD JOB! #natB`, 15000 );
                   action.lagging = speed;
                 }
 
-                // Waiting for a restart
-                // Clear the buttons during clear time or restart afterwards.
-                /*
-                queueIndex++;
-                let nextAction;
-                while( nextAction = actionQueue[ queueIndex ]){
-                  if( nextAction.type == A8e.status.SLIDING
-                      || nextAction.type == A8e.status.JUMPING) {
-                    if( action.timer < this.config.GAMEOVER_CLEAR_TIME ){
-                      nextAction.priority = -1;
-                    } else {
-                      this.music.stop();
-                      this.sky.setShade( ODR.config.SKY.DAY,  3000 );
-                      action.priority = -1;
-
-                      // Let the default action take responsibility
-                      this.activeAction = null;
-                      //this.minY = this.groundMinY;
-                      this.minX = -40;
-                      this.playLyrics = false;
-                      this.shouldAddObstacle = true;
-                      this.checkShouldDropTangerines();
-                      this.shouldIncreaseSpeed = true;
-                      this.runTime = 0;
-                      this.playing = true;
-                      this.distance = 0;
-                      this.invert( true );
-
-                      this.setSpeed( this.config.SPEED );
-                      this.playSound( this.soundFx.SOUND_SCORE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-                      this.distanceMeter.reset();
-                      this.horizon.reset();
-                      this.amandarine.reset();
-                      this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
-                      this.showGameModeInfo();
-                      break HANDLE_ACTION_QUEUE;
-                    }
-                  }
-                  queueIndex++;
-                }
-                */
               } break HANDLE_ACTION_QUEUE;
               //break;
               case A8e.status.WAITING:
-                this.introScript = this.introScript || [
-                  20000, `Hi${(N7e.user||{}).nickname ? '_'+N7e.user.nickname.split(' ').join('_') : ''}!\nPress_#slide/#jump_to_start!`,
-                  20000, (N7e.user||{}).nickname ? "Just play already!" : "What's your name? You can login by pressing #trophy button.",
-                  20000, "Didn't know you love the song that much!",
-                  20000, "Allow yourself to be a beginner. No one starts at the top.#<3",
-                  20000, "Man.City will win ⚽\nYou know.",
-                  20000, "You have no idea of the amount of HAPPINESS you brought into my life.",
-                  20000, 'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.#<3',
-                  20000, 'Never give up on something you really want #<3',
-                  20000, 'You are my sunshine ☼#<3',
-                  20000, 'My love for you is a journey;\nStarting at forever,\nand ending at never.#<3',
-                  20000, 'Glory in life is not in never failing,but rising each time we fail.#<3',
-                  20000, 'Love this project?\nDonate_Thai_Redcross_#redcross!\nSee the bottom right for details.',
-                ];
-
-                this.introScriptTimer -= deltaTime;
-                if (this.introScriptTimer < 0) {
-                  let wait = this.introScript.shift();
-                  let text = this.introScript.shift();
-                  let dur = 6000;
-                  let wc = text.split(' ').length;
-                  if (wc > 5) {
-                    dur = wc * 1200;
-                  }
-
-                  this.introScript.push(wait);
-                  this.introScript.push(text);
-
-                  this.notifier.notify( text + ' #natB', dur );
-                  this.introScriptTimer = wait;
-                }
 
                 /* Find starters */
+                /*
                 for (let i = queueIndex, nextAction; nextAction = actionQueue[i]; i++) {
                   if (nextAction.type == A8e.status.SLIDING
                       || nextAction.type == A8e.status.JUMPING) {
@@ -6468,6 +6498,7 @@ GOOD JOB! #natB`, 15000 );
                     }
                   }
                 }
+                */
 
                 break HANDLE_ACTION_QUEUE;
               default:
@@ -6664,6 +6695,7 @@ OnDaRun.events = {
   LOAD: 'load',
   CONSOLEDOWN: 'customconsoledown',
   CONSOLEUP: 'customconsoleup',
+  NOTIFICATION: 'notification',
 };
 
 OnDaRun.spriteDefinition = {
