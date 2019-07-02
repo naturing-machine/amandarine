@@ -3768,14 +3768,9 @@ class TextEditor extends Panel {
   }
 }
 
-class GameOverPanel extends Panel {
-  constructor( canvas, textImgPos, restartImgPos, dimensions ){
+class GameOver extends Panel {
+  constructor( canvas ){
     super( canvas );
-    this.canvas = canvas;
-    this.canvasCtx = canvas.getContext('2d');
-    this.canvasDimensions = dimensions;
-    this.textImgPos = textImgPos;
-    this.restartImgPos = restartImgPos;
     this.timer = 0;
     this.passthrough = true;
     this.willRestart = false;
@@ -3799,15 +3794,17 @@ class GameOverPanel extends Panel {
   }
 
   forward( deltaTime ){
+    this.timer += deltaTime;
+
     if( this.willRestart ){
-      return this.forwardRestart( deltaTime );
+      return this.forwardRestarting( deltaTime );
     } else {
       this.forwardGameOver( deltaTime );
       return this;
     }
   }
 
-  forwardRestart( deltaTime ){
+  forwardRestarting( deltaTime ){
     //TODO transition
     return null;
   }
