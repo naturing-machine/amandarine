@@ -4030,6 +4030,12 @@ class DefaultAction extends Action {
         this._type = A8e.status.RUNNING;
         this.timer = 0;
         if( newSpeed > 4 ) {
+          if( this._speed == 0 ){
+            for( let i = 0; i < 5; i++ ){
+              ODR.amandarine.dust.addPoint( 0, 0, -100 * Math.random() - 50, -15 * Math.random());
+              ODR.amandarine.dust.addPoint( 0, 0, -50 * Math.random() - 50,  15 * Math.random());
+            }
+          }
           Object.assign(this, A8e.animFrames.RUNNING);
         } else {
           Object.assign(this, A8e.animFrames.WALKING);
