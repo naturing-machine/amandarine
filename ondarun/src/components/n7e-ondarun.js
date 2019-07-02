@@ -5266,16 +5266,11 @@ class OnDaRun extends LitElement {
       entries: entries,
       enter: ( entryIndex, entry ) => {
         if( entry.value ) {
-
-          this.config.GRAPHICS_MODE_SETTINGS[3][entry.name] = entry.value;
-          this.setGraphicsMode(3);
-          if (N7e.user) {
-            N7e.user.odrRef.child('settings/'+entry.name).set(entry.value);
+          this.config.GRAPHICS_MODE_SETTINGS[ 3 ][ entry.name ] = entry.value;
+          if( N7e.user ){
+            N7e.user.odrRef.child(`settings/${entry.name}`).set( entry.value );
           }
-
-          return null;
         }
-        this.notifier.notify('CUSTOM GRAPHICS MODE', 5000 );
         this.setGraphicsMode( 3 );
         return null;
       },
@@ -5492,7 +5487,7 @@ class OnDaRun extends LitElement {
         break;
     }
 
-    if (this.config.GRAPHICS_DUST != 'DUST')
+     if (this.config.GRAPHICS_DUST != 'DUST')
       this.amandarine.dust.reset();
 
     if (this.config.GRAPHICS_MOON == 'SHINE') {
@@ -5998,9 +5993,9 @@ class OnDaRun extends LitElement {
     }
 
     // Prevent native page scrolling whilst tapping on mobile.
-    if (IS_MOBILE && this.playing) {
+    //if( IS_MOBILE && this.playing ){
       //e.preventDefault();
-    }
+    //}
   }
 
   onKeyUp(e) {
