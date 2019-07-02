@@ -3310,33 +3310,19 @@ the Thai Redcross Society #redcross
     let factorD = Math.sin(this.timer / 200);
 
     let runout = 0;
-    if (this.ender) {
-      let f = 200;
-      let t = 0.8*(this.timer - this.ender);
-      runout = t - f;
-      runout = (f*f - runout*runout) / 1000 ;
+    let tfactor = 0;
+    if( this.ender && ODR.soundFx.SOUND_SCORE){
+      tfactor = this.timer - this.ender;
+      runout = 0.8*tfactor - 200;
+      //200*200
+      runout = ( 40000 - runout*runout ) / 1000 ;
 
       this.canvasCtx.save();
-      this.canvasCtx.translate(0,40+runout/5);
-      ODR.horizon.horizonLine.draw();
+      this.canvasCtx.translate( 0, ~~( 40+runout/5 ));
       this.canvasCtx.restore();
 
-      if (ODR.soundFx.SOUND_SCORE && runout < -200) {
-        ODR.music.load('offline-intro-music', ODR.config.PLAY_MUSIC );
-        let defaultAction = new DefaultAction(1);
-        defaultAction.setX = -100;
-        ODR.queueAction(defaultAction);
-        ODR.shouldAddObstacle = true;
-        ODR.checkShouldDropTangerines();
-        ODR.shouldIncreaseSpeed = true;
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
-
-        if( N7e.signing.progress ){
-          return new WaitingPanel( this.canvas, () => N7e.signing.progress );
-        }
-
-        ODR.introScriptTimer = 20000;
-        return null;
+      if ( runout < -200) {
+        return ODR.start();
       }
 
     }
@@ -3379,10 +3365,7 @@ the Thai Redcross Society #redcross
       if (this.timer < 15000) {
         new Text(600/14,0).drawText("Amandarine Frontier: On Da Run 1.0 RC5", this.canvasCtx,0,180-Math.min(0,runout));
       } else {
-        if (IS_MOBILE)
-          new Text(600/14,0).drawText("press #slide/#jump to continue.", this.canvasCtx,0,180-Math.min(0,runout));
-        else
-          new Text(600/14,0).drawText("press a button to continue.", this.canvasCtx,0,180-Math.min(0,runout));
+        new Text(600/14,0).drawText("press a button to continue.", this.canvasCtx,0,180-Math.min(0,runout));
       }
 
       if (!this.dataReadyTime) {
@@ -3392,13 +3375,20 @@ the Thai Redcross Society #redcross
 
       let storyStartOffset = 18000;
       let fadingTime = 2000;
-      if (this.imgLoadCounter == this.story.length && this.timer - this.dataReadyTime > storyStartOffset) {
-      this.canvasCtx.save();
+      if( this.imgLoadCounter == this.story.length
+          && this.timer - this.dataReadyTime > storyStartOffset ){
+        this.canvasCtx.save();
+
+        //Providing smooth-out during story mode.
 
         let storyTimer = this.timer - this.dataReadyTime - storyStartOffset;
-        this.canvasCtx.globalAlpha = Math.max(0, Math.min(1, storyTimer/2000))
-          * Math.max(0, Math.min(1, (this.photoTiming[this.story.length-1][1] + 2000 - storyTimer)/2000));
-        this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
+        let topacity = ( tfactor > 0 ? 1 - Math.min( tfactor, 400 )/400 : 1 );
+
+        this.canvasCtx.globalAlpha = Math.max( 0, Math.min( 1, storyTimer/2000 ))
+          * Math.max(0, Math.min(1, (this.photoTiming[this.story.length-1][1] + 2000 - storyTimer)/2000))
+          * topacity;
+
+        this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200 );
 
         this.photoTiming.forEach(([beginTime,endTime,beginX,beginY,beginSize,endX,endY,endSize],index) => {
           if (storyTimer > beginTime && storyTimer < endTime) {
@@ -3415,7 +3405,7 @@ the Thai Redcross Society #redcross
 
               this.canvasCtx.scale(size,size);
               this.canvasCtx.translate(-offsetX,-offsetY);
-              this.canvasCtx.globalAlpha = 0.70
+              this.canvasCtx.globalAlpha = 0.70 * topacity
                 * Math.max(0,Math.min(1, beginTime/fadingTime))
                 * Math.max(0,Math.min(1, endTime/fadingTime));
               this.canvasCtx.drawImage(this.storyPhotos[index],0,0);
@@ -3424,16 +3414,15 @@ the Thai Redcross Society #redcross
 
             this.canvasCtx.globalAlpha =
               Math.max(0,Math.min(1, beginTime/fadingTime))
-              * Math.max(0,Math.min(1, endTime/fadingTime));
+              * Math.max(0,Math.min(1, endTime/fadingTime))
+              * topacity;
             this.story[index].draw(this.canvasCtx,25,~~(200-beginTime/(this.msPerLine/20))); //20 is the default glyph height.
           }
         });
 
-      this.canvasCtx.restore();
+        this.canvasCtx.restore();
       }
-
     }
-
     return this;
   }
 }
