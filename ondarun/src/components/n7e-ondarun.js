@@ -3850,7 +3850,7 @@ class Greeter extends Panel {
     let yMap = [0,2,3,2,0];
     this.canvasCtx.drawImage(ODR.spriteGUI, 0, 96, 105, 54,
       Math.round(ODR.amandarine.minX + 20),
-      Math.round(ODR.amandarine.minY + yMap[( this.timer>>7 )%5 ] - 50 ), 105, 54 );
+      Math.round(ODR.amandarine.minY + yMap[( this.timer>>>7 )%5 ] - 50 ), 105, 54 );
   }
 
   forwardGreeting( deltaTime ){
@@ -5084,7 +5084,7 @@ class OnDaRun extends LitElement {
     return false;
   }
 
-  createSoundMenu( button ){
+  createSoundMenu(){
     //this.config.PLAY_MUSIC = true;
     this.music.stop();
     let entries = [];
@@ -5178,12 +5178,12 @@ class OnDaRun extends LitElement {
         }
         return null;
       },
-    }, button );
+    }, this.consoleButtons.CONSOLE_A );
 
     return mainMenu;
   }
 
-  createGraphicsMenu( button ){
+  createGraphicsMenu(){
     this.music.stop();
     let entries = [];
     for (let key in this.config.GRAPHICS_MODE_OPTIONS) {
@@ -5206,7 +5206,7 @@ class OnDaRun extends LitElement {
         this.setGraphicsMode( 3 );
         return null;
       },
-    }, button );
+    }, this.consoleButtons.CONSOLE_B );
   }
 
   showGameModeInfo( duration = 2000, delay = 0 ){
@@ -5219,6 +5219,7 @@ class OnDaRun extends LitElement {
   crash( action ){
     console.assert( 2 != this.playState, 'crash reentry', this.playState );
     this.playState = 2;
+    this.setMenu();
     vibrate(200);
     this.distanceMeter.flashIterations = 0;
     this.music.stop();
@@ -5263,7 +5264,7 @@ class OnDaRun extends LitElement {
     this.showGameModeInfo();
   }
 
-  createGameMenu( button ){
+  createGameMenu(){
 
     this.music.stop();
     let entries = [];
@@ -5289,10 +5290,10 @@ class OnDaRun extends LitElement {
 
         return null;
       }
-    }, button );
+    }, this.consoleButtons.CONSOLE_C );
   }
 
-  createUserMenu( button ) {
+  createUserMenu(){
     this.music.stop();
     let mainMenu =
       /* User has signed in */
@@ -5352,12 +5353,12 @@ class OnDaRun extends LitElement {
                   ODR.distanceMeter.setHighScore( 0 );
                 }
               },
-            }, button )
+            }, this.consoleButtons.CONSOLE_D )
           else if( choice = "set name" ){
             return null; //NYI
           }
         }
-      }, button )
+      }, this.consoleButtons.CONSOLE_D )
       /* No active user */
       : new Menu( this.canvas, {
         title: 'LINK PROFILE',
@@ -5385,9 +5386,9 @@ class OnDaRun extends LitElement {
                 return new WaitingPanel( this.canvas, () => N7e.signing.progress );
               }
             },
-          }, button );
+          }, this.consoleButtons.CONSOLE_D );
         },
-      }, button );
+      }, this.consoleButtons.CONSOLE_D );
 
     return mainMenu;
   }
@@ -5749,10 +5750,12 @@ class OnDaRun extends LitElement {
   }
 
 /**
- * OnDarun event handler interface
+ * OnDarun Event handler interface
+ * Menus or Panels may block the defualt behaviors by implementing
+ * handleEvent(e) and return true; false will invoke the defaults.
+ *
  * @param {Event} e application events.
  */
-
   handleEvent(e) {
 
     switch( e.type ){
@@ -5830,39 +5833,39 @@ class OnDaRun extends LitElement {
 
           // Music button
           case this.consoleButtons.CONSOLE_A:
-            if( e.detail.timeOut || ( this.menu && this.menu.associatedButton )){
-
-              if( !this.closeMenuForButton( button ))
-                this.setMenu( this.createSoundMenu( button ));
-
-            } else if( !this.menu || ( this.menu && !this.menu.associatedButton )){
+            if( e.detail.timeOut
+              || this.menu
+                && !this.menu.passthrough
+                && !this.closeMenuForButton( button )){
+              this.setMenu( this.createSoundMenu());
+            } else {
               this.setMusicMode(-1 );
-              this.terminal.append("hold the button for settings.", 3000 );
+              this.cc.append("hold the button for settings.", 3000 );
             }
           break;
 
           // Graphics button
           case this.consoleButtons.CONSOLE_B:
-            if( e.detail.timeOut || ( this.menu && this.menu.associatedButton )){
-
-              if( !this.closeMenuForButton( button ))
-                this.setMenu( this.createGraphicsMenu( button ));
-
-            } else if( !this.menu || ( this.menu && !this.menu.associatedButton )){
+            if( e.detail.timeOut
+              || this.menu
+                && !this.menu.passthrough
+                && !this.closeMenuForButton( button )){
+              this.setMenu( this.createGraphicsMenu());
+            } else {
               this.setGraphicsMode(-1 );
-              this.terminal.append("hold the button for settings.", 3000 );
+              this.cc.append("hold the button for settings.", 3000 );
             }
             break;
 
           case this.consoleButtons.CONSOLE_C:
             if( !this.closeMenuForButton( button )){
-              this.setMenu( this.createGameMenu( button ));
+              this.setMenu( this.createGameMenu());
             }
             break;
 
           case this.consoleButtons.CONSOLE_D:
             if( !this.closeMenuForButton( button ))
-              this.setMenu( this.createUserMenu( button ));
+              this.setMenu( this.createUserMenu());
             break;
 
           case this.consoleButtons.CONSOLE_RESET:
