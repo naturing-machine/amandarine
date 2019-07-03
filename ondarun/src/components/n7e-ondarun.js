@@ -242,6 +242,20 @@ class User {
  */
 
 class Entity {
+
+  timeFollower( interval, currentSpeed, follower ){
+
+    //duration is the time taken for this to travel to A8e.
+    let duration = 1000/FPS*( this.maxX - 25 )
+      /( currentSpeed - ( this.speedFactor*currentSpeed ));
+    follower.minX = 25
+      + ( duration + interval )
+        *( currentSpeed - ( follower.speedFactor*currentSpeed ))
+        *FPS/1000;
+
+    return follower;
+  }
+
   constructor( ctx, speed, elevation ) {
     this.canvasCtx = ctx;
     this.speed = speed;
@@ -331,6 +345,9 @@ class Entity {
     [A][E leader]..interval..[E this]
   */
   follow( leader, interval, currentSpeed ) {
+
+    return leader.timeFollower( interval, currentSpeed, this );
+    /*
     leader = leader || { minX: 600, speedFactor: 0 };
     let leaderDistance = leader.maxX - 25; //START_X_POS(25) + cbox.maxX(33)
     let leaderSpeed = currentSpeed - (leader.speedFactor * currentSpeed);
@@ -339,6 +356,7 @@ class Entity {
     let absSpeed = currentSpeed - (this.speedFactor * currentSpeed);
     let distance = (duration + interval) * absSpeed * FPS/1000;
     this.minX = 25 + distance;
+    */
 
     /*
     if( this.minX < 590 ) {
@@ -534,6 +552,9 @@ class Obstacle extends Entity {
     Obstacle.situationList.unshift(entry);
     Obstacle.situation[entry.name] = entry;
   }
+  Obstacle.situation.LiverSweeper.glider = [ 100, 50, 0, 50, 100 ];
+  Obstacle.situation.RubberSweeper.glider = [ 1000, 1100, 1200, 1100, 1000 ];
+
 }
 
 /* TODO Mixin */
@@ -588,7 +609,7 @@ class MultiWidth extends Obstacle {
 
   }
 
-  static getRandomObstacle( ctx, speed ) {
+  static getRandomObstacle( ctx, speed ){
     let max = speed < 6.5
       ? 2
       : speed < 7.5
@@ -605,6 +626,13 @@ class MultiWidth extends Obstacle {
   }
 }
 MultiWidth.MAX_OBSTACLE_LENGTH = 4;
+
+//Random proxy
+class Cactus {
+  static getRandomObstacle( ctx, speed ){
+    return [ SmallCactus, LargeCactus ][ getRandomNum( 0, 1 )].getRandomObstacle( ctx, speed );
+  }
+}
 
 class SmallCactus extends MultiWidth {
   constructor( ctx, speed, size ) {
@@ -1653,10 +1681,10 @@ class Horizon {
     return situation ? situation : Obstacle.situation.Cactus;
   }
 
-  forwardEntities( deltaTime, currentSpeed, decrement ){
+  forwardEntities( deltaTime, cs, decrement ){
     // Obstacles, move to Horizon layer.
     for (let i = 0; i < this.entities.length; i++) {
-      this.entities[i].forward( deltaTime, currentSpeed );
+      this.entities[i].forward( deltaTime, cs );
     }
 
     // Clean bygone obstacles & find right-most entity.
@@ -1670,7 +1698,7 @@ class Horizon {
     });
 
     // Don't add any obstacle on suspending.
-    if( currentSpeed == 0){
+    if( cs == 0){
       return;
     }
 
@@ -1683,6 +1711,8 @@ class Horizon {
       */
 
       //return;
+
+      // FIXME This could be tuned to a larger number to prevent late follower.
       if( lastEntity.maxX < 600 ) {
 
         // Tangerine
@@ -1690,7 +1720,7 @@ class Horizon {
           ODR.shouldDropTangerines = false;
           ODR.tangerineTimer = 0;
           let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[getRandomNum(0,4)]);
-          let minGap = Math.round( 50 * currentSpeed + 72 );
+          let minGap = Math.round( 50*cs + 72 );
           let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
           space.ctx = this.canvasCtx;
           tangerine.minX = space.minX + space.width/2 - 25;
@@ -1699,177 +1729,136 @@ class Horizon {
         }
         /*
         if( this.highestScore < 100 )
-        this.entities.push(lastEntity.makeFollower([SmallCactus,LargeCactus][getRandomNum(0,1)], currentSpeed, getRandomNum(500,1500)));
+        this.entities.push(lastEntity.makeFollower([SmallCactus,LargeCactus][getRandomNum(0,1)], cs, getRandomNum(500,1500)));
         else
         */
-        //this.addEntity(lastEntity.makeFollower(Liver, currentSpeed, 0));
-        //this.addEntity(lastEntity.makeFollower(Rubber, currentSpeed, 0));
-        //this.addEntity(lastEntity.makeFollower(Rotata, currentSpeed, 1000));
-        //this.addEntity(lastEntity.makeFollower(SmallCactus, currentSpeed, 1500));
+        //this.addEntity(lastEntity.makeFollower(Liver, cs, 0));
+        //this.addEntity(lastEntity.makeFollower(Rubber, cs, 0));
+        //this.addEntity(lastEntity.makeFollower(Rotata, cs, 1000));
+        //this.addEntity(lastEntity.makeFollower(SmallCactus, cs, 1500));
 
-        let situation = this.getSituation( currentSpeed );
+        let situation = this.getSituation( cs );
         do { switch( situation ) {
           case Obstacle.situation.Velota: {
-            let space = new Space( currentSpeed * 50 );
-            space.ctx = this.canvasCtx;
-            this.addEntity( space );
 
-            let velota = new Velota( this.canvasCtx, currentSpeed * Velota.speedFactor * (0.8 + Math.random() * 0.2));
-            velota.follow( lastEntity, 100, currentSpeed );
-            this.addEntity( velota );
+            this.addEntity(
+              new Space( 50*cs ),
+              lastEntity.timeFollower( 100, cs,
+                new Velota( this.canvasCtx, cs*Velota.speedFactor*( 0.8 + 0.2*Math.random()))));
+
           } break;
           case Obstacle.situation.Rotata: {
-            let space = new Space( currentSpeed * 60 );
-            space.ctx = this.canvasCtx;
-            this.addEntity( space );
 
-            let rotata = new Rotata( this.canvasCtx, currentSpeed * Rotata.speedFactor * (0.8 + Math.random() * 0.2));
-            rotata.follow( lastEntity, 700, currentSpeed );
-            this.addEntity( rotata );
+            this.addEntity(
+              new Space( 60*cs ),
+              lastEntity.timeFollower( 700, cs,
+                new Rotata( this.canvasCtx, cs*Rotata.speedFactor*( 0.8 + 0.2*Math.random()))));
+
           } break;
           case Obstacle.situation.Rubber: {
-            let space = new Space( currentSpeed * 80 );
-            space.ctx = this.canvasCtx;
-            this.addEntity( space );
 
-            let rubber = Rubber.getRandomObstacle( this.canvasCtx, currentSpeed );
-            rubber.follow( lastEntity, 1000, currentSpeed );
-            this.addEntity( rubber );
+            this.addEntity(
+              new Space( 80*cs ),
+              lastEntity.timeFollower( 1000, cs,
+                Rubber.getRandomObstacle( this.canvasCtx, cs )));
+
           } break;
           /* Liver */
           case Obstacle.situation.Liver: {
-            let space = new Space( currentSpeed * 50 );
-            space.ctx = this.canvasCtx;
-            this.addEntity( space );
 
-            let liver = Liver.getRandomObstacle( this.canvasCtx, currentSpeed );
-            liver.follow( lastEntity, 150, currentSpeed );
-            this.addEntity( liver );
+            this.addEntity(
+              new Space( 50*cs ),
+              lastEntity.timeFollower( 150, cs,
+                Liver.getRandomObstacle( this.canvasCtx, cs )));
+
           } break;
           case Obstacle.situation.LiverSweeper: {
-            let space = new Space( currentSpeed * 100);
-            this.addEntity( space );
-            space.ctx = this.canvasCtx;
 
-            let ducks = [];
-            let glider = [100,50,0,50,100];
-            for( let i = 0; i < 5; i += getRandomNum(1,2)) {
-              let duck = new Liver( this.canvasCtx, currentSpeed * Liver.speedFactor * (0.9 + Math.random() * 0.1), DuckType.elevationList[i+1]);
-              duck.minX = 600;
-              duck.follow( lastEntity, glider[i], currentSpeed );
-              ducks.push( duck );
+            this.addEntity( new Space( 100*cs ));
+            for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
+              this.addEntity( lastEntity.timeFollower( situation.glider[i], cs,
+                new Liver( this.canvasCtx,
+                  cs*Liver.speedFactor*( 0.9 + 0.1*Math.random()),
+                  DuckType.elevationList[ i + 1 ])));
             }
 
-            ducks.forEach( duck => this.addEntity( duck ));
           } break;
           case Obstacle.situation.RubberSweeper: {
-            let space = new Space( currentSpeed * 100);
-            this.addEntity( space );
-            space.ctx = this.canvasCtx;
 
-            let ducks = [];
-            let glider = [1000,1100,1200,1100,1000];
-            for( let i = 0; i < 5; i += getRandomNum(1,2)) {
-              let duck = new Rubber( this.canvasCtx, currentSpeed * Rubber.speedFactor * (0.9 + Math.random() * 0.1), DuckType.elevationList[i+1]);
-              duck.minX = 600;
-              duck.follow( lastEntity, glider[i], currentSpeed );
-              ducks.push( duck );
+            this.addEntity( new Space( 100*cs ));
+            for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
+              this.addEntity( lastEntity.timeFollower( situation.glider[i], cs,
+                new Rubber( this.canvasCtx,
+                  cs*Rubber.speedFactor*( 0.9 + 0.1*Math.random()),
+                  DuckType.elevationList[ i + 1 ])));
             }
 
-            ducks.forEach( duck => this.addEntity( duck ));
           } break;
           /* Extra */
 
           case Obstacle.situation.SituationA: {
-            let space = new Space( currentSpeed * 300 );
-            space.follow( lastEntity, 0, currentSpeed );
-            this.addEntity( space );
-            space.ctx = this.canvasCtx;
 
-            let cactus = [SmallCactus,LargeCactus][getRandomNum(0,1)].getRandomObstacle( this.canvasCtx, currentSpeed );
-            cactus.follow( lastEntity, 150, currentSpeed );
-            this.addEntity( cactus );
+            this.addEntity( lastEntity.timeFollower( 0, cs, new Space( 300*cs )));
 
-            cactus = [SmallCactus,LargeCactus][getRandomNum(0,1)].getRandomObstacle( this.canvasCtx, currentSpeed );
-            cactus.follow( lastEntity, getRandomNum(1000,1000), currentSpeed );
-            this.addEntity( cactus );
+            this.addEntity( lastEntity.timeFollower( 150, cs,
+              Cactus.getRandomObstacle( this.canvasCtx, cs )));
 
-            let velota = new Velota( this.canvasCtx, currentSpeed * Velota.speedFactor * (0.8 + Math.random() * 0.2));
-            velota.follow( lastEntity, 1500, currentSpeed );
-            this.addEntity( velota );
+            this.addEntity( lastEntity.timeFollower( 1000, cs,
+              Cactus.getRandomObstacle( this.canvasCtx, cs )));
 
-            cactus = [SmallCactus,LargeCactus][getRandomNum(0,1)].getRandomObstacle( this.canvasCtx, currentSpeed );
-            cactus.follow( velota, 600, currentSpeed );
-            this.addEntity( cactus );
+            let velota = new Velota( this.canvasCtx, cs*Velota.speedFactor*( 0.8 + 0.2*Math.random()));
+            this.addEntity( lastEntity.timeFollower( 1500, cs, velota ));
 
-            cactus = [SmallCactus,LargeCactus][getRandomNum(0,1)].getRandomObstacle( this.canvasCtx, currentSpeed );
-            cactus.follow( velota, getRandomNum(1500,1500), currentSpeed );
-            this.addEntity( cactus );
+            this.addEntity( velota.timeFollower( 600, cs,
+              Cactus.getRandomObstacle( this.canvasCtx, cs )));
 
-            let rotata = Rotata.getRandomObstacle( this.canvasCtx, currentSpeed );
-            rotata.follow( velota, 1700, currentSpeed );
-            this.addEntity( rotata );
+            this.addEntity( velota.timeFollower( 1500, cs,
+              Cactus.getRandomObstacle( this.canvasCtx, cs )));
+
+            this.addEntity( velota.timeFollower( 1700, cs, Rotata.getRandomObstacle( this.canvasCtx, cs )));
 
           } break;
 
           case Obstacle.situation.SituationB: {
-            let space = new Space( currentSpeed * 150 );
-            space.follow( lastEntity, 0, currentSpeed );
-            this.addEntity( space );
-            space.ctx = this.canvasCtx;
 
-            let cactusA = [SmallCactus,LargeCactus][getRandomNum(0,1)].getRandomObstacle( this.canvasCtx, currentSpeed );
-            cactusA.follow( lastEntity, 500, currentSpeed );
-            this.addEntity( cactusA );
+            this.addEntity( lastEntity.timeFollower( 0, cs, new Space( 150*cs )));
 
-            let liver = new Liver( this.canvasCtx, currentSpeed * Liver.speedFactor * (0.9 + Math.random() * 0.1), DuckType.elevationList[1]);
-            liver.follow( cactusA, 400, currentSpeed );
-            this.addEntity( liver );
+            let cactusA = Cactus.getRandomObstacle( this.canvasCtx, cs );
+            this.addEntity( lastEntity.timeFollower( 500, cs, cactusA ));
 
-            if( getRandomNum( 0, 1 )) {
-              liver = new Liver( this.canvasCtx, currentSpeed * Liver.speedFactor * (0.9 + Math.random() * 0.1), DuckType.elevationList[2]);
-              liver.follow( cactusA, 430, currentSpeed );
-              this.addEntity( liver );
-            } else {
-              liver = new Liver( this.canvasCtx, currentSpeed * Liver.speedFactor * (0.9 + Math.random() * 0.1), DuckType.elevationList[0]);
-              liver.follow( cactusA, 430, currentSpeed );
-              this.addEntity( liver );
-            }
+            let liver = new Liver( this.canvasCtx, cs*Liver.speedFactor*( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 1 ]);
+            this.addEntity( cactusA.timeFollower( 400, cs, liver ));
 
-            let rubber = new Rubber( this.canvasCtx, currentSpeed * Rubber.speedFactor * (0.9 + Math.random() * 0.1), DuckType.elevationList[5]);
-            rubber.follow( liver, 0, currentSpeed );
-            this.addEntity( rubber );
+            liver = new Liver( this.canvasCtx, cs*Liver.speedFactor * (0.9 + 0.1*Math.random()),
+              DuckType.elevationList[ getRandomNum( 0, 1 )<<1 ]);
+            this.addEntity( cactusA.timeFollower( 430, cs, liver ));
 
-            let cactusB = new SmallCactus( this.canvasCtx, 0, 1);
-            cactusB.follow( cactusA, 1200 , currentSpeed );
-            this.addEntity( cactusB );
+            this.addEntity( liver.timeFollower( 0, cs,
+              new Rubber( this.canvasCtx, cs*Rubber.speedFactor*( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 5 ])));
+
+            this.addEntity( cactusA.timeFollower( 1200, cs, new SmallCactus( this.canvasCtx, 0, 1 )));
 
           } break;
 
           case Obstacle.situation.SituationC: {
             let i,cactus;
             for( i = 0; i < 8; i++) {
-              cactus = new SmallCactus( this.canvasCtx, 0, getRandomNum(1,3));
-              cactus.follow( lastEntity, i * 550 , currentSpeed );
-              this.addEntity( cactus );
+              cactus = new SmallCactus( this.canvasCtx, 0, getRandomNum( 1, 3 ));
+              this.addEntity( lastEntity.timeFollower( i * 550 , cs, cactus ));
             }
 
-            let space = new Space( currentSpeed * 100 );
-            space.follow( cactus, 0, currentSpeed );
-            space.ctx = this.canvasCtx;
-            this.addEntity( space );
+            this.addEntity( cactus.timeFollower( 0, cs, new Space( 100*cs )));
           } break;
 
           case 13: {
-            let cactus = [SmallCactus,LargeCactus][getRandomNum(0,1)].getRandomObstacle( this.canvasCtx, currentSpeed );
-            this.addEntity( cactus );
+            this.addEntity( Cactus.getRandomObstacle( this.canvasCtx, cs ));
           } break;
 
           /* Single Cactus */
           case Obstacle.situation.Cactus:
           default: {
-            let cactus = [SmallCactus,LargeCactus][getRandomNum(0,1)].getRandomObstacle( this.canvasCtx, currentSpeed );
-            let minGap = Math.round(cactus.width * currentSpeed + 72);
+            let cactus = Cactus.getRandomObstacle( this.canvasCtx, cs );
+            let minGap = Math.round( cactus.width*cs + 72 );
             let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
             space.ctx = this.canvasCtx;
             cactus.minX = space.minX + space.width/2 - cactus.width/2;
