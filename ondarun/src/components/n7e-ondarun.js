@@ -721,7 +721,7 @@ class Liver extends DuckType {
     if( this.minX < 1000 && !this.alarmed ) {
       ODR.playSound( ODR.soundFx.SOUND_QUACK, 0.1 * ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, 1 );
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
-        ODR.terminal.append('quack', 1000 );
+        ODR.cc.append('quack', 1000 );
       this.alarmed = true;
     }
   }
@@ -790,7 +790,7 @@ class Velota extends BicycleType {
     if( this.minX < 1000 && !this.alarmed ) {
       ODR.playSound( ODR.soundFx.SOUND_BICYCLE, 0.1 * ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, 1 );
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
-        ODR.terminal.append('ring#bell', 1000 );
+        ODR.cc.append('ring#bell', 1000 );
       this.alarmed = true;
     }
   }
@@ -1010,74 +1010,6 @@ class Mountain {
   get maxX(){
     return this.minX + this.width;
   }
-
-  /*
-  draw() {
-    this.canvasCtx.save(); {
-      let gr = ODR.skyGradientCurrentValues;
-      let rgb0x1 = ((1 << 24) + (gr[0] << 16) + (gr[1] << 8) + gr[2]).toString(16).slice(1);
-      let rgb0x2 = ((1 << 24) + (gr[3] << 16) + (gr[4] << 8) + gr[5]).toString(16).slice(1);
-
-      this.canvasCtx.fillStyle = '#' + (this.depth == 0 ? rgb0x2 : rgb0x1);
-      this.canvasCtx.beginPath();
-      this.canvasCtx.moveTo(this.minX, this.minY);
-      this.canvasCtx.bezierCurveTo(
-        this.minX + this.width/2, this.minY-this.height,
-        this.minX + this.width/2, this.minY-this.height,
-      this.minX + this.width, this.minY);
-      this.canvasCtx.closePath();
-
-        this.canvasCtx.filter = 'brightness(90%) hue-rotate(-25deg)';
-      if (ODR.config.GRAPHICS_MOUNTAINS_TYPE == 'NORMAL') {
-      }
-
-      this.canvasCtx.fill();
-
-      // cache shadow TODO make shadow reusable
-      if (ODR.config.GRAPHICS_MOUNTAINS_TYPE != 'PLAIN') {
-        if (!this.mntCanvas) {
-          this.mntCanvas = document.createElement('canvas');
-          this.mntCanvas.width = this.width;
-          this.mntCanvas.height = this.height;
-          this.mntCtx = this.mntCanvas.getContext('2d');
-          this.mntCtx.fillStyle = '#452249';
-
-          this.mntCtx.beginPath();
-          this.mntCtx.moveTo(0, this.height);
-          this.mntCtx.bezierCurveTo(
-            this.width/2, 0,
-            this.width/2, 0,
-          this.width, this.height);
-          this.mntCtx.closePath();
-          this.mntCtx.clip();
-
-          let w = this.width * 0.8;
-          let x = 0, y = this.height;
-          x-=w/30;y+=this.height/10;
-
-          this.mntCtx.beginPath();
-          this.mntCtx.globalAlpha = 0.7;
-          this.mntCtx.filter = 'blur(10px)';
-          this.mntCtx.moveTo(x, y);
-          this.mntCtx.bezierCurveTo(
-            x + w/2, y - this.height,
-            x + this.width/2, y-this.height,
-            x + w, y);
-          this.mntCtx.closePath();
-          this.mntCtx.fill();
-        }
-
-        this.canvasCtx.globalCompositeOperation = 'overlay';
-        this.canvasCtx.drawImage(
-          this.mntCanvas,0,0,this.width,this.height,
-          this.minX,this.minY - this.height,this.width,this.height);
-      } else {
-        this.mntCanvas = null;
-      }
-
-    } this.canvasCtx.restore();
-  }
-  */
 
   forward( deltaTime, speed ) {
     if( !this.removed ){
@@ -2689,7 +2621,7 @@ class Text {
           let lineStart = cur;
           let lineOffset = this.alignment
             ? this.minLength - len
-            : (this.minLength - len) >> 1;
+            : (this.minLength - len) >>> 1;
           while( cur < this.glyphs.length && cur <= i ) {
             let g = this.glyphs[cur];
             if( g == -10 ) {
@@ -4110,7 +4042,7 @@ class SlideAction extends Action {
       return 2 + Math.round(Math.max( 0, 2 - (this.duration - this.timer)/150 ));
     }
 
-    return (this.timer >> 6)&1;
+    return (this.timer >>> 6)&1;
   }
 
   willEnd( endTime, speed ) {
@@ -4959,7 +4891,7 @@ class OnDaRun extends LitElement {
     ];
 
     this.notifier = new Notifier( this.canvas );
-    this.terminal = new Terminal( this.canvas, 0, 180 );
+    this.cc = new Terminal( this.canvas, 0, 180 ); //Closed Caption
 
     this.actionIndex = 0;
 
@@ -5280,8 +5212,8 @@ class OnDaRun extends LitElement {
   showGameModeInfo( duration = 2000, delay = 0 ){
     if( this.totalTangerines ){
       let maxPerDay = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
-      this.terminal.append( `#trophy:${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, duration, delay );
-    } else this.terminal.append( this.gameMode.title, duration, delay );
+      this.cc.append( `#trophy:${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, duration, delay );
+    } else this.cc.append( this.gameMode.title, duration, delay );
   }
 
   crash( action ){
@@ -5463,7 +5395,7 @@ class OnDaRun extends LitElement {
   setGraphicsMode( mode, notify = true){
 
     if (mode == -1) {
-      mode = (this.config.GRAPHICS_MODE+1)%4;
+      mode = ( this.config.GRAPHICS_MODE + 1 )%4;
     }
 
     Object.assign(this.config, this.config.GRAPHICS_MODE_SETTINGS[mode]);
@@ -5777,10 +5709,10 @@ class OnDaRun extends LitElement {
     this.notifier.forward( deltaTime );
 
     if( this.playLyrics ){
-      this.music.updateLyricsIfNeeded( this.terminal );
+      this.music.updateLyricsIfNeeded( this.cc );
     }
 
-    this.terminal.forward( deltaTime );
+    this.cc.forward( deltaTime );
 
     /*
     if( N7e.signing.progress ) {
