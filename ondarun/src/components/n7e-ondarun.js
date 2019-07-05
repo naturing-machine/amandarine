@@ -849,6 +849,254 @@ Rubber.registerType();
 Velota.registerType();
 Rotata.registerType();
 
+class Sequencer {
+  constructor( scenery, canvasCtx ){
+    this.scenery = scenery;
+    this.canvasCtx = canvasCtx;
+    this.totalRecall = [];
+    this.recallee = null;
+  }
+
+  getSituation( currentSpeed ) {
+
+    if( ODR.gameMode.key == 'GAME_S'){
+      return [
+        Obstacle.situation.SituationA,
+        Obstacle.situation.SituationB,
+        Obstacle.situation.SituationC ][ getRandomNum( 0, 2 )];
+    }
+
+    let x = ( currentSpeed - 6 )/7;
+    let y = Math.random();
+    let situation = Obstacle.situationList.find( situation => this.canvasCtx.isPointInPath( situation.path, x, y ));
+    return situation ? situation : Obstacle.situation.Cactus;
+  }
+
+  arrange( lastEntity, currentSpeed ){
+    // Follow the right-most entity when they appear in the scene.
+    // FIXME This could be tuned to a larger number to prevent late follower.
+    if( !lastEntity || lastEntity.maxX < 600 ){
+
+      // Tangerine
+      if( ODR.shouldDropTangerines && N7e.user && !getRandomNum(0,10)){
+        ODR.shouldDropTangerines = false;
+        ODR.tangerineTimer = 0;
+        let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[ getRandomNum( 0, 4 )]);
+        let minGap = Math.round( 50*currentSpeed + 72 );
+        let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
+        space.ctx = this.canvasCtx;
+        tangerine.minX = space.minX + space.width/2 - 25;
+        this.scenery.addEntity( space, tangerine );
+        return;
+      }
+
+      let situation = lastEntity ? this.getSituation( currentSpeed ) : 0;
+      this.totalRecall.push( situation ); //Marking situations
+      do {switch( situation ) {
+        case Obstacle.situation.Velota: {
+
+          this.scenery.addEntity(
+            new Space( 50*currentSpeed ),
+            lastEntity.muster( 100, currentSpeed,
+              new Velota( this.canvasCtx, currentSpeed*Velota.speedFactor*( 0.8 + 0.2*Math.random()))));
+
+        } break;
+        case Obstacle.situation.Rotata: {
+
+          this.scenery.addEntity(
+            new Space( 60*currentSpeed ),
+            lastEntity.muster( 700, currentSpeed,
+              new Rotata( this.canvasCtx, currentSpeed*Rotata.speedFactor*( 0.8 + 0.2*Math.random()))));
+
+        } break;
+        case Obstacle.situation.Rubber: {
+
+          this.scenery.addEntity(
+            new Space( 80*currentSpeed ),
+            lastEntity.muster( 1000, currentSpeed,
+              Rubber.getRandomObstacle( this.canvasCtx, currentSpeed )));
+
+        } break;
+        /* Liver */
+        case Obstacle.situation.Liver: {
+
+          this.scenery.addEntity(
+            new Space( 50*currentSpeed ),
+            lastEntity.muster( 150, currentSpeed,
+              Liver.getRandomObstacle( this.canvasCtx, currentSpeed )));
+
+        } break;
+        case Obstacle.situation.LiverSweeper: {
+
+          this.scenery.addEntity( new Space( 100*currentSpeed ));
+          for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
+            this.scenery.addEntity( lastEntity.muster( situation.glider[i], currentSpeed,
+              new Liver( this.canvasCtx,
+                currentSpeed*Liver.speedFactor*( 0.9 + 0.1*Math.random()),
+                DuckType.elevationList[ i + 1 ])));
+          }
+
+        } break;
+        case Obstacle.situation.RubberSweeper: {
+
+          this.scenery.addEntity( new Space( 100*currentSpeed ));
+          for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
+            this.scenery.addEntity( lastEntity.muster( situation.glider[i], currentSpeed,
+              new Rubber( this.canvasCtx,
+                currentSpeed*Rubber.speedFactor*( 0.9 + 0.1*Math.random()),
+                DuckType.elevationList[ i + 1 ])));
+          }
+
+        } break;
+        /* Extra */
+
+        case Obstacle.situation.SituationA: {
+
+          this.scenery.addEntity( lastEntity.muster( 0, currentSpeed, new Space( 300*currentSpeed )));
+
+          this.scenery.addEntity( lastEntity.muster( 150, currentSpeed,
+            Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
+
+          this.scenery.addEntity( lastEntity.muster( 1000, currentSpeed,
+            Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
+
+          let velota = new Velota( this.canvasCtx, currentSpeed*Velota.speedFactor*( 0.8 + 0.2*Math.random()));
+          this.scenery.addEntity( lastEntity.muster( 1500, currentSpeed, velota ));
+
+          this.scenery.addEntity( velota.muster( 600, currentSpeed,
+            Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
+
+          this.scenery.addEntity( velota.muster( 1500, currentSpeed,
+            Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
+
+          this.scenery.addEntity( velota.muster( 1700, currentSpeed, Rotata.getRandomObstacle( this.canvasCtx, currentSpeed )));
+
+        } break;
+
+        case Obstacle.situation.SituationB: {
+
+          this.scenery.addEntity( lastEntity.muster( 0, currentSpeed, new Space( 150*currentSpeed )));
+
+          let cactusA = Cactus.getRandomObstacle( this.canvasCtx, currentSpeed );
+          this.scenery.addEntity( lastEntity.muster( 500, currentSpeed, cactusA ));
+
+          let liver = new Liver( this.canvasCtx, currentSpeed*Liver.speedFactor*( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 1 ]);
+          this.scenery.addEntity( cactusA.muster( 400, currentSpeed, liver ));
+
+          liver = new Liver( this.canvasCtx, currentSpeed*Liver.speedFactor * (0.9 + 0.1*Math.random()),
+            DuckType.elevationList[ getRandomNum( 0, 1 )<<1 ]);
+          this.scenery.addEntity( cactusA.muster( 430, currentSpeed, liver ));
+
+          this.scenery.addEntity( liver.muster( 0, currentSpeed,
+            new Rubber( this.canvasCtx, currentSpeed*Rubber.speedFactor*( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 5 ])));
+
+          this.scenery.addEntity( cactusA.muster( 1200, currentSpeed, new SmallCactus( this.canvasCtx, 1 )));
+
+        } break;
+
+        case Obstacle.situation.SituationC: {
+          let i,cactus;
+          for( i = 0; i < 8; i++) {
+            cactus = new SmallCactus( this.canvasCtx, getRandomNum( 1, 3 ));
+            this.scenery.addEntity( lastEntity.muster( i * 550 , currentSpeed, cactus ));
+          }
+
+          this.scenery.addEntity( cactus.muster( 0, currentSpeed, new Space( 100*currentSpeed )));
+        } break;
+
+        /* Single Cactus */
+        default:
+        case Obstacle.situation.Cactus: {
+          let cactus = Cactus.getRandomObstacle( this.canvasCtx, currentSpeed );
+          let minGap = Math.round( cactus.width*currentSpeed + 72 );
+          let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
+          space.ctx = this.canvasCtx;
+          cactus.minX = space.minX + space.width/2 - cactus.width/2;
+          this.scenery.addEntity( space, cactus );
+        } break;
+
+      } break; } while( true );
+    }
+  }
+
+  register( runTime, entity ){
+    let entry = { runTime: runTime, minX: entity.minX };
+
+    switch( entity.constructor.name ){
+      case 'SmallCactus':
+      case 'LargeCactus':
+        entry.size = entity.size;
+      case 'Liver':
+      case 'Rubber':
+        if( !entry.size ){
+          entry.elevation = DEFAULT_HEIGHT - entity.minY;
+        };
+      case 'Velota':
+      case 'Rotata':
+        if( !entry.size ){
+          entry.speed = entity.speed;
+        }
+        entry.className = entity.constructor.name;
+        this.totalRecall.push( entry );
+        break;
+      default:
+    }
+  }
+
+  reset(){
+    this.totalRecall = [];
+  }
+
+  recall(){
+
+    while( this.recallee.length ){
+      if( this.recallee[ 0 ].situation ){
+        console.log( this.recallee.shift());
+      } else {
+        if( this.recallee[ 0 ].runTime > ODR.runTime ){
+          return;
+        } else {
+          let entityCode = this.recallee.shift();
+          let entity;
+          ODR.runTime = entityCode.runTime;
+          switch( entityCode.className ){
+            case 'SmallCactus':
+              entity = new SmallCactus( this.scenery.canvasCtx, entityCode.size );
+              entity.minX = entityCode.minX;
+              break;
+            case 'LargeCactus':
+              entity = new LargeCactus( this.scenery.canvasCtx, entityCode.size );
+              entity.minX = entityCode.minX;
+              break;
+            case 'Velota':
+              entity = new Velota( this.scenery.canvasCtx, entityCode.speed );
+              entity.minX = entityCode.minX;
+              break;
+            case 'Rotata':
+              entity = new Rotata( this.scenery.canvasCtx, entityCode.speed );
+              entity.minX = entityCode.minX;
+              break;
+            case 'Liver':
+              entity = new Liver( this.scenery.canvasCtx, entityCode.speed, entityCode.elevation );
+              entity.minX = entityCode.minX;
+              break;
+            case 'Rubber':
+              entity = new Rubber( this.scenery.canvasCtx, entityCode.speed, entityCode.elevation );
+              entity.minX = entityCode.minX;
+              break;
+          }
+
+          if( entity )
+            this.scenery.addEntity( entity );
+
+          continue;
+        }
+      }
+    }
+
+  }
+}
+
 
 class Particles {
   constructor(canvas, x, y, life) {
@@ -1452,19 +1700,27 @@ class HorizonLine {
     //this.minX[1] = HorizonLine.dimensions.WIDTH;
   }
 }
+HorizonLine.spritePos = { x: 2, y: 104 };
+HorizonLine.dimensions = {
+  WIDTH: 600,
+  HEIGHT: 23,
+  YPOS: DEFAULT_HEIGHT-23,
+  GROUND_WIDTH: 100,
+};
 
-class Horizon {
-  constructor( canvas, spritePos, dimensions ){
+
+class Scenery {
+  constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = this.canvas.getContext('2d');
-    this.config = Horizon.config;
-    this.dimensions = dimensions;
     this.resetEntities();
     this.obstacleHistory = [];
     this.horizonOffsets = [0, 0];
     this.cloudFrequency = 1.0;
-    this.spritePos = spritePos;
     this.nightMode = null;
+
+    this.sequencer = new Sequencer( this, this.canvasCtx );
+    this.recall = false;
 
     this.layerCount = 5;
 
@@ -1475,15 +1731,15 @@ class Horizon {
 
     //this.treX = !getRandomNum(0,3) ? 2800 : -20;
 
-    // Horizon
+    // Scenery
     this.horizonLine = null;
     this.init();
   }
 
-/** Class Horizon
+/** Class Scenery
  * Initialize the starting scenery.
  */
-  init() {
+  init(){
 
     this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
     this.nightMode = new NightMode(this.canvas, this.spritePos.MOON, this.dimensions.WIDTH);
@@ -1507,7 +1763,7 @@ class Horizon {
         : DEFAULT_WIDTH + getRandomNum( -250, 250 );
 
       let mountain = new Mountain( this.canvas, distance );
-      let li = [ 1, 3 ][ getRandomNum( 0, 1 )];
+      let li = 1 + ( getRandomNum( 0, 1 )<<1 );
       this.layers[ li ].push( mountain );
       generator.mountains.push([ mountain, li ]);
       if( generator.minX > mountain.minX ){
@@ -1520,7 +1776,7 @@ class Horizon {
     }
   }
 
-  forward( deltaTime, currentSpeed, showNightMode, entityExistence) {
+  forward( deltaTime, currentSpeed, showNightMode, shouldAddObstacle = false, entityExistence = 1 ){
     //FIXME Try sorting depth on single scene array.
     /*
     this.forwardClouds(deltaTime, currentSpeed, true);
@@ -1631,50 +1887,75 @@ class Horizon {
 
     this.horizonLine.forward( deltaTime, decrement);
 
-    if( entityExistence == 1 ) {
-      this.forwardEntities( deltaTime, currentSpeed, decrement );
+    let lastEntity;
+    if( 1 == entityExistence ) {
+      lastEntity = this.forwardEntities( deltaTime, currentSpeed, decrement );
     } else if( entityExistence > 0 ) {
       this.canvasCtx.save();
       this.canvasCtx.globalAlpha = entityExistence;
-      this.forwardEntities( deltaTime, currentSpeed, decrement );
+      lastEntity = this.forwardEntities( deltaTime, currentSpeed, decrement );
       this.canvasCtx.restore();
+    }
+
+    if( shouldAddObstacle ){
+      if( !this.recall ){
+        this.sequencer.arrange( lastEntity, currentSpeed );
+      } else {
+        this.sequencer.recall();
+      }
     }
 
   }
 
-  resetEntities() {
-    if( this.entities )
-      this.entities.forEach( entity => entity.removed = true );
-    this.entities = [];
+  crashTest( amandarine ){
+    for( let i = 0, entity; entity = this.entities[i]; i++ ) {
+
+      let collision = amandarine.hitTest( entity );
+      if( collision ) {
+        let crashAction = entity.collide( collision );
+        if( crashAction ){
+          return crashAction;
+        }
+      }
+
+    }
+
+    return null;
   }
 
+  resetEntities() {
+    if( this.entities ){
+      this.entities.forEach( entity => entity.removed = true );
+    }
+
+    let t = ODR.config.CLEAR_TIME/1000;
+    let v = ODR.config.SPEED * FPS;
+    let a = ODR.config.ACCELERATION * FPS * 1000;
+
+    let clearZone = new Space( DEFAULT_WIDTH + t*v + 0.5*a*t*t );
+
+    //clearZone.debugCtx = this.canvasCtx;
+    clearZone.minX = 65;
+    this.entities = [ clearZone ];
+  }
+
+  // Change to addEntities to allow adding a group
   addEntity( ...theArgs ) {
     theArgs.forEach( anEntity => {
       if( this.entities.length >= 25 ) {
         return;
       }
 
+      if( !this.recall ){
+        this.sequencer.register( ODR.runTime, anEntity );
+      }
+
       this.entities.push( anEntity );
     });
   }
 
-  getSituation( currentSpeed ) {
-    //FIXME
-    if( ODR.gameMode.key == 'GAME_S'){
-      return [
-        Obstacle.situation.SituationA,
-        Obstacle.situation.SituationB,
-        Obstacle.situation.SituationC][getRandomNum(0,2)];
-    }
-
-    let x = (currentSpeed - 6) / 7;
-    let y = Math.random();
-    let situation = Obstacle.situationList.find( situation => this.canvasCtx.isPointInPath( situation.path, x, y ));
-    return situation ? situation : Obstacle.situation.Cactus;
-  }
-
   forwardEntities( deltaTime, cs, decrement ){
-    // Obstacles, move to Horizon layer.
+    // Obstacles, move to Scenery layer.
     for (let i = 0; i < this.entities.length; i++) {
       this.entities[i].forward( deltaTime, cs );
     }
@@ -1689,189 +1970,19 @@ class Horizon {
       return true;
     });
 
-    // Don't add any obstacle on suspending.
-    if( cs == 0){
-      return;
-    }
-
-    // Follow the right-most entity when they appear in the scene.
-    if( lastEntity ) {
-
-      /*
-      for (let i = -2; i <= 2; i+=getRandomNum(1,2)) {
-      }
-      */
-
-      //return;
-
-      // FIXME This could be tuned to a larger number to prevent late follower.
-      if( lastEntity.maxX < 600 ) {
-
-        // Tangerine
-        if( ODR.shouldDropTangerines && N7e.user && !getRandomNum(0,10)){
-          ODR.shouldDropTangerines = false;
-          ODR.tangerineTimer = 0;
-          let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[getRandomNum(0,4)]);
-          let minGap = Math.round( 50*cs + 72 );
-          let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
-          space.ctx = this.canvasCtx;
-          tangerine.minX = space.minX + space.width/2 - 25;
-          this.addEntity( space, tangerine );
-          return;
-        }
-        /*
-        if( this.highestScore < 100 )
-        this.entities.push(lastEntity.makeFollower([SmallCactus,LargeCactus][getRandomNum(0,1)], cs, getRandomNum(500,1500)));
-        else
-        */
-        //this.addEntity(lastEntity.makeFollower(Liver, cs, 0));
-        //this.addEntity(lastEntity.makeFollower(Rubber, cs, 0));
-        //this.addEntity(lastEntity.makeFollower(Rotata, cs, 1000));
-        //this.addEntity(lastEntity.makeFollower(SmallCactus, cs, 1500));
-
-        let situation = this.getSituation( cs );
-        do { switch( situation ) {
-          case Obstacle.situation.Velota: {
-
-            this.addEntity(
-              new Space( 50*cs ),
-              lastEntity.timeFollower( 100, cs,
-                new Velota( this.canvasCtx, cs*Velota.speedFactor*( 0.8 + 0.2*Math.random()))));
-
-          } break;
-          case Obstacle.situation.Rotata: {
-
-            this.addEntity(
-              new Space( 60*cs ),
-              lastEntity.timeFollower( 700, cs,
-                new Rotata( this.canvasCtx, cs*Rotata.speedFactor*( 0.8 + 0.2*Math.random()))));
-
-          } break;
-          case Obstacle.situation.Rubber: {
-
-            this.addEntity(
-              new Space( 80*cs ),
-              lastEntity.timeFollower( 1000, cs,
-                Rubber.getRandomObstacle( this.canvasCtx, cs )));
-
-          } break;
-          /* Liver */
-          case Obstacle.situation.Liver: {
-
-            this.addEntity(
-              new Space( 50*cs ),
-              lastEntity.timeFollower( 150, cs,
-                Liver.getRandomObstacle( this.canvasCtx, cs )));
-
-          } break;
-          case Obstacle.situation.LiverSweeper: {
-
-            this.addEntity( new Space( 100*cs ));
-            for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
-              this.addEntity( lastEntity.timeFollower( situation.glider[i], cs,
-                new Liver( this.canvasCtx,
-                  cs*Liver.speedFactor*( 0.9 + 0.1*Math.random()),
-                  DuckType.elevationList[ i + 1 ])));
-            }
-
-          } break;
-          case Obstacle.situation.RubberSweeper: {
-
-            this.addEntity( new Space( 100*cs ));
-            for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
-              this.addEntity( lastEntity.timeFollower( situation.glider[i], cs,
-                new Rubber( this.canvasCtx,
-                  cs*Rubber.speedFactor*( 0.9 + 0.1*Math.random()),
-                  DuckType.elevationList[ i + 1 ])));
-            }
-
-          } break;
-          /* Extra */
-
-          case Obstacle.situation.SituationA: {
-
-            this.addEntity( lastEntity.timeFollower( 0, cs, new Space( 300*cs )));
-
-            this.addEntity( lastEntity.timeFollower( 150, cs,
-              Cactus.getRandomObstacle( this.canvasCtx, cs )));
-
-            this.addEntity( lastEntity.timeFollower( 1000, cs,
-              Cactus.getRandomObstacle( this.canvasCtx, cs )));
-
-            let velota = new Velota( this.canvasCtx, cs*Velota.speedFactor*( 0.8 + 0.2*Math.random()));
-            this.addEntity( lastEntity.timeFollower( 1500, cs, velota ));
-
-            this.addEntity( velota.timeFollower( 600, cs,
-              Cactus.getRandomObstacle( this.canvasCtx, cs )));
-
-            this.addEntity( velota.timeFollower( 1500, cs,
-              Cactus.getRandomObstacle( this.canvasCtx, cs )));
-
-            this.addEntity( velota.timeFollower( 1700, cs, Rotata.getRandomObstacle( this.canvasCtx, cs )));
-
-          } break;
-
-          case Obstacle.situation.SituationB: {
-
-            this.addEntity( lastEntity.timeFollower( 0, cs, new Space( 150*cs )));
-
-            let cactusA = Cactus.getRandomObstacle( this.canvasCtx, cs );
-            this.addEntity( lastEntity.timeFollower( 500, cs, cactusA ));
-
-            let liver = new Liver( this.canvasCtx, cs*Liver.speedFactor*( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 1 ]);
-            this.addEntity( cactusA.timeFollower( 400, cs, liver ));
-
-            liver = new Liver( this.canvasCtx, cs*Liver.speedFactor * (0.9 + 0.1*Math.random()),
-              DuckType.elevationList[ getRandomNum( 0, 1 )<<1 ]);
-            this.addEntity( cactusA.timeFollower( 430, cs, liver ));
-
-            this.addEntity( liver.timeFollower( 0, cs,
-              new Rubber( this.canvasCtx, cs*Rubber.speedFactor*( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 5 ])));
-
-            this.addEntity( cactusA.timeFollower( 1200, cs, new SmallCactus( this.canvasCtx, 0, 1 )));
-
-          } break;
-
-          case Obstacle.situation.SituationC: {
-            let i,cactus;
-            for( i = 0; i < 8; i++) {
-              cactus = new SmallCactus( this.canvasCtx, 0, getRandomNum( 1, 3 ));
-              this.addEntity( lastEntity.timeFollower( i * 550 , cs, cactus ));
-            }
-
-            this.addEntity( cactus.timeFollower( 0, cs, new Space( 100*cs )));
-          } break;
-
-          case 13: {
-            this.addEntity( Cactus.getRandomObstacle( this.canvasCtx, cs ));
-          } break;
-
-          /* Single Cactus */
-          case Obstacle.situation.Cactus:
-          default: {
-            let cactus = Cactus.getRandomObstacle( this.canvasCtx, cs );
-            let minGap = Math.round( cactus.width*cs + 72 );
-            let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
-            space.ctx = this.canvasCtx;
-            cactus.minX = space.minX + space.width/2 - cactus.width/2;
-            this.addEntity( space, cactus );
-          } break;
-
-        } break; } while( true );
-
-      }
-    } else {
-      /* Create an initial leader */
-      let space = new Space( 1 );
-      this.addEntity( space );
-    }
-
+    return lastEntity;
   }
 
   reset() {
+    if( !this.recall ){
+      this.sequencer.reset();
+    } else {
+      this.sequencer.recallee = this.sequencer.totalRecall.slice();
+    }
     this.resetEntities();
     this.horizonLine.reset();
     this.nightMode.reset();
+    this.recall = false;
   }
 
   resize(width, height) {
@@ -1881,7 +1992,7 @@ class Horizon {
 
 }
 
-Horizon.config = {
+Scenery.config = {
   BG_CLOUD_SPEED: 7,
   BUMPY_THRESHOLD: .3,
   CLOUD_FREQUENCY: .5,
@@ -4852,7 +4963,7 @@ class OnDaRun extends LitElement {
 
     this.sky = new Sky( this.canvas );
     this.sky.setShade( Sky.config.START, 0 );
-    this.horizon = new Horizon( this.canvas, this.spriteDef, this.dimensions );
+    this.scenery = new Scenery( this.canvas );
 
     this.menu = new TitlePanel( this.canvas );
 
@@ -4874,7 +4985,7 @@ class OnDaRun extends LitElement {
     /* Set default custom mode to setting 0 */
     this.config.GRAPHICS_MODE_SETTINGS[ 3 ] = JSON.parse( JSON.stringify( OnDaRun.Configurations.GRAPHICS_MODE_SETTINGS[ 0 ]));
     this.setGraphicsMode( 3, false );
-    this.horizon.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
+    this.scenery.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
 
     this.style.opacity = 1;
 
@@ -5022,7 +5133,7 @@ class OnDaRun extends LitElement {
             Object.assign( this.config.GRAPHICS_MODE_SETTINGS[ 3 ], odr.settings);
             if( this.config.GRAPHICS_MODE == 3 ){
               this.setGraphicsMode( 3, false );
-              this.horizon.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
+              this.scenery.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
             }
           }
         });
@@ -5226,7 +5337,7 @@ class OnDaRun extends LitElement {
     this.restoreBaseValues();
 
     this.amandarine.reset();
-    this.horizon.reset();
+    this.scenery.reset();
 
     this.invert(true);
 
@@ -5402,14 +5513,14 @@ class OnDaRun extends LitElement {
       this.amandarine.dust.reset();
 
     if (this.config.GRAPHICS_MOON == 'SHINE') {
-      this.horizon.nightMode.generateMoonCache();
+      this.scenery.nightMode.generateMoonCache();
     } else {
-      this.horizon.nightMode.moonCanvas = null;
+      this.scenery.nightMode.moonCanvas = null;
     }
     this.canvas.style.opacity = 1 - this.config.GRAPHICS_DAY_LIGHT/5;
 
     //Generate caches
-    //this.horizon.forward( 0, 0, 0, false, 0);
+    //this.scenery.forward( 0, 0, 0, false, 0);
   }
 
   loadSounds() {
@@ -5644,6 +5755,7 @@ class OnDaRun extends LitElement {
 
       }
 
+      this.scenery.forward( deltaTime, this.currentSpeed, this.inverted, true );
 
       // Meter & Score
       let playAchievementSound = this.distanceMeter.forward( deltaTime, this.score );
@@ -5714,8 +5826,8 @@ class OnDaRun extends LitElement {
       }
 
     } else {
-      // this.playState == 0 Initial waiting
-      this.horizon.forward( deltaTime, 0, this.inverted, 1);
+      // 0 == this.playState
+      this.scenery.forward( deltaTime, 0, this.inverted, false );
     }
 
     let a = this.actions[0];
@@ -5881,6 +5993,11 @@ class OnDaRun extends LitElement {
             break;
 
           case this.consoleButtons.CONSOLE_RESET:
+              this.scenery.recall = true;
+              console.log('Recalling');
+              this.setGameMode( this.gameMode );
+              this.setMenu( null );
+              this.scenery.recall = true;
             break;
 
           case this.consoleButtons.CONSOLE_N7E:{
@@ -6113,13 +6230,10 @@ GOOD JOB! #natB`, 15000 );
 
     this.restoreBaseValues();
 
-    this.horizon.reset();
+    this.scenery.reset();
     this.distanceMeter.reset();
     this.sky.setShade( Sky.config.DAY,  3000 );
     this.invert( true );
-
-    this.shouldAddObstacle = true;
-    this.shouldIncreaseSpeed = true;
 
     this.playState = 1;
 
@@ -6633,27 +6747,5 @@ OnDaRun.keycodes = {
   SLIDE: { '37': 1, '40': 1 },  // Left, Down
   RESTART: { '13': 1 }  // Enter
 };
-
-HorizonLine.dimensions = {
-  WIDTH: 600,
-  HEIGHT: 23,
-  YPOS: DEFAULT_HEIGHT-23
-};
-
-NightMode.config = {
-  FADE_SPEED: 0.035,
-
-  MOON_BLUR: 10,
-  MOON_SPEED: 0.1,
-  WIDTH: 20,
-  HEIGHT: 40,
-
-  NUM_STARS: 15,
-  STAR_SIZE: 10,
-  STAR_SPEED: 0.07,
-  STAR_MAX_Y: DEFAULT_HEIGHT - 50,
-};
-
-NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
 
 customElements.define('n7e-ondarun', OnDaRun);
