@@ -2062,10 +2062,10 @@ class A8e {
   }
 
   init() {
-    this.groundMinY = DEFAULT_HEIGHT - this.config.HEIGHT -
+    this.groundMinY = DEFAULT_HEIGHT - A8e.config.HEIGHT -
       ODR.config.BOTTOM_PAD;
     this.minY = this.groundMinY;
-    this.minJumpHeight = this.groundMinY - this.config.MIN_JUMP_HEIGHT;
+    this.minJumpHeight = this.groundMinY - A8e.config.MIN_JUMP_HEIGHT;
 
     /*
     this.currentAnimFrames = A8e.animFrames.WAITING.frames;
@@ -2092,7 +2092,7 @@ class A8e {
     }
   }
 
-  hitTest(obstacle) {
+  hitTest( entity ){
     let retA = this.hitTestA;
     let retB = this.hitTestB;
 
@@ -2102,15 +2102,15 @@ class A8e {
     retA.width = this.width;
     retA.height = this.height;
 
-    retB.minX = obstacle.minX;
-    retB.minY = obstacle.minY;
-    retB.width = obstacle.width;
-    retB.height = obstacle.height;
+    retB.minX = entity.minX;
+    retB.minY = entity.minY;
+    retB.width = entity.width;
+    retB.height = entity.height;
 
     // Simple outer bounds check.
     if (retA.intersects(retB)) {
       let boxesA = this.collisionBoxes;
-      let boxesB = obstacle.collisionBoxes;
+      let boxesB = entity.collisionBoxes;
 
       // Detailed axis aligned box check.
       for (var j = 0; j < boxesA.length; j++) {
@@ -2149,39 +2149,19 @@ class A8e {
     return false;
   }
 
-  draw(x, y) {
-    console.trace();
-    var sourceX = x * 2;
-    var sourceY = y * 2;
-
-    // Adjustments for sprite sheet position.
-    sourceX += this.spritePos.x;
-    sourceY += this.spritePos.y;
-
-    if (this.currentSprite) {
-
-      this.canvasCtx.drawImage(this.currentSprite,
-        sourceX, sourceY, this.width, this.height,
-        ~~this.minX, ~~this.minY, this.width, this.height);
-
-      if (ODR.config.GRAPHICS_DUST != 'NONE') this.dust.draw();
-
-    }
-  }
-
   activateAction( action, deltaTime, speed ){
     console.assert(action && action.priority != -1, action);
 
     let adjustXToStart = () => {
-      if (this.minX < this.config.START_X_POS) {
+      if (this.minX < A8e.config.START_X_POS) {
         this.minX += 0.2 * speed * (FPS / 1000) * deltaTime;
-        if (this.minX > this.config.START_X_POS) {
-          this.minX = this.config.START_X_POS;
+        if (this.minX > A8e.config.START_X_POS) {
+          this.minX = A8e.config.START_X_POS;
         }
-      } else if (this.minX > this.config.START_X_POS) {
+      } else if (this.minX > A8e.config.START_X_POS) {
         this.minX -= 0.2 * speed * (FPS / 1000) * deltaTime;
-        if (this.minX < this.config.START_X_POS) {
-          this.minX = this.config.START_X_POS;
+        if (this.minX < A8e.config.START_X_POS) {
+          this.minX = A8e.config.START_X_POS;
         }
       }
     }
@@ -2215,7 +2195,6 @@ class A8e {
         }
         break;
       case A8e.status.RUNNING: {
-
         if (action.speed != speed) {
           let sp = action.speed - speed;
           let increment = sp * FPS / 1000 * deltaTime;
@@ -2237,8 +2216,8 @@ class A8e {
 
         adjustXToStart();
         this.minY = this.groundMinY
-          + ( this.config.GRAVITY_FACTOR * timer * timer
-              - action.top * ODR.config.SCALE_FACTOR );
+          + ( A8e.config.GRAVITY_FACTOR * timer * timer
+              - action.top * A8e.config.SCALE_FACTOR );
 
         if (timer - 30 < -action.halfTime && !action.playedDrop ) {
           ODR.playSound( ODR.soundFx.SOUND_DROP,
@@ -2284,8 +2263,8 @@ class A8e {
           action.priority = -1;
 
           // Make sure for no fallback after sliding.
-          if (this.minX < this.config.START_X_POS) {
-            this.minX = this.config.START_X_POS;
+          if (this.minX < A8e.config.START_X_POS) {
+            this.minX = A8e.config.START_X_POS;
           }
         }
       } break;
@@ -2320,7 +2299,7 @@ class A8e {
     this.canvasCtx.drawImage(action.sprite,
       action.frames[action.currentFrame], 0, 40, 40,
       ~~this.minX, ~~this.minY,
-      this.config.WIDTH, this.config.HEIGHT);
+      A8e.config.WIDTH, A8e.config.HEIGHT);
 
       /*{
         this.canvasCtx.save();
@@ -2367,7 +2346,7 @@ class A8e {
     return true;
   }
 
-  drawJumpingGuide(action, now, speed) {
+  drawJumpingGuide( action, now, speed ){
     if (action.start) return;
     /* Draw jumping guide */
 
@@ -2395,11 +2374,11 @@ class A8e {
       let gravityFactor = 0.0000005 * A8e.config.GRAVITY;
       this.canvasCtx.moveTo(
         baseX + unit*increment - shiftLeft,
-        baseY - (action.top - (gravityFactor * action.halfTime * action.halfTime)) * ODR.config.SCALE_FACTOR
+        baseY - (action.top - (gravityFactor * action.halfTime * action.halfTime)) * A8e.config.SCALE_FACTOR
       );
 
       for (let timer = action.halfTime; timer > - action.halfTime - DRAW_STEP; timer-= DRAW_STEP, unit--) {
-        let drawY = baseY - (action.top - (gravityFactor * timer * timer)) * ODR.config.SCALE_FACTOR;
+        let drawY = baseY - (action.top - (gravityFactor * timer * timer)) * A8e.config.SCALE_FACTOR;
         let drawX = baseX + unit*increment - shiftLeft;
 
         if (drawX < this.minX + 20 && drawY > baseY - 60 ) {
@@ -2423,15 +2402,15 @@ class A8e {
 
   }
 
-  drawSlidingGuide(action, now, speed) {
-    if (action.start) return;
+  drawSlidingGuide( action, now, speed ){
+    if( action.start )return;
 
     let baseX = this.minX;
     let alpha;
 
     action.willEnd(now,speed);
     if (action.priority != 0) {
-      baseX = this.config.START_X_POS - action.distance;
+      baseX = A8e.config.START_X_POS - action.distance;
       alpha = (action.fullDistance - action.distance)/action.fullDistance;
       alpha *= alpha;
     } else {
@@ -2448,15 +2427,15 @@ class A8e {
       this.canvasCtx.drawImage(A8e.animFrames.SLIDING.sprite,
         A8e.animFrames.SLIDING.frames[(frame+i)%3], 40, 40, 40,
         ~~(baseX + action.fullDistance - i * 30 *alpha) - s*s, this.groundMinY,
-        this.config.WIDTH, this.config.HEIGHT);
+        A8e.config.WIDTH, A8e.config.HEIGHT);
     }
 
     this.canvasCtx.restore();
   }
 
-  reset() {
+  reset(){
     this.minY = this.groundMinY;
-    this.minX = -40;// this.config.START_X_POS;
+    this.minX = -40;// A8e.config.START_X_POS;
     this.dust.reset();
 
     /*
@@ -2485,7 +2464,9 @@ A8e.config = {
   SPRITE_WIDTH: 262,
   START_X_POS: 25,
   WIDTH: 40,
+  SCALE_FACTOR: 210,
 };
+A8e.config.GRAVITY_FACTOR = 0.0000005 * A8e.config.GRAVITY * A8e.config.SCALE_FACTOR;
 
 A8e.collisionBoxes = {
   SLIDING: [
@@ -4050,6 +4031,7 @@ class DefaultAction extends Action {
     this.index = Infinity;
     this._timer = 0;
     this._priority = 3;
+    this._minX = 0;
   }
 
   set timer( timer ) {
@@ -4989,7 +4971,7 @@ class OnDaRun extends LitElement {
 
     this.menu = new TitlePanel( this.canvas );
 
-    this.amandarine = new A8e( this.canvas, this.spriteDef.NATHERINE );
+    this.amandarine = new A8e( this.canvas );
 
     this.distanceMeter = new DistanceMeter(this.canvas,
       this.spriteDef.TEXT_SPRITE, DEFAULT_WIDTH);
@@ -6313,7 +6295,7 @@ GOOD JOB! #natB`, 15000 );
       3: Interrupting. (eg. Crash, Pause)
      -1: Zombie, a released task.
   */
-  scheduleActionQueue( now, deltaTime, speed ) {
+  scheduleActionQueue( now, deltaTime, speed ){
 
     /* activeAction points to the current active action, drawings & tests
     such as collision checkings will be done with this action.
@@ -6473,9 +6455,9 @@ GOOD JOB! #natB`, 15000 );
 
                 /* Running into the scene
                   (A8e.config.START_X_POS + 200)*1000/FPS*/
-                if( this.amandarine.minX > this.amandarine.config.START_X_POS ) {
+                if( this.amandarine.minX > A8e.config.START_X_POS ) {
                   action.speed = 0;
-                  this.amandarine.minX = this.amandarine.config.START_X_POS;
+                  this.amandarine.minX = A8e.config.START_X_POS;
                 }
                 // Don't proceed action while walking in.
                 break HANDLE_ACTION_QUEUE;
@@ -6509,34 +6491,6 @@ GOOD JOB! #natB`, 15000 );
               } break HANDLE_ACTION_QUEUE;
               //break;
               case A8e.status.WAITING:
-
-                /* Find starters */
-                /*
-                for (let i = queueIndex, nextAction; nextAction = actionQueue[i]; i++) {
-                  if (nextAction.type == A8e.status.SLIDING
-                      || nextAction.type == A8e.status.JUMPING) {
-
-                    if (nextAction.priority == 0 && !action.hasStoppedMusic) {
-                      action.heldStart = action.timer;
-                      action.hasStoppedMusic = true;
-                      this.music.stop();
-                    } else if (nextAction.priority == 1) {
-                      this.shouldAddObstacle = true;
-                      this.checkShouldDropTangerines();
-                      this.shouldIncreaseSpeed = true;
-                      this.setSpeed(this.config.SPEED);
-                      this.playing = true;
-                      this.showGameModeInfo();
-                      this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
-                      action.speed = this.config.SPEED;
-                      action.priority = 1;
-                      this.sky.setShade( Sky.config.DAY, 3000 );
-                      this.notifier.timer = 200;
-                    } else if (nextAction.priority == 0) {
-                    }
-                  }
-                }
-                */
 
                 break HANDLE_ACTION_QUEUE;
               default:
