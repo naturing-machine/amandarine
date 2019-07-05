@@ -243,20 +243,7 @@ class User {
 
 class Entity {
 
-  timeFollower( interval, currentSpeed, follower ){
-
-    //duration is the time taken for this to travel to A8e.
-    let duration = 1000/FPS*( this.maxX - 25 )
-      /( currentSpeed - ( this.speedFactor*currentSpeed ));
-    follower.minX = 25
-      + ( duration + interval )
-        *( currentSpeed - ( follower.speedFactor*currentSpeed ))
-        *FPS/1000;
-
-    return follower;
-  }
-
-  constructor( ctx, speed, elevation ) {
+  constructor( ctx, speed, elevation ){
     this.canvasCtx = ctx;
     this.speed = speed;
     this.minX = DEFAULT_WIDTH;
@@ -264,36 +251,36 @@ class Entity {
     this.removed = false;
   }
 
-  get width() {
+  get width(){
     return this.constructor.width;
   }
 
-  get height() {
+  get height(){
     return this.constructor.height;
   }
 
-  get maxX() {
+  get maxX(){
     return this.minX + this.width;
   }
-  set maxX(newMaxX) {
+  set maxX(newMaxX){
     this.minX = maxX - this.width;
   }
 
-  get maxY() {
+  get maxY(){
     return this.minY + this.height;
   }
   set maxY(newMaxY) {
     this.minY = maxY - this.height;
   }
 
-  get speedFactor() {
+  get speedFactor(){
     return this.constructor.speedFactor || 0;
   }
 
-  get removed() {
+  get removed(){
     return !this._exists;
   }
-  set removed( remove ) {
+  set removed( remove ){
     if( this._exists && remove ) {
       this.constructor.replicaCount--;
     } else if( !this.exists && !remove ) {
@@ -302,11 +289,11 @@ class Entity {
     this._exists = !remove;
   }
 
-  collide() {
-    return false;
+  collide(){
+    return null;
   }
 
-  forward( deltaTime, currentSpeed ) {
+  forward( deltaTime, currentSpeed ){
     if( this.removed ) return;
 
     this.minX += (this.speed - currentSpeed) * FPS / 1000 * deltaTime;
@@ -333,38 +320,44 @@ class Entity {
     }
   }
 
-  get sprite() {
+  get sprite(){
     return this.constructor.sprite;
   }
 
-  /*
-    This place the interval time so once leader meet A8e, this entity will be
-    interval ms away. This allow tuning the space to fit the duration-oriented actions.
-    ie. since actions will neither happen nor end faster in at higher speed.
+/**
+ * Class Entity
+ * Set the locaton for the follower so it will arrive the position of
+ * Amandarine by the given interval after the leader has reached the position.
+ *
+ * (a) [.A......<L...] For example, given a situation
+ * (b) [.A...<L...<F.] Now call L.muster(T,F) to set F's position.
+ * (c) [.A<L....<F...] L arrives, starts counting T from this moment.
+ * (d) [.A<F=====T...] After the given T interval has passed from (c).
+ *
+ * This allows adjusting the durations until she meets the next one after another.
+ *
+ * @param {number} interval - custom information.
+ * @param {number} currentSpeed - custom information.
+ * @param {Object} follower - custom information.
+ * @return {Object} - handy for the follower.
+ */
+  muster( interval, currentSpeed, follower ){
 
-    [A][E leader]..interval..[E this]
-  */
-  follow( leader, interval, currentSpeed ) {
+    //Don't think it needs to consider the acceration.
+    //May also consider by the length of the interval.
 
-    return leader.timeFollower( interval, currentSpeed, this );
-    /*
-    leader = leader || { minX: 600, speedFactor: 0 };
-    let leaderDistance = leader.maxX - 25; //START_X_POS(25) + cbox.maxX(33)
-    let leaderSpeed = currentSpeed - (leader.speedFactor * currentSpeed);
-    let duration = (1000/FPS) * leaderDistance / leaderSpeed;
+    //duration is the time taken for this to travel to A8e.
+    let duration = 1000/FPS*( this.maxX - 25 )
+      /( currentSpeed - ( this.speedFactor*currentSpeed ));
 
-    let absSpeed = currentSpeed - (this.speedFactor * currentSpeed);
-    let distance = (duration + interval) * absSpeed * FPS/1000;
-    this.minX = 25 + distance;
-    */
+    follower.minX = 25
+      + ( duration + interval )
+        *( currentSpeed - ( follower.speedFactor*currentSpeed ))
+        *FPS/1000;
 
-    /*
-    if( this.minX < 590 ) {
-      console.log('Late:', this.minX, this );
-    }
-    */
-
+    return follower;
   }
+
 }
 
 class Space extends Entity {
@@ -382,17 +375,17 @@ class Space extends Entity {
   }
 
   /* Fer debugging */
-  /*
   forward( deltaTime, currentSpeed ) {
-    super.forward( deltaTime, currentSpeed );
-    if( this.ctx ) {
-      this.ctx.strokeStyle = "orange";
-      this.ctx.strokeRect( this.minX, 10, this.width, 180 );
+    this.minX -= currentSpeed * FPS / 1000 * deltaTime;
+    if( this.maxX < 0 ) {
+      this.removed = true;
+    } else if( this.debugCtx ) {
+      this.debugCtx.strokeStyle = "orange";
+      this.debugCtx.strokeRect( this.minX, 10, this.width, 180 );
     }
   }
-  */
 
-}
+} /** Space **/
 
 class Tangerine extends Entity {
   constructor( ctx, elevation ) {
@@ -416,7 +409,7 @@ class Tangerine extends Entity {
 
       Tangerine.increaseTangerine( 1 );
     }
-    return false;
+    return null;
   }
 
   static increaseTangerine( number ) {
@@ -470,7 +463,7 @@ class Tangerine extends Entity {
 
 }
 
-Tangerine.collisionBoxes = [new CollisionBox( -5, -5, 24, 24)];
+  Tangerine.collisionBoxes = [new CollisionBox( -5, -5, 24, 24)];
 
 class Obstacle extends Entity {
 
@@ -509,21 +502,18 @@ class Obstacle extends Entity {
   }
 
   collide( collision ) {
-    ODR.queueAction({
+    return {
       type: A8e.status.CRASHED,
       timer: 0,
       priority: 3,
       boxes: collision,
       obstacle: this
-    }, this.currentSpeed);
-
-    return true;
+    };
   }
 }
 
-{ //
   Obstacle.situation = {
-    Cactus: {}, // Default situation.
+    Cactus: { situation:'Cactus' }, // Default situation.
   };
   Obstacle.situationList = [];
 
@@ -542,20 +532,23 @@ class Obstacle extends Entity {
 </svg>
 `;
 
-  let svg = new DOMParser().parseFromString(svgSrc, 'image/svg+xml');
-  let paths = svg.getElementsByTagName('path');
-  for( let path of paths) {
-    let entry = {
-      name: path.attributes.class.value,
-      path: new Path2D(path.attributes.d.value),
-    };
-    Obstacle.situationList.unshift(entry);
-    Obstacle.situation[entry.name] = entry;
+  { // Generate the situation list.
+    // TODO Plot this by sampling into a bitmap.
+    let svg = new DOMParser().parseFromString(svgSrc, 'image/svg+xml');
+    let paths = svg.getElementsByTagName('path');
+    for( let path of paths) {
+      let entry = {
+        name: path.attributes.class.value,
+        path: new Path2D(path.attributes.d.value),
+      };
+      Obstacle.situationList.unshift(entry);
+      Obstacle.situation[entry.name] = entry;
+    }
   }
+
   Obstacle.situation.LiverSweeper.glider = [ 100, 50, 0, 50, 100 ];
   Obstacle.situation.RubberSweeper.glider = [ 1000, 1100, 1200, 1100, 1000 ];
 
-}
 
 /* TODO Mixin */
 
@@ -577,66 +570,65 @@ class MultiWidth extends Obstacle {
     this.spriteY = this.constructor.spriteYOffset;
   }
 
-  get collisionBoxes() {
+  get collisionBoxes(){
     return this.constructor.collisionBoxesForSize(this.size);
   }
 
-  get width() {
+  get width(){
     return this.constructor.width * this.size;
   }
 
-  static registerType() {
+  static registerType(){
     super.registerType();
     this.cachedCollisionBoxesForSize = [];
   }
 
-  static collisionBoxesForSize(size) {
-    if( this.cachedCollisionBoxesForSize[size] ) {
+  static collisionBoxesForSize( size ){
+    if( this.cachedCollisionBoxesForSize[ size ]){
       return this.cachedCollisionBoxesForSize[size]
     }
 
     let boxes = this.collisionBoxes;
 
-    boxes[1].width
+    boxes[ 1 ].width
       = this.width * size
-        - boxes[0].width
-        - boxes[2].width;
-    boxes[2].minX = this.width * size
-      - boxes[2].width;
+        - boxes[ 0 ].width
+        - boxes[ 2 ].width;
+    boxes[ 2 ].minX = this.width * size
+      - boxes[ 2 ].width;
 
-    this.cachedCollisionBoxesForSize[size] = boxes;
+    this.cachedCollisionBoxesForSize[ size ] = boxes;
     return boxes;
-
-  }
-
-  static getRandomObstacle( ctx, speed ){
-    let max = speed < 6.5
-      ? 2
-      : speed < 7.5
-        ? 3
-        : MultiWidth.MAX_OBSTACLE_LENGTH;
-
-    return new this( ctx, 0, getRandomNum( 1, max ));
   }
 
   collide( collision ) {
-    super.collide( collision );
     ODR.playSound( ODR.soundFx.SOUND_HIT, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-    return true;
+    return super.collide( collision );
   }
 }
 MultiWidth.MAX_OBSTACLE_LENGTH = 4;
 
-//Random proxy
-class Cactus {
-  static getRandomObstacle( ctx, speed ){
-    return [ SmallCactus, LargeCactus ][ getRandomNum( 0, 1 )].getRandomObstacle( ctx, speed );
+class Cactus extends MultiWidth {
+  static getRandomObstacle( ctx, currentSpeed ){
+    switch( this ){
+      case SmallCactus:
+      case LargeCactus:
+        return new this( ctx, getRandomNum( 1,
+          currentSpeed < 6.5
+          ? 2
+          : currentSpeed < 7.5
+            ? 3
+            : MultiWidth.MAX_OBSTACLE_LENGTH ));
+      case Cactus:
+      default:
+        return [ SmallCactus, LargeCactus ][ getRandomNum( 0, 1 )].getRandomObstacle( ctx, currentSpeed );
+    }
   }
 }
 
-class SmallCactus extends MultiWidth {
-  constructor( ctx, speed, size ) {
-    super( ctx, speed, 45, size );
+class SmallCactus extends Cactus {
+  constructor( ctx, size ) {
+    super( ctx, 0, 45, size );
 
     Object.assign(this, {
       multipleSpeed: 4,
@@ -659,9 +651,9 @@ SmallCactus.spriteYOffset = 0;
 SmallCactus.width = 17;
 SmallCactus.height = 35;
 
-class LargeCactus extends MultiWidth {
-  constructor( ctx, speed, size ) {
-    super( ctx, speed, 60, size );
+class LargeCactus extends Cactus {
+  constructor( ctx, size ) {
+    super( ctx, 0, 60, size );
 
     Object.assign( this, {
       multipleSpeed: 7,
@@ -713,14 +705,15 @@ class DynamicObstacle extends Obstacle {
 }
 
 class DuckType extends DynamicObstacle {
+  /*
   constructor( ctx, speed, elevation ) {
     super( ctx, speed, elevation );
   }
+  */
 
   collide( collision ) {
-    super.collide( collision );
     ODR.playSound( ODR.soundFx.SOUND_QUACK, 0.8 * ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0.1 );
-    return true;
+    return super.collide( collision );
   }
 
   static get width() { return 46; }
@@ -787,10 +780,9 @@ class BicycleType extends DynamicObstacle {
   }
 
   collide( collision ) {
-    super.collide( collision );
     ODR.playSound( ODR.soundFx.SOUND_CRASH, ODR.config.SOUND_EFFECTS_VOLUME/10 );
     ODR.playSound( ODR.soundFx.SOUND_BICYCLE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-    return true;
+    return super.collide( collision );
   }
 
   static get width() { return 52; }
@@ -1303,17 +1295,17 @@ class HorizonLine {
 
     if( !this.groundCanvas ){
       this.groundCanvas = document.createElement('canvas');
-      this.groundCanvas.width = this.dimensions.WIDTH;
-      this.groundCanvas.height = 25 * ODR.config.GROUND_WIDTH;
+      this.groundCanvas.width = DEFAULT_WIDTH;
+      this.groundCanvas.height = 25 * HorizonLine.dimensions.GROUND_WIDTH;
     }
     let ctx = this.groundCanvas.getContext('2d');
 
-    ctx.clearRect(0, 0, this.dimensions.WIDTH, this.groundCanvas.height);
+    ctx.clearRect(0, 0, DEFAULT_WIDTH, this.groundCanvas.height);
     this.cachedGroundType = groundType;
 
     ctx.save();
     ctx.translate(0,25 - DEFAULT_HEIGHT);
-    for (let i = 0; i < ODR.config.GROUND_WIDTH; i++) {
+    for (let i = 0; i < HorizonLine.dimensions.GROUND_WIDTH; i++) {
 
       if( groundType == 'STRIPES')
         this.drawGround(ctx, i, 'STRIPES',227,191,139);
@@ -1995,8 +1987,8 @@ class A8e {
         retA.height = boxesA[j].height;
 
         for (var i = 0; i < boxesB.length; i++) {
-          retB.minX = boxesB[i].minX + obstacle.minX;
-          retB.minY = boxesB[i].minY + obstacle.minY;
+          retB.minX = boxesB[i].minX + entity.minX;
+          retB.minY = boxesB[i].minY + entity.minY;
           retB.width = boxesB[i].width;
           retB.height = boxesB[i].height;
           // Adjust the box to actual positions.
@@ -2011,8 +2003,8 @@ class A8e {
               }),
               B: boxesB.map( b => {
                 let ret = b.copy
-                ret.minX += obstacle.minX;
-                ret.minY += obstacle.minY;
+                ret.minX += entity.minX;
+                ret.minY += entity.minY;
                 return ret;
               }),
               C: retA.intersection(retB),
@@ -2182,8 +2174,8 @@ class A8e {
         if (action.timer > 25) action.currentFrame++;
 
         this.minY = action.crashedMinY
-          + ( this.config.GRAVITY_FACTOR/2 * timer * timer
-              - action.top * ODR.config.SCALE_FACTOR );
+          + ( A8e.config.GRAVITY_FACTOR/2 * timer * timer
+              - action.top * A8e.config.SCALE_FACTOR );
         this.minX += deltaTime/10 * action.dir;
 
         // Drag the scene slower on crashing.
@@ -3731,11 +3723,6 @@ class GameOver extends Panel {
   }
 
   forwardGameOver( deltaTime ){
-    //Hack
-    if( this.timer == 0 ){
-      ODR.updateScore();
-    }
-
     deltaTime = deltaTime ? deltaTime : 1;
     let dist = this.timer/100;
       if (dist > 1) dist = 1;
@@ -5208,14 +5195,15 @@ class OnDaRun extends LitElement {
   crash( action ){
     console.assert( 2 != this.playState, 'crash reentry', this.playState );
     this.playState = 2;
+
+    this.updateScore();
+
     this.setMenu();
     vibrate(200);
     this.distanceMeter.flashIterations = 0;
     this.music.stop();
     this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10 );
     this.sky.setShade( Sky.config.SUNSET, 3000 );
-    this.shouldAddObstacle = false;
-    this.shouldIncreaseSpeed = false;
 
     // Load lyrics, FIXME if needed.
     let lyrics = [];
@@ -5689,19 +5677,54 @@ class OnDaRun extends LitElement {
         }
       }
 
+      let crashAction = this.scenery.crashTest( this.amandarine );
+      if( crashAction ){
+        // The scheduler will call this.crash()
+        this.queueAction( crashAction );
+      }
+
+      this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
+
+      /*
+      this.currentSpeed = this.config.SPEED + this.runTime * this.config.ACCELERATION;
+      if( this.currentSpeed > this.config.MAX_SPEED )
+        this.currentSpeed = this.config.MAX_SPEED;
+        */
+
+    } else if( 2 == this.playState ){
+      //CRASHED
+
+      //Define existence as a timing ratio used to by the gameover animations.
+      let existence = Math.max( 0,
+        this.actions[0]
+        ? Math.min( 1, (this.config.GAMEOVER_CLEAR_TIME - this.actions[0].timer) / this.config.GAMEOVER_CLEAR_TIME )
+        : 0
+      );
+
+      this.scenery.forward( deltaTime, this.currentSpeed, this.inverted, false );
+
+      if (existence > 0.9) {
+        let crashPoint = this.actions[0].boxes.C.center();
+        this.canvasCtx.drawImage( ODR.spriteGUI,
+            OnDaRun.spriteDefinition.CRASH.x,
+            OnDaRun.spriteDefinition.CRASH.y,
+            this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
+            crashPoint.minX - this.config.CRASH_WIDTH/2, crashPoint.minY - this.config.CRASH_HEIGHT/2,
+            this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
+      }
+
     } else {
       // this.playState == 0 Initial waiting
       this.horizon.forward( deltaTime, 0, this.inverted, 1);
     }
 
     let a = this.actions[0];
-    this.scheduleActionQueue(now, deltaTime, this.currentSpeed);
+    this.scheduleActionQueue( now, deltaTime, this.currentSpeed );
     this.notifier.forward( deltaTime );
 
     if( this.playLyrics ){
       this.music.updateLyricsIfNeeded( this.cc );
     }
-
     this.cc.forward( deltaTime );
 
     /*
@@ -5783,7 +5806,7 @@ class OnDaRun extends LitElement {
           case this.consoleButtons.CONSOLE_LEFT:{
             let action = this.consoleButtonActionMap.get( button );
             if( !action || action.priority != 0 ){
-              action = new SlideAction( this.time, this.currentSpeed);
+              action = new SlideAction( this.time, this.currentSpeed );
               this.consoleButtonActionMap.set( button, action );
               this.queueAction( action );
             }
@@ -5792,7 +5815,7 @@ class OnDaRun extends LitElement {
           case this.consoleButtons.CONSOLE_RIGHT:{
             let action = this.consoleButtonActionMap.get( button );
             if( !action || action.priority != 0 ){
-              action = new JumpAction( this.time, this.currentSpeed);
+              action = new JumpAction( this.time, this.currentSpeed );
               this.consoleButtonActionMap.set( button, action );
               this.queueAction( action );
             }
@@ -5932,7 +5955,7 @@ class OnDaRun extends LitElement {
     }
   }
 
-  queueAction(action) {
+  queueAction( action ){
     this.actionIndex++;
     action.index = this.actionIndex;
     this.actions.push(action);
@@ -5954,14 +5977,11 @@ class OnDaRun extends LitElement {
     }
   }
 
-/**
- * OnDarun test crashed state.
- * @returns {boolean} crash state.
- */
-
+  /*
   isRunning() {
     return !!this.raqId;
   }
+  */
 
   updateScore(){
     let d = this.score;
@@ -6122,32 +6142,6 @@ GOOD JOB! #natB`, 15000 );
     this.queueAction( defaultAction );
 
   }
-
-  /* Don't remove / For refs.
-  restart() {
-    if (!this.raqId) {
-      this.actions = [];
-      //this.playCount++;
-      this.playLyrics = false;
-      this.shouldAddObstacle = true;
-      this.checkShouldDropTangerines();
-      this.shouldIncreaseSpeed = true;
-
-      this.runTime = 0;
-      this.playing = true;
-      this.distance = 0;
-      this.setSpeed(this.config.SPEED);
-      this.time = getTimeStamp();
-      this.distanceMeter.reset();
-      this.horizon.reset();
-      this.amandarine.reset();
-      this.playSound( this.soundFx.SOUND_SCORE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-      this.invert( true );
-      this.forward( this.time );
-      this.gameOverPanel.timer = 0;
-      this.music.stop();
-    }
-  }*/
 
   invert(reset) {
     if (reset) {
