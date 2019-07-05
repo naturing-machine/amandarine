@@ -3303,14 +3303,20 @@ the Thai Redcross Society #redcross
     super.handleEvent( e );
 
     switch( e.type ){
-      case OnDaRun.events.CONSOLEDOWN:
+      case OnDaRun.events.CONSOLEDOWN:{
         ODR.loadSounds();
         return true;
+      }
       case OnDaRun.events.CONSOLEUP:
         // Make sure all control buttons are released.
         if( 0 == this.buttonUpTime[ 0 ]
             && 0 == this.buttonUpTime[ 1 ]
             && this.dataReadyTime && !this.ender ){
+
+          if( this.scrolling ){
+            this.scrolling = false;
+            return true;
+          }
 
           this.ender = this.timer;
           ODR.sky.setShade( Sky.config.DAY, 3000 );
@@ -3329,6 +3335,11 @@ the Thai Redcross Society #redcross
   forward( deltaTime ) {
     this.timer += deltaTime;
 
+    if( this.buttonUpTime[ 0 ] && this.buttonUpTime[ 1 ] ){
+      this.scrolling = true;
+      this.timer += 300;
+    }
+
     ODR.sky.forward( deltaTime, this.canvasCtx );
 
     let factorA = Math.sin(this.timer / 400);
@@ -3338,7 +3349,7 @@ the Thai Redcross Society #redcross
 
     let runout = 0;
     let tfactor = 0;
-    if( this.ender && ODR.soundFx.SOUND_SCORE){
+    if( this.ender && ODR.soundFx.SOUND_SCORE ){
       tfactor = this.timer - this.ender;
       runout = 0.8*tfactor - 200;
       //200*200
