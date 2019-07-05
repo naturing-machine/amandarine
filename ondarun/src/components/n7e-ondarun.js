@@ -1145,10 +1145,8 @@ class Cloud {
     this.canvas = canvas;
     this.canvasCtx = this.canvas.getContext('2d');
     this.type = type;
-    this.spritePos = [
-      Cloud.spriteXList[ getRandomNum( 0, 1 )],
-      Cloud.spriteYList[ type ],
-    ];
+    this.spriteX = Cloud.spriteXList[ getRandomNum( 0, 1 )];
+    this.spriteY = Cloud.spriteYList[ type ];
     this.minX = minX;
     this.minY = minY;
     this.removed = false;
@@ -1164,9 +1162,9 @@ class Cloud {
     return this.minY + Cloud.heightList[ this.type ];
   }
 
-  draw() {
+  draw(){
       this.canvasCtx.drawImage( ODR.spriteScene,
-        this.spritePos[ 0 ], this.spritePos[ 1 ],
+        this.spriteX, this.spriteY,
         Cloud.width, Cloud.heightList[ this.type ],
         Math.ceil( this.minX ), this.minY,
         Cloud.width, Cloud.heightList[ this.type ]);
@@ -1298,17 +1296,15 @@ class Mountain {
 Mountain.cycleType = 0;
 
 class NightMode {
-  constructor( canvas, spritePos, containerWidth ){
-    this.spritePos = spritePos;
+  constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
-    this.minX = containerWidth - 50;
+    this.minX = DEFAULT_WIDTH - 200;
     this.minY = 50;
 //      this.nextPhase = NightMode.phases.length - 1;
     this.nextPhase = getRandomNum(0,6);
     this.currentPhase = this.nextPhase;
     this.opacity = 0;
-    this.containerWidth = containerWidth;
     this.stars = [];
     this.placeStars();
   }
@@ -1351,7 +1347,7 @@ class NightMode {
 
   adjustXPos(currentPos, speed) {
     if (currentPos < -NightMode.config.WIDTH) {
-      currentPos = this.containerWidth;
+      currentPos = DEFAULT_WIDTH;
     } else {
       currentPos -= speed;
     }
@@ -1359,16 +1355,12 @@ class NightMode {
   }
 
   draw( darkness = 255 ) {
-    var starSize = NightMode.config.STAR_SIZE;
-    var starSourceX = OnDaRun.spriteDefinition.STAR.x;
-
     this.canvasCtx.save();
-
     this.canvasCtx.globalAlpha = this.opacity;// * (( 255 + darkness )>>>1)/255;
 
     let mx = Infinity, my = Infinity;
 
-    if (ODR.config.GRAPHICS_MOON == 'SHINE') {
+    if( ODR.config.GRAPHICS_MOON == 'SHINE' ){
       let yShift = 7 - this.currentPhase;
       yShift *= yShift;
       let fw = 2 * (NightMode.config.WIDTH + NightMode.config.MOON_BLUR);
@@ -1376,13 +1368,22 @@ class NightMode {
       mx = Math.ceil(this.minX/DEFAULT_WIDTH * (DEFAULT_WIDTH+fw*2) - fw - NightMode.config.MOON_BLUR);
       my = yShift + this.minY - NightMode.config.MOON_BLUR;
 
-      this.canvasCtx.drawImage(this.moonCanvas,
-        this.currentPhase * fw, 0,
-        fw, fh,
-        mx, my,
-        fw, fh);
-        mx += fw/2;
-        my += fh/2;
+      this.canvasCtx.globalAlpha = this.opacity * darkness/255
+      this.canvasCtx.drawImage( this.moonCanvas,
+        this.currentPhase * fw, 0, fw, fh,
+        mx, my, fw, fh);
+
+      if( this.canvasCtx.globalAlpha != 1 ){
+        this.canvasCtx.globalAlpha = 0.2 * this.opacity * (255 - darkness)/255
+        // Fill the dull Moon.
+        this.canvasCtx.drawImage( this.moonCanvas,
+          this.currentPhase * fw, fh, fw, fh,
+          mx, my, fw, fh);
+      }
+
+      mx += fw/2;
+      my += fh/2;
+
     } else if (ODR.config.GRAPHICS_MOON == 'NORMAL') {
       mx = Math.ceil(this.minX);
       my = this.minY;
@@ -1390,11 +1391,11 @@ class NightMode {
         ? NightMode.config.WIDTH * 2
         : NightMode.config.WIDTH;
       var moonSourceHeight = NightMode.config.HEIGHT;
-      var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase%7];
+      var moonSourceX = NightMode.spriteX + NightMode.phases[this.currentPhase%7];
       var moonOutputWidth = moonSourceWidth;
 
       this.canvasCtx.drawImage(ODR.spriteScene, moonSourceX,
-        this.spritePos.y, moonSourceWidth, moonSourceHeight,
+        NightMode.spriteY, moonSourceWidth, moonSourceHeight,
         mx, my,
         moonOutputWidth, NightMode.config.HEIGHT);
       mx += moonOutputWidth/2;
@@ -1423,28 +1424,29 @@ class NightMode {
         }
 
         this.canvasCtx.drawImage(ODR.spriteScene,
-          starSourceX, star.sourceY, starSize, starSize,
+          NightMode.spriteStarX, star.sourceY,
+          NightMode.spriteStarSize, NightMode.spriteStarSize,
           Math.ceil(star.minX), star.minY,
-          NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE);
+          NightMode.spriteStarSize, NightMode.spriteStarSize);
       }
     }
 
     this.canvasCtx.restore();
   }
 
-  generateMoonCache() {
+  generateMoonCache(){
     let frameWidth = 2 * NightMode.config.WIDTH + 2 * NightMode.config.MOON_BLUR;
     let frameHeight = NightMode.config.HEIGHT + 2 * NightMode.config.MOON_BLUR;
     this.moonCanvas = document.createElement('canvas');
-    this.moonCanvas.width = 16 * frameWidth;
-    this.moonCanvas.height = frameHeight
+    this.moonCanvas.width = 16*frameWidth;
+    this.moonCanvas.height = 2*frameHeight;
     let ctx = this.moonCanvas.getContext('2d');
     ctx.filter = 'sepia(1)';
 
-    for (let i = 0; i < 15; i++) {
+    for( let i = 0; i < 15; i++ ){
       if (i >= 4 && i < 11 ) {
         ctx.drawImage(ODR.spriteScene,
-          this.spritePos.x + 3 * NightMode.config.WIDTH, this.spritePos.y,
+          NightMode.spriteX + 3 * NightMode.config.WIDTH, NightMode.spriteY,
           NightMode.config.WIDTH * 2, NightMode.config.HEIGHT,
           i * frameWidth + NightMode.config.MOON_BLUR, NightMode.config.MOON_BLUR,
           NightMode.config.WIDTH * 2, NightMode.config.HEIGHT);
@@ -1452,7 +1454,7 @@ class NightMode {
 
       if (i < 4) {
         ctx.drawImage(ODR.spriteScene,
-          this.spritePos.x + i * NightMode.config.WIDTH, this.spritePos.y,
+          NightMode.spriteX + i * NightMode.config.WIDTH, NightMode.spriteY,
           NightMode.config.WIDTH, NightMode.config.HEIGHT,
           NightMode.config.MOON_BLUR + i * frameWidth, NightMode.config.MOON_BLUR,
           NightMode.config.WIDTH, NightMode.config.HEIGHT);
@@ -1460,7 +1462,7 @@ class NightMode {
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
         ctx.drawImage(ODR.spriteScene,
-          this.spritePos.x + (i+1) * NightMode.config.WIDTH, this.spritePos.y,
+          NightMode.spriteX + (i+1) * NightMode.config.WIDTH, NightMode.spriteY,
           NightMode.config.WIDTH, NightMode.config.HEIGHT,
           NightMode.config.MOON_BLUR + i * frameWidth + NightMode.config.WIDTH, NightMode.config.MOON_BLUR,
           NightMode.config.WIDTH, NightMode.config.HEIGHT);
@@ -1469,14 +1471,14 @@ class NightMode {
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
         ctx.drawImage(ODR.spriteScene,
-          this.spritePos.x + (i-8) * NightMode.config.WIDTH, this.spritePos.y,
+          NightMode.spriteX + (i-8) * NightMode.config.WIDTH, NightMode.spriteY,
           NightMode.config.WIDTH, NightMode.config.HEIGHT,
           NightMode.config.MOON_BLUR + i * frameWidth, NightMode.config.MOON_BLUR,
           NightMode.config.WIDTH, NightMode.config.HEIGHT);
         ctx.restore();
       } else {
         ctx.drawImage(ODR.spriteScene,
-          this.spritePos.x + (i-7) * NightMode.config.WIDTH, this.spritePos.y,
+          NightMode.spriteX + (i-7) * NightMode.config.WIDTH, NightMode.spriteY,
           NightMode.config.WIDTH, NightMode.config.HEIGHT,
           NightMode.config.MOON_BLUR + i * frameWidth + NightMode.config.WIDTH, NightMode.config.MOON_BLUR,
           NightMode.config.WIDTH, NightMode.config.HEIGHT);
@@ -1484,28 +1486,33 @@ class NightMode {
     }
 
     ctx.globalAlpha = 1.0;
+    ctx.filter = 'grayscale(100%)';
+    ctx.drawImage( this.moonCanvas, 0, frameHeight );
+
     ctx.filter = 'sepia(1) blur('+NightMode.config.MOON_BLUR/8+'px)';
-    ctx.drawImage(this.moonCanvas,0,0);
+    ctx.drawImage( this.moonCanvas, 0, 0, 16*frameWidth, frameHeight,
+      0, 0, 16*frameWidth, frameHeight );
 
     ctx.filter = 'sepia(1) blur('+NightMode.config.MOON_BLUR/2+'px)';
-    ctx.drawImage(this.moonCanvas,0,0);
+    ctx.drawImage( this.moonCanvas, 0, 0, 16*frameWidth, frameHeight,
+      0, 0, 16*frameWidth, frameHeight );
 
     ctx.globalAlpha = 1;
     ctx.filter = 'sepia(1) blur(2px)';
-    ctx.drawImage(this.moonCanvas,0,0);
+    ctx.drawImage( this.moonCanvas, 0, 0, 16*frameWidth, frameHeight,
+      0, 0, 16*frameWidth, frameHeight );
 
   }
 
   placeStars() {
-    var segmentSize = Math.round(this.containerWidth /
-      NightMode.config.NUM_STARS);
+    var segmentSize = Math.round( DEFAULT_WIDTH/NightMode.config.NUM_STARS);
 
     for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
       this.stars[i] = {
         minX: getRandomNum(segmentSize * i, segmentSize * (i + 1)),
         minY: getRandomNum(0, NightMode.config.STAR_MAX_Y),
         opacity: 0.5 + 0.5 * Math.random(),
-        sourceY: OnDaRun.spriteDefinition.STAR.y + NightMode.config.STAR_SIZE * (i%4),
+        sourceY: NightMode.spriteStarY + NightMode.spriteStarSize * (i%4),
         //hue: Math.floor(Math.random() * 360),
       };
 
@@ -1521,14 +1528,31 @@ class NightMode {
   }
 }
 
+NightMode.spriteX = 954;
+NightMode.spriteY = 0;
+NightMode.spriteStarX = 1114;
+NightMode.spriteStarY = 0;
+NightMode.spriteStarSize = 10;
+
+NightMode.config = {
+  FADE_SPEED: 0.035,
+
+  MOON_BLUR: 10,
+  MOON_SPEED: 0.05,
+  WIDTH: 20,
+  HEIGHT: 40,
+
+  NUM_STARS: 15,
+  STAR_SPEED: 0.07,
+  STAR_MAX_Y: DEFAULT_HEIGHT - 50,
+};
+
+NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
+
 class HorizonLine {
-  constructor( canvas, spritePos ) {
-    this.spritePos = spritePos;
+  constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
-    this.dimensions = HorizonLine.dimensions;
-    this.sourceXPos = [this.spritePos.x, this.spritePos.x +
-      this.dimensions.WIDTH];
     this.minX = 0;
     this.minY = HorizonLine.dimensions.YPOS;
     this.bumpThreshold = 0.5;
@@ -1602,7 +1626,7 @@ class HorizonLine {
             this.grassMapOffset.push(getRandomNum(0,4));
             let gr = false;
 
-            sum = ODR.config.GROUND_WIDTH/2;
+            sum = HorizonLine.dimensions.GROUND_WIDTH/2;
             do {
               n = gr ? getRandomNum(3,5) : getRandomNum(0,1);
               gr = !gr;
@@ -1613,7 +1637,7 @@ class HorizonLine {
               l.push(n);
             } while (sum > 0);
 
-            sum = ODR.config.GROUND_WIDTH/2;
+            sum = HorizonLine.dimensions.GROUND_WIDTH/2;
             do {
               n = gr ? getRandomNum(2,8) : getRandomNum(1,2);
               gr = !gr;
@@ -1690,7 +1714,7 @@ class HorizonLine {
     this.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
 
     this.canvasCtx.drawImage( this.groundCanvas,
-        0, 3 * (~~this.minX + 1800 ) % ODR.config.GROUND_WIDTH * 25 + 2,
+        0, 3 * (~~this.minX + 1800 ) % HorizonLine.dimensions.GROUND_WIDTH * 25 + 2,
           DEFAULT_WIDTH, 22,
         0, DEFAULT_HEIGHT - 22,
           DEFAULT_WIDTH, 22 );
@@ -1741,8 +1765,8 @@ class Scenery {
  */
   init(){
 
-    this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
-    this.nightMode = new NightMode(this.canvas, this.spritePos.MOON, this.dimensions.WIDTH);
+    this.horizonLine = new HorizonLine( this.canvas );
+    this.nightMode = new NightMode( this.canvas );
 
     // We will only initialize clouds.
     // Every 2-layer will be lightly tinted with an atmosphere (sky).
@@ -2001,10 +2025,9 @@ Scenery.config = {
 };
 
 class A8e {
-  constructor (canvas, spritePos) {
+  constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
-    this.spritePos = spritePos;
 
     this.minX = 0;
     this.minY = 0;
@@ -2019,8 +2042,7 @@ class A8e {
     this.animStartTime = 0;
     this.timer = 0;
     this.msPerFrame = 1000 / FPS;
-    this.config = A8e.config;
-    this.config.GRAVITY_FACTOR = 0.0000005 * A8e.config.GRAVITY * ODR.config.SCALE_FACTOR;
+    A8e.config = A8e.config;
     // Current status.
     //this.status = A8e.status.WAITING;
 
@@ -6570,7 +6592,6 @@ OnDaRun.Configurations = {
   CRASH_HEIGHT: 32,
   GAME_MODE: 'GAME_A',
   GAMEOVER_CLEAR_TIME: 1500,
-  GROUND_WIDTH: 100,
   INVERT_FADE_DURATION: 12000,
   INVERT_DISTANCE: 700,
   SKY_SHADING_DURATION: 2000,
@@ -6585,7 +6606,6 @@ OnDaRun.Configurations = {
   MIN_JUMP_HEIGHT: 35,
   MOBILE_SPEED_COEFFICIENT: 1.2,
   RESOURCE_TEMPLATE_ID: 'audio-resources',
-  SCALE_FACTOR: 210,
   SPEED: 6,
   SHOW_COLLISION: false,
   GRAPHICS_MODE: 0,
@@ -6715,15 +6735,10 @@ OnDaRun.events = {
 };
 
 OnDaRun.spriteDefinition = {
-  CLOUD: { x: 176, y: [1,20,46,61,76,95] },
   CRASH: { x: 37, y: 40},
   DUST: { x: 776, y: 2 },
-  HORIZON: { x: 2, y: 104 },
-  MOON: { x: 954, y: 0 },
-  NATHERINE: { x: 0, y: 0 },
   RESTART: { x: 0, y: 40 },
   TEXT_SPRITE: { x: 0, y: 0 },
-  STAR: { x: 1114, y: 0 }
 };
 
 OnDaRun.sounds = {
