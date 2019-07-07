@@ -5821,14 +5821,32 @@ class OnDaRun extends LitElement {
         mode: mode,
       });
     });
-    entries.push({ title:'EXIT', exit: true })
+    if( this.config.GAME_MODE_REPLAY ){
+      entries.push({
+        title:'REPLAY LAST GAME',
+        disabled: ODR.sequencer.totalRecall.length < 2
+      });
+    }
+    entries.push({ title:'EXIT', exit: true });
 
     return new Menu( this.canvas, {
       title: 'games',
       entries: entries,
       enter: ( entryIndex, choice ) => {
-        if( !choice.exit ) {
+        if( choice.mode ){
           this.setGameMode(choice.mode);
+        } else if ( !choice.exit ){
+          let sequencer = ODR.sequencer;
+
+          // For setting after callng setGameMode() as both props will be gone.
+          let totalRecall = sequencer.totalRecall;
+          let dejavus = totalRecall.slice();
+
+          this.setGameMode( dejavus.shift());
+
+          // For another replay
+          sequencer.totalRecall = totalRecall;
+          sequencer.dejavus = dejavus;
         }
 
         return null;
@@ -5934,6 +5952,30 @@ class OnDaRun extends LitElement {
       }, this.consoleButtons.CONSOLE_D );
 
     return mainMenu;
+  }
+
+  createResetMenu(){
+
+    this.music.stop();
+
+    return new Menu( this.canvas, {
+      title: 'WHOA DEJA VU?',
+      entries: [
+        { title:'YES', disabled:this.config.GAME_MODE_REPLAY },
+        { title:'NO', disabled:!this.config.GAME_MODE_REPLAY},
+        { title:'CANCEL', exit:true }
+      ],
+      currentIndex: 1,
+      enter: ( idx, confirmation ) => {
+        if( !confirmation.exit ){
+          this.config.GAME_MODE_REPLAY = [ true, false ][ idx ];
+          this.setGameMode( this.gameMode );
+          this.cc.append("REPLAY MODE ENABLED", 2000);
+          this.cc.append("IN THE GAME MENU.", 2000,2000);
+        }
+        return null;
+      },
+    }, this.consoleButtons.CONSOLE_RESET );
   }
 
   setGraphicsMode( mode, notify = true){
@@ -6440,11 +6482,9 @@ class OnDaRun extends LitElement {
             break;
 
           case this.consoleButtons.CONSOLE_RESET:
-              this.scenery.recall = true;
-              console.log('Recalling');
-              this.setGameMode( this.gameMode );
-              this.setMenu( null );
-              this.scenery.recall = true;
+              if( !this.closeMenuForButton( button ))
+                this.setMenu( this.createResetMenu());
+              break;
             break;
 
           case this.consoleButtons.CONSOLE_N7E:{
@@ -6936,6 +6976,7 @@ OnDaRun.Configurations = {
   CRASH_WIDTH: 32,
   CRASH_HEIGHT: 32,
   GAME_MODE: 'GAME_A',
+  GAME_MODE_REPLAY: false,
   GAMEOVER_CLEAR_TIME: 1500,
   INVERT_FADE_DURATION: 12000,
   INVERT_DISTANCE: 700,
