@@ -2546,7 +2546,8 @@ class Scoreboard {
   }
 
   reset(){
-    console.log('reset')
+    this.nextScoreAchievement = 100;
+    this.flashAchievementTimer = 0;
     this._score = 0;
     this.text = null;
     this.opacity = 0;
@@ -2555,7 +2556,6 @@ class Scoreboard {
     this._minTang = null;
     this._maxTang = null;
     this.replay = false;
-    this.nextScoreAchievement = 200;
   }
 
   set replay( willReplay ){
@@ -2600,15 +2600,26 @@ class Scoreboard {
   }
 
   set score( newScore ){
+    this._score = newScore;
+
+    if( this.flashAchievementTimer != 0 ){
+      return;
+    }
+
     newScore = newScore || 0;
 
-    let playAchievementSound = false;
+    this._playAchievement = 0;
     while( newScore > this.nextScoreAchievement ){
-      this.nextScoreAchievement += Scoreboard.achievementScore;
-      if( !playAchievementSound ){
-        playAchievementSound = true;
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      if( !this._playAchievement ){
+        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10, false, 0, 0.8 );
+        this.flashAchievementTimer = 2300;
       }
+      this._playAchievement = this.nextScoreAchievement;
+      this.nextScoreAchievement += Scoreboard.achievementScore;
+    }
+
+    if( this._playAchievement != 0 ){
+      newScore = this._playAchievement;
     }
 
     if( !this.text ){
@@ -2617,16 +2628,34 @@ class Scoreboard {
     }
 
     for( let i = this.text.cache.length - 3, j = 0; j < 5; i-=3, j++ ){
-      if( i < 2 ) break;
-
       this.text.cache[ i ] = this.glyphs[ newScore % 10 ];
-      newScore = Math.floor(newScore / 10);
+      newScore = Math.floor( newScore /10 );
     }
 
   }
 
   forward( deltaTime ){
     if( !this.text ) return;
+
+    if( this.flashAchievementTimer ){
+      if( this.flashAchievementTimer % 800 > 300 ){
+        let flashingScore = this._playAchievement;
+        for( let i = this.text.cache.length - 3, j = 0; j < 5; i-=3, j++ ){
+          this.text.cache[ i ] = this.glyphs[ flashingScore % 10 ];
+          flashingScore = Math.floor( flashingScore /10 );
+        }
+      } else {
+        for( let i = this.text.cache.length - 3, j = 0; j < 5; i-=3, j++ ){
+          this.text.cache[ i ] = 588;
+        }
+      }
+      this.flashAchievementTimer = Math.max( 0, this.flashAchievementTimer -deltaTime );
+
+      // Set back to the actual score.
+      if( this.flashAchievementTimer == 0 ){
+        this.score = this._score;
+      }
+    }
 
     if( this.existence != this.opacity ){
 
