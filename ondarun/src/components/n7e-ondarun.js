@@ -2647,14 +2647,16 @@ class Scoreboard {
 }
 
 class Text {
-  constructor( maxLength = 20, alignment = -1, text ){
+  constructor( maxLength = 20, alignment = -1, string, useCache = false ){
     this.glyphs = null;
-    this.alignment = alignment;
-    this.maxLength = maxLength;
+    this._alignment = alignment;
+    this.maxLength = ~~maxLength;
     this.minLength = 0;
     this.numberOfLines = 0;
-    if (text) {
-      this.setText(text);
+    this.alignment = alignment;
+    this.cache = useCache ? [] : null;
+    if( string ){
+      this.setString( string );
     }
   }
 
@@ -2703,11 +2705,11 @@ class Text {
   }
 
   //TODO Consider a rewrite to use word-breaker
-  setText( messageStr ){
-    return this.setString( Text.convertString( messageStr ));
+  setString( messageStr ){
+    return this.setConvertedString( Text.convertString( messageStr ));
   }
 
-  setString( messageStr ){
+  setConvertedString( messageStr ){
 
     if( !messageStr ){
       this.glyphs = null;
@@ -2818,39 +2820,87 @@ class Text {
         default: return -code;
       }
     });
+    if( this.cache ) this.cache.splice(0);
 
     return this;
   }
 
-  draw( canvasCtx, offsetX, offsetY, glyphW = 14, glyphH = 20, image = ODR.spriteGUI ) {
+  _drawCache( canvasCtx, offsetX, offsetY, image ){
+    let gw = this.cache[ 0 ];
+    let gh = this.cache[ 1 ];
+
+    for( let i = 2; i < this.cache.length; i+=3 ){
+      if( -10 == this.cache[ i ] ) continue;
+      let y = this.cache[ i + 2 ] + offsetY;
+      if( y + gh < 0 ) continue;
+      if( y > DEFAULT_HEIGHT ) break;
+
+      canvasCtx.drawImage( image,
+        this.cache[ i ], 0, 14, 16,
+        this.cache[ i + 1 ] + offsetX, y, 14, 16 );
+    }
+  }
+
+  draw( canvasCtx, offsetX, offsetY, glyphW = 14, glyphH = 20, image = ODR.spriteGUI ){
+    offsetX = ~~offsetX;
+    offsetY = ~~offsetY;
+
+    if( this.cache ){
+      if( this.cache.length ){
+        if( this.cache[ 0 ] != glyphW || this.cache[ 1 ] != glyphH ){
+          // Cache is broken, convert back to original and rebuild the cache.
+          this.glyphs = this.cache.filter(( g, index ) => index >= 3 && index%3 == 0 );
+          this.cache.splice(0);
+        } else {
+          this._drawCache( canvasCtx, offsetX, offsetY, image);
+          this.glyphs = null;
+          return;
+        }
+      } else {
+        this.cache.push( glyphW, glyphH );
+      }
+    }
+
     if( !this.glyphs ) return;
 
-    switch (this.alignment) {
+    let paraX = 0;
+    switch( this.alignment ){
       case 0:
+        paraX = glyphW*( this.maxLength - this.minLength )/2;
       case 1:
-        offsetX += glyphW*( this.maxLength - this.minLength )/2;
-
-        for (let i = 0, cur = 0, l = 0; i <= this.glyphs.length; i++) {
-          if (i != this.glyphs.length-1 && this.glyphs[i] != -10 ) {
+          //if(this.tagggg) console.log(this.glyphs.length)
+        for( let i = 0, cur = 0, l = 0; i <= this.glyphs.length; i++ ){
+          if (i != this.glyphs.length && this.glyphs[i] != -10 ){
             continue;
           }
 
           let len = i - cur;
           let lineStart = cur;
           let lineOffset = this.alignment
-            ? this.minLength - len
-            : (this.minLength - len) >>> 1;
-          while( cur < this.glyphs.length && cur <= i ) {
+            ? this.maxLength - len
+            : (this.minLength - len >>> 1);
+          while( cur < this.glyphs.length && cur <= i ){
             let g = this.glyphs[cur];
             if( g == -10 ) {
+              if( this.cache ){
+                this.cache.push( g, 0, 0 );
+              }
               cur++;
               break;
             }
-            canvasCtx.drawImage(image,
-              g, 0, 14, 16,
-              ~~offsetX + (cur - lineStart + lineOffset) * glyphW,
-              offsetY + glyphH * l,
-                14, 16);
+
+            let x = paraX + ( cur - lineStart + lineOffset )*glyphW;
+            let y = l*glyphH;
+
+            if( canvasCtx)
+              canvasCtx.drawImage( image,
+                g, 0, 14, 16,
+                x + offsetX, y + offsetY, 14, 16 );
+
+            if( this.cache ){
+              this.cache.push( g, x, y );
+            }
+
             cur++;
           }
           l++;
@@ -2859,27 +2909,37 @@ class Text {
 
       case -1:
       default:
-        for (let i = 0, cur = 0, l = 0; i < this.glyphs.length; i++) {
+        for( let i = 0, cur = 0, l = 0; i < this.glyphs.length; i++ ){
           let g = this.glyphs[i];
-          if (g == -10) {
+          if( g == -10 ){
+            if( this.cache ){
+              this.cache.push( g, 0, 0 );
+            }
             cur = 0;
             l++;
             continue;
           }
-          canvasCtx.drawImage(image,
-            g, 0, 14, 16,
-            ~~offsetX + cur * glyphW,
-            offsetY + glyphH * l,
-              14, 16);
+
+          let x = cur*glyphW;
+          let y = l*glyphH;
+
+          if( canvasCtx)
+            canvasCtx.drawImage( image,
+              g, 0, 14, 16,
+              x + offsetX, y + offsetY, 14, 16 );
+          if( this.cache ){
+            this.cache.push( g, x, y );
+          }
+
           cur++;
         }
     }
 
   }
 
-  drawText(messageStr, canvasCtx, offsetX, offsetY, glyphW, glyphH, image) {
-    this.setText(messageStr);
-    this.draw(canvasCtx, offsetX, offsetY, glyphW, glyphH, image);
+  drawString( messageStr, canvasCtx, offsetX, offsetY, glyphW, glyphH, image) {
+    this.setString( messageStr );
+    this.draw( canvasCtx, offsetX, offsetY, glyphW, glyphH, image );
   }
 }
 Text.generateSymbolMap();
@@ -2931,7 +2991,7 @@ class Terminal {
   flush(){
     this.timer = 0;
     this.messages = [];
-    this.text.setText('');
+    this.text.setString('');
     this.endTime = Infinity;
   }
 
@@ -2989,12 +3049,12 @@ class Terminal {
 
       if( msg.endTime > this.timer ){
         this.endTime = msg.endTime;
-        this.text.setText( msg.string );
+        this.text.setString( msg.string );
       }
     }
 
     if( this.endTime < this.timer ){
-      this.text.setText('');
+      this.text.setString('');
       this.endTime = Infinity;
     }
 
@@ -3013,7 +3073,7 @@ class Notifier {
 
   notify( messageStr, timer, opt_lineWidth ){
     this.timer = timer || 2000;
-    this.text.setText( messageStr );
+    this.text.setString( messageStr );
   }
 
   forward( deltaTime ) {
@@ -3285,19 +3345,19 @@ class TitlePanel extends Panel {
     this.dataReadyTime = 0;
 
     this.story = [
-      new Text(600/14 - 3,-1,
+      new Text( 600/14 - 3,-1,
 `Friends, allow me to tell you a story, A tale of a young maiden named Amandarine, who was born in a small village called Mandarina.
 
 In the unfortunate beginning, Amandarine was unhealthy from birth. Her family had been trying all kinds of treatments, but her condition didn't improve. She had to endure suffering from the cruel birth defect throughout her childhood. The doctor had warned that her condition would be life-threatening by anytime.
 
-But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...` ),
+But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...`, true ),
 
-      new Text(600/14 - 3,-1,
+      new Text( 600/14 - 3,-1,
 `That morning, Amandarine was having her custard bread. She then heard the sound of someone playing the ukulele while singing a song she had never heard before. She looked out the window and saw a man, a street performer, maybe; who was walking pass by until suddenly stumbled upon the rock and fell abjectly.
 
-She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...` ),
+She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...`, true ),
 
-      new Text(600/14 - 3,-1,
+      new Text( 600/14 - 3,-1,
 `Warm sunlight was teasing the cold breeze that was blowing gently. The birds chirping in the morning reminded her that this man must definitely be hungry. She, therefore, gave him the remaining bread. He smiled with gratitude and started eating the bread happily.
 
 Once finished, that was very soon after, he looked at Amandarine and said that telling from her facial skin and eye reflections, he could notice many signs of her dreadful health in which she nodded affirmatively.
@@ -3306,16 +3366,16 @@ Once finished, that was very soon after, he looked at Amandarine and said that t
 
 After learning the pulses for a few breathes, Lu Ji told her that her disease, though very serious, had a cure.
 
-That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.` ),
+That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.`, true ),
 
-      new Text(600/14 - 3,-1,
+      new Text( 600/14 - 3,-1,
 `Saying that he must have fled his hometown, for he had stolen this very tangerine from a noble. The dried brownish fruit was called "The 8th Heaven Supremacy"; it could cure her illness, he explained and asked her to accept it.
 
 He said that she should boil it in ginger juice to create one adequate medicine for living longer but for her to be fully recovered its seeds must be planted in eight continents and she should have kept eating each kind of them afterwards until cured.
 
-Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.` ),
+Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.`, true ),
 
-      new Text(600/14 - 3,-1,
+      new Text( 600/14 - 3,-1,
 `♬ Natherine ♬
 she is all they claim
 With her eyes of night
@@ -3331,9 +3391,9 @@ across the Argentine
 Yes, she has them all on da run
 And their hearts belong to just one
 Their hearts belong to
-♬ Natherine ♬` ),
+♬ Natherine ♬`, true ),
 
-      new Text(600/14 - 3,0,
+      new Text( 600/14 - 3,0,
 `Credits
 
 -Music-
@@ -3376,7 +3436,7 @@ You can also support this project by making donations to
 the Thai Redcross Society #redcross
 
 `
-        ),
+        , true ),
     ];
 
     this.imgLoadCounter = 0;
@@ -3385,16 +3445,18 @@ the Thai Redcross Society #redcross
     this.msPerLine = 2250;
 
     let clock = 3000;
+
     this.photoTiming = [
-      [0,0, 30,33,1,215,411,1.5],
-      [0,0, 27,355,1,73,151,1.2],
-      [0,0, 29,26,1,26,358,1.2],
-      [0,0, 23,350,1,27,24,1],
-      [0,0, 62,244,1,12,160,0.5],
-      [0,0, 100,237,1,100,237,1.0],
+    // beginTime, endTime, beginX,beginY, beginSize, endX,endY, endSize
+      [ 0,0, 30,33, 1, 215,411, 1.5 ],
+      [ 0,0, 27,355, 1, 73,151, 1.2 ],
+      [ 0,0, 29,26, 1, 26,358, 1.2 ],
+      [ 0,0, 23,350, 1, 27,24, 1 ],
+      [ 0,0, 62,244, 1, 12,160, 0.5 ],
+      [ 0,0, 100,237, 1, 100,237, 1.0 ],
     ];
     for( let i = 0; i < this.story.length; i++) {
-      //this.story[i] = new Text(600/14 - 3,-1).setText(this.story[i]);
+      //this.story[i] = new Text(600/14 - 3,-1).setString(this.story[i]);
       this.photoTiming[i][0] = clock;
       clock += 20000 + this.story[i].numberOfLines * this.msPerLine;
       this.photoTiming[i][1] = clock;
@@ -3519,12 +3581,12 @@ the Thai Redcross Society #redcross
 
     let total = (ODR.music.songs['offline-intro-music'].progress + ODR.music.songs['offline-play-music'].progress) * 50;
     if (total < 100) {
-      new Text(600/14,0).drawText("loading data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
+      new Text(600/14,0).drawString("loading data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
     } else {
       if (this.timer < 15000) {
-        new Text(600/14,0).drawText("Amandarine Frontier: On Da Run 1.0 RC5", this.canvasCtx,0,180-Math.min(0,runout));
+        new Text(600/14,0).drawString("Amandarine Frontier: On Da Run 1.0", this.canvasCtx,0,180-Math.min(0,runout));
       } else {
-        new Text(600/14,0).drawText("press a button to continue.", this.canvasCtx,0,180-Math.min(0,runout));
+        new Text(600/14,0).drawString("press a button to continue.", this.canvasCtx,0,180-Math.min(0,runout));
       }
 
       if (!this.dataReadyTime) {
@@ -3591,7 +3653,7 @@ class WaitingPanel extends Panel {
     super( canvas );
     this.progressingCallback = progressingCallback;
     this.timer = 0;
-    this.bottomText = new Text(600/14,0).setText("signing in..please wait");
+    this.bottomText = new Text(600/14,0).setString("signing in..please wait");
   }
 
   forward( deltaTime ) {
@@ -3617,7 +3679,7 @@ class Menu extends Panel {
     this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
     this.xOffset = 0;
     this.yOffset = 0;
-    this.bottomText = new Text(600/14,0).setText('press both #slide+#jump to select');
+    this.bottomText = new Text(600/14,0).setString('press both #slide+#jump to select');
     this.text = new Text(100);
     this.timer = 0;
     this.muted = muted;
@@ -3738,7 +3800,7 @@ class Menu extends Panel {
       let tt = ODR.gameModeTotalScore;
       if( tt ){
         let totalScore = tt.toString() + ' #trophy' ;
-        this.text.setText( totalScore ).draw(
+        this.text.setString( totalScore ).draw(
           this.canvasCtx,
           590 - 14 * (totalScore.length - 6), 120);
 
@@ -3747,14 +3809,14 @@ class Menu extends Panel {
       if( ODR.totalTangerines ){
         let maxPerDay = Math.max( 1, ~~(tt/100));
         let totalTangerines = ODR.totalTangerines + `[${ODR.dailyTangerines}/${maxPerDay}]` + ' #tangerine';
-        this.text.setText( totalTangerines ).draw(
+        this.text.setString( totalTangerines ).draw(
           this.canvasCtx,
           590 - 14 * (totalTangerines.length - 9), 140);
       }
 
 
       if( N7e.user.nickname ) {
-          this.text.setText( N7e.user.nickname + {
+          this.text.setString( N7e.user.nickname + {
               ['google.com']:' #google',
               ['facebook.com']:' #facebook',
               ['twitter.com']:' #twitter',
@@ -3781,7 +3843,7 @@ class Menu extends Panel {
       this.canvasCtx.globalAlpha = (entry.disabled ? 0.5 : 1)*Math.max(0.1,(4 - xxx)/4);
       if (entry.hasOwnProperty('value')) title += '.'.repeat(32-title.length-(entry.value+'').length)+'[ '+entry.value+' ]';
 
-      this.text.setText((i == this.model.currentIndex ? (entry.exit ? '◅ ' : ' ▻'):'  ') + title).draw(
+      this.text.setString((i == this.model.currentIndex ? (entry.exit ? '◅ ' : ' ▻'):'  ') + title).draw(
         this.canvasCtx,
         this.xOffset + 20 + 2 * 3 * Math.round(Math.sqrt(100*xxx) / 3),
         this.yOffset + 90 + 5 * Math.round(4 * (i-this.displayEntry)));
@@ -3798,7 +3860,7 @@ class Menu extends Panel {
     }
 
     if (this.model.title){
-      new Text(600/14,0).drawText(this.model.title,this.canvasCtx,0,10 + depth * 20);
+      new Text(600/14,0).drawString(this.model.title,this.canvasCtx,0,10 + depth * 20);
     }
 
     if( this.bottomText ){
@@ -3816,7 +3878,7 @@ class TextEditor extends Panel {
     this.xOffset = 0;
     this.yOffset = 0;
     this.submenu = null;
-    this.bottomText = new Text(600/14,0).setText('press both #slide+#jump to select');
+    this.bottomText = new Text(600/14,0).setString('press both #slide+#jump to select');
 
     this.text = text;
     this.curX = 0;
@@ -6249,7 +6311,7 @@ class OnDaRun extends LitElement {
         this.paintCounter = 0;
       }
 
-      new Text(600/14,1).setText(
+      new Text(600/14, 0).setString(
         'S:'+this.currentSpeed.toFixed(3)
       +' T:'+(this.runTime/1000).toFixed(1)
       +' FPS:'+this.paintRound).draw(this.canvasCtx,-10,200-16);
