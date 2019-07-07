@@ -2619,6 +2619,11 @@ class Scoreboard {
     }
 
     if( this._playAchievement != 0 ){
+      if( this._playAchievement > ODR.achievements[ 0 ]){
+        ODR.achievements.shift();
+        ODR.notifier.notify( ODR.achievements.shift(), 6000 );
+      }
+
       newScore = this._playAchievement;
     }
 
@@ -4032,6 +4037,10 @@ class GameOver extends Panel {
     this.timer = 0;
     this.passthrough = true;
     this.willRestart = false;
+
+    if( ODR.gameRecord.hiscore < ODR.score)
+      this.clearTime = ODR.config.GAMEOVER_CLEAR_TIME + 4000;
+    else this.clearTime = ODR.config.GAMEOVER_CLEAR_TIME;
   }
 
   handleEvent( e ){
@@ -4040,7 +4049,7 @@ class GameOver extends Panel {
     }
 
     if( e.type == OnDaRun.events.CONSOLEUP
-      && this.timer > ODR.config.GAMEOVER_CLEAR_TIME
+      && this.timer > this.clearTime
       && 0 == this.buttonUpTime[ 0 ]
       && 0 == this.buttonUpTime[ 1 ]){
 
