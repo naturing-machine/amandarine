@@ -343,16 +343,16 @@ class Entity {
  */
   muster( interval, currentSpeed, follower ){
 
-    //Don't think it needs to consider the acceration.
+    //Don't think it needs to consider the acceleration.
     //May also consider by the length of the interval.
 
     //duration is the time taken for this to travel to A8e.
-    let duration = 1000/FPS*( this.maxX - 25 )
+    let duration = 1000/FPS * ( this.maxX - 25 )
       /( currentSpeed - ( this.speedFactor*currentSpeed ));
 
     follower.minX = 25
       + ( duration + interval )
-        *( currentSpeed - ( follower.speedFactor*currentSpeed ))
+        *( currentSpeed - ( follower.speedFactor * currentSpeed ))
         *FPS/1000;
 
     return follower;
@@ -402,11 +402,8 @@ class Tangerine extends Entity {
       this.collected = true;
       this.collectedY = this.minY;
       this.collectedTimer = 0;
-
-      ODR.showGameModeInfo( 500 );
       ODR.dailyTangerines++;
-      ODR.showGameModeInfo( 500, 500 );
-
+      ODR.gameRecord.tangerines++;
       Tangerine.increaseTangerine( 1 );
     }
     return null;
@@ -2268,30 +2265,32 @@ class A8e {
           }
         }
       } break;
-      case A8e.status.CRASHED: {
-        if (ODR.config.GRAPHICS_DISPLAY_INFO == 'YES') {
-          this.canvasCtx.save();
-          this.canvasCtx.strokeStyle = "orange";
-          action.boxes.A.forEach( b => this.canvasCtx.strokeRect(...Object.values(b)));
-          this.canvasCtx.strokeStyle = "lime";
-          action.boxes.B.forEach( b => this.canvasCtx.strokeRect(...Object.values(b)));
-          this.canvasCtx.fillStyle = this.canvasCtx.strokeStyle = "red";
-          this.canvasCtx.fillRect(...Object.values(action.boxes.C.copy.grow(1)));
-          this.canvasCtx.restore();
+      case A8e.status.CEASING: {
+        if( action.crash ){
+          if( ODR.config.GRAPHICS_DISPLAY_INFO == 'YES') {
+            this.canvasCtx.save();
+            this.canvasCtx.strokeStyle = "orange";
+            action.crash.A.forEach( b => this.canvasCtx.strokeRect(...Object.values(b)));
+            this.canvasCtx.strokeStyle = "lime";
+            action.crash.B.forEach( b => this.canvasCtx.strokeRect(...Object.values(b)));
+            this.canvasCtx.fillStyle = this.canvasCtx.strokeStyle = "red";
+            this.canvasCtx.fillRect(...Object.values(action.crash.C.copy.grow(1)));
+            this.canvasCtx.restore();
+          }
+
+          let timer = action.halfTime - action.timer;
+
+          action.currentFrame = action.dir == 1 ? 2 : 0;
+          if (action.timer > 25) action.currentFrame++;
+
+          this.minY = action.crashedMinY
+            + ( A8e.config.GRAVITY_FACTOR/2 * timer * timer
+                - action.top * A8e.config.SCALE_FACTOR );
+          this.minX += deltaTime/10 * action.dir;
+
+          // Drag the scene slower on crashing.
+          ODR.currentSpeed = Math.max(0, action.lagging * (3000-action.timer)/3000);
         }
-
-        let timer = action.halfTime - action.timer;
-
-        action.currentFrame = action.dir == 1 ? 2 : 0;
-        if (action.timer > 25) action.currentFrame++;
-
-        this.minY = action.crashedMinY
-          + ( A8e.config.GRAVITY_FACTOR/2 * timer * timer
-              - action.top * A8e.config.SCALE_FACTOR );
-        this.minX += deltaTime/10 * action.dir;
-
-        // Drag the scene slower on crashing.
-        ODR.setSpeed(Math.max(0, action.lagging * (3000-action.timer)/3000));
       } break;
       default:;
     }
@@ -2481,7 +2480,7 @@ A8e.collisionBoxes = {
 };
 
 A8e.status = {
-  CRASHED: 'CRASHED',
+  CEASING: 'CEASING',
   SLIDING: 'SLIDING',
   JUMPING: 'JUMPING',
   RUNNING: 'RUNNING',
@@ -2511,7 +2510,7 @@ A8e.animFrames = {
     frames: [0, 40, 80, 120, 120, 160, 200, 240, 280, 280],
     msPerFrame: 1000 / 28
   },
-  CRASHED: {
+  CEASING: {
     frames: [0,40,80,120],
     msPerFrame: Infinity
   },
@@ -3825,7 +3824,7 @@ class GameOver extends Panel {
       && 0 == this.buttonUpTime[ 1 ]){
 
       this.willRestart = true;
-      ODR.restart();
+      ODR.gameState = 1;
 
     }
     return true;
@@ -3855,12 +3854,99 @@ class GameOver extends Panel {
     // OGG
     this.canvasCtx.save();
     this.canvasCtx.globalAlpha = dist;
-    this.canvasCtx.drawImage(ODR.spriteGUI,
-        0, 150, 86, 26,
-        257, 58 + 20*(1-dist),
-        86, 26 * dist);
+
+
+    let bt = [6,4,8,5,9,7,11];
+    let bw = [15,15,15,15,15,6,6];
+    for( let b = 0, x = 0; b < 7; x+=bw[b], b++ ){
+      let t = this.timer - bt[b]**2;
+      let d = Math.max(0, 100 - t/10);
+      let a = t%300 / 300;
+      let y = Math.min(50, 50 - d*a + d*a**2 );
+
+      this.canvasCtx.drawImage(ODR.spriteGUI,
+          x, 159, bw[b], 17,
+          257 + x , Math.floor(y),
+          bw[b], 17);
+
+      if( !b ){
+        t = this.timer - 8**2;
+        d = Math.max(0, 100 - t/10);
+        a = t%300 / 300;
+        y = Math.min(50, 50 - d*a + d*a**2 );
+
+        this.canvasCtx.drawImage(ODR.spriteGUI,
+            x, 150, 15, 9,
+            257 + x , Math.floor(y) - 9,
+            15, 9);
+      }
+
+    }
+
+    let d = Math.max(0, 100 - this.timer/10);
+    let lineY = 90;
+    if( d == 0 ){
+      let newHigh = ODR.gameRecord.hiscore < ODR.score ? ' a new high!':'';
+
+      new Text(600/14, 0).drawString( ODR.gameMode.title, this.canvasCtx, 6, lineY );
+
+      lineY+=20;
+      new Text(300/14, 1).drawString('SCORE:',this.canvasCtx,6,lineY);
+      //FIXME leading space won't appear,
+      let showScore = Math.min( 1, ( this.timer - 1000 )/1000 );
+      let showHi = Math.min( 1, ( this.timer - 1500 )/1500 );
+      let t = 2000;
+      let showNewHi = Math.min( 1, ( this.timer - t )/t );
+
+      new Text(300/14).drawString('_' + Math.round( ODR.score*showScore )
+        + (showNewHi == 1 ? newHigh :'' )
+        , this.canvasCtx, 300, lineY );
+
+      if( ODR.sequencer.dejavus ) return;
+
+
+      if( showHi == 1 ){
+        let diff = ODR.gameModeScore - ODR.gameRecord.hiscore;
+
+        lineY += 20;
+        new Text(300/14, 1).drawString('HIGH SCORE:',this.canvasCtx, 6, lineY );
+        new Text(300/14).drawString('_' + ( showNewHi == 1 ? ODR.gameRecord.hiscore + ~~(diff * (this.newHighTimer || 0)/1000) : ODR.gameRecord.hiscore ), this.canvasCtx, 300, lineY );
+
+        if( showNewHi == 1 ){
+          if( newHigh ){
+            t += 1000;
+            if( !this.playedHiscore ){
+              this.playedHiscore = true;
+              for( let i = 0, j = 0 ; i <= 1 ; i+=0.1,j+=0.1){
+                ODR.playSound( ODR.soundFx.SOUND_SCORE, 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, false, j*1000, -i );
+                ODR.playSound( ODR.soundFx.SOUND_SCORE, 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, false, j*1000, i );
+              }
+            }
+            this.newHighTimer = Math.min( 1000 , ( this.newHighTimer || 0 ) + deltaTime );
+          }
+
+          lineY += 20;
+          let showTang = Math.min( 1, ( this.timer - t )/t );
+          if( showTang == 1 && N7e.user ){
+            let gotO = ODR.gameRecord.tangerines ? `${ODR.gameRecord.tangerines} ` : "";
+            t+= gotO ? 500 : 0;
+            let showDaily = Math.min( 1, ( this.timer - t )/t );
+            let gotT = ( showDaily == 1 ? `[${ODR.dailyTangerines}/${Math.floor( ODR.gameModeTotalScore/100)}]` : '');
+            new Text(300/14, 1).drawString('#tangerine:',this.canvasCtx, 6, lineY );
+            new Text(300/14).drawString(`_${gotO}${gotT}`, this.canvasCtx, 300, lineY );
+
+            if( !this.playedGotO && gotO ){
+              ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+              this.playedGotO = true;
+            }
+          }
+
+        }
+      }
+    }
 
     // Restart button.
+        /*
     this.canvasCtx.drawImage(ODR.spriteGUI,
         0, 40,
         38, 34,
@@ -3872,6 +3958,7 @@ class GameOver extends Panel {
         23, 19,
         281 + 7, 100 + 8,
         23, 19);
+        */
     this.canvasCtx.restore();
 
   }
@@ -4860,7 +4947,7 @@ class OnDaRun extends LitElement {
     A8e.animFrames.SLIDING.sprite = addSprite('nat/sliding');
     A8e.animFrames.JUMPING.sprite = addSprite('nat/jumping');
     A8e.animFrames.WAITING.sprite = addSprite('nat/idle');
-    A8e.animFrames.CRASHED.sprite = addSprite('nat/crash');
+    A8e.animFrames.CEASING.sprite = addSprite('nat/crash');
 
     let bicyclesSprite = addSprite('biking');
     let ducksSprite = addSprite('ducks');
@@ -6150,17 +6237,12 @@ GOOD JOB! #natB`, 15000 );
       if( N7e.user ) {
         N7e.user.odrRef.child('scores').child( this.gameMode.key )
         .transaction(( distance = 0) => Math.max( this.distance, distance ));
+        console.log('Scores updated.');
       }
       this.gameMode.distance = Math.ceil( this.distance );
       this.distanceMeter.setHighScore( this.score );
     }
-
-    // RMME Looks like it was used once?
-    // Reset the time clock.
-    //this.time = getTimeStamp();
-    //this.crashedTime = this.time;
   }
-
 
   get gameModeTotalScore(){
     let sum = 0;
@@ -6405,7 +6487,7 @@ GOOD JOB! #natB`, 15000 );
 
                 continue;
 
-              case A8e.status.CRASHED:
+              case A8e.status.CEASING:
                 // The priority-3 was demoted to 1
                 //this.amandarine.activateAction(action, deltaTime, speed);
               default:
@@ -6475,33 +6557,40 @@ GOOD JOB! #natB`, 15000 );
               case A8e.status.PAUSED:
                 //NYI
                 break HANDLE_ACTION_QUEUE;
-              case A8e.status.CRASHED: {
+              case A8e.status.CEASING: {
 
                 //Start the crash animation.
-                if( 2 != this.playState ){
+                if( 2 != this.gameState ){
                   //TOOD this.dispatchEvent(new CustomEvent('odr-crash', { bubbles: false, detail: { action: action } }));
-                  this.crash();
+                  this.gameState = 2;
 
-                  // Prepare crash animation.
-                  let crashPoint = action.boxes.C.center();
-                  //TODO 4 dirs
-                  if( crashPoint.minY - this.amandarine.minY < 20 ){
-                    action.dir = -1;
-                  } else {
-                    action.dir = 1;
+                  if( action.crash ){
+                    // Prepare crash animation.
+                    let crashPoint = action.crash.C.center();
+                    //TODO 4 dirs
+                    if( crashPoint.minY - this.amandarine.minY < 20 ){
+                      action.dir = -1;
+                    } else {
+                      action.dir = 1;
+                    }
+
+                    action.duration = 200;
+                    action.top = action.duration / 1000;
+                    action.halfTime = Math.sqrt( 2000 * action.duration / A8e.config.GRAVITY );
+                    action.timer = 0;
+                    action.crashedMinY = this.amandarine.minY;
+                    action.lagging = speed;
+
                   }
-
-                  action.duration = 200;
-                  action.top = action.duration / 1000;
-                  action.halfTime = Math.sqrt( 2000 * action.duration / A8e.config.GRAVITY );
-                  action.timer = 0;
-                  action.crashedMinY = this.amandarine.minY;
-                  action.lagging = speed;
                 }
 
               } break HANDLE_ACTION_QUEUE;
               //break;
               case A8e.status.WAITING:
+                /*
+                if( this.amandarine.minX < A8e.config.START_X_POS ) {
+                  action.speed = 1;
+                }*/
 
                 break HANDLE_ACTION_QUEUE;
               default:
