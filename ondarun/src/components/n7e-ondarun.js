@@ -25,6 +25,9 @@ var IS_IOS = /iPad|iPhone|iPod/.test(window.navigator.platform);
 var IS_MOBILE = /Android/.test(window.navigator.userAgent) || IS_IOS;
 var IS_TOUCH_ENABLED = 'ontouchstart' in window;
 
+var IS_SOUND_DISABLED = false;
+if( IS_IOS ) IS_SOUND_DISABLED = true;
+
 var N7e = class {
   static get userSignedIn() {
     return this.signing.photo
@@ -3574,7 +3577,7 @@ the Thai Redcross Society #redcross
 
     let runout = 0;
     let tfactor = 0;
-    if( this.ender && ODR.soundFx.SOUND_SCORE ){
+    if( this.ender && ( ODR.soundFx.SOUND_SCORE || IS_IOS ) ){
       tfactor = this.timer - this.ender;
       runout = 0.8*tfactor - 200;
       //200*200
@@ -3621,7 +3624,7 @@ the Thai Redcross Society #redcross
       ~~(30 + 2 * factorD + runout * 1.4),
       99,97);
 
-    let total = (ODR.music.songs['offline-intro-music'].progress + ODR.music.songs['offline-play-music'].progress) * 50;
+    let total = IS_SOUND_DISABLED ? 100 : (ODR.music.songs['offline-intro-music'].progress + ODR.music.songs['offline-play-music'].progress) * 50;
     if (total < 100) {
       new Text(600/14,0).drawString("loading data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
     } else {
@@ -3816,8 +3819,9 @@ class Menu extends Panel {
                   */
               }
               //hackish, to turn sample music off on leaving the submenu.
-              if( this.associatedButton == ODR.consoleButtons.CONSOLE_A )
+              if( this.associatedButton == ODR.consoleButtons.CONSOLE_A ){
                 ODR.music.stop();
+              }
               this.submenu = null;
             },
           }, this.associatedButton, entry.muted  );
@@ -4716,6 +4720,8 @@ class Music {
   }
 
   stop(){
+    if( IS_SOUND_DISABLED ) return;
+
     this.currentSong = null;
     for( let name in this.songs ) {
       if (this.songs[name].audio) {
@@ -4727,6 +4733,7 @@ class Music {
   }
 
   updateLyricsIfNeeded( terminal ){
+    if( IS_SOUND_DISABLED ) return;
     if( this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length ){
       let time = ODR.audioContext.currentTime - this.currentSong.startTime - this.currentSong.delay/1000;
       while( this.currentSong.lyrics.length && time >= this.currentSong.lyrics[0].info ){
@@ -4736,6 +4743,7 @@ class Music {
   }
 
   set volume( vol ) {
+    if( IS_SOUND_DISABLED ) return;
     if( this.currentSong ) {
       this.currentSong.audio.setVolume( vol/10 );
     }
@@ -4745,6 +4753,7 @@ class Music {
   /* TODO If the audio context is created late, music should
   recall load on the existing autoplayed song. */
   load( name, autoplay, delay = 0, lyrics = null ){
+    if( IS_SOUND_DISABLED ) return;
     //console.log('load', name, autoplay)
     //if (IS_IOS) return;
     let song = this.songs[ name ] || ( this.songs[ name ] = { title: name, autoplay: autoplay, lyrics: lyrics});
@@ -5258,7 +5267,7 @@ class OnDaRun extends LitElement {
     this.setMenu();
     vibrate(200);
     //this.distanceMeter.flashIterations = 0;
-    this.music.stop();
+    ODR.music.stop();
     this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, -0.2 );
     this.sky.setShade( Sky.config.SUNSET, 3000 );
 
@@ -5269,6 +5278,7 @@ class OnDaRun extends LitElement {
       let duration = (l[ i + 2 ] || 5)*1000;
       lyrics.push( new Message( string, 10000, 0, l[ i ]));
     }
+
     this.music.load('offline-intro-music', this.config.PLAY_MUSIC, 3000, lyrics );
   }
 
@@ -5426,6 +5436,7 @@ class OnDaRun extends LitElement {
     Mountain.generateMountainImages();
 
     this.config.PLAY_MUSIC = true;
+
     this.music = new Music();
     this.music.load('offline-intro-music', false);
     this.music.load('offline-play-music', false);
@@ -5677,6 +5688,7 @@ class OnDaRun extends LitElement {
       this.notifier.notify('♬ OFF', 2000 );
     } else {
       this.config.PLAY_MUSIC = true;
+
       if( 1 == this.gameState ){
         this.music.load('offline-play-music', this.config.PLAY_MUSIC );
       } else {
@@ -5845,6 +5857,7 @@ class OnDaRun extends LitElement {
 
     //FIXME dup screen forward
     this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
+
     let defaultAction = new DefaultAction(1);
     defaultAction.setX = -100;
     this.queueAction(defaultAction);
@@ -6067,8 +6080,13 @@ class OnDaRun extends LitElement {
     //this.scenery.forward( 0, 0, 0, false, 0);
   }
 
-  loadSounds() {
-    if( !this.soundFx && !IS_IOS ) {
+  loadSounds(){
+    if( IS_SOUND_DISABLED ){
+      this.soundFx = {};
+      return;
+    }
+
+    if( !this.soundFx ) {
       if( !this.audioContext ){
         this.audioContext = new AudioContext();
       }
@@ -6076,9 +6094,10 @@ class OnDaRun extends LitElement {
       var resourceTemplate =
       document.getElementById( this.config.RESOURCE_TEMPLATE_ID ).content;
 
-      Object.entries(OnDaRun.sounds).forEach(([sound, id]) => {
+      this.audioContext.resume();
+      Object.entries(OnDaRun.sounds).forEach(([ sound, id ]) => {
         var soundSrc =
-          resourceTemplate.getElementById(id).src;
+          resourceTemplate.getElementById( id ).src;
         soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
         let len = (soundSrc.length / 4) * 3;
         let str = atob(soundSrc);
@@ -6092,13 +6111,15 @@ class OnDaRun extends LitElement {
         // Async, so no guarantee of order in array.
         this.soundFx = {};
         this.audioContext.decodeAudioData(bytes.buffer)
-          .then( audioData => this.soundFx[sound] = audioData);
+          .then( audioData => { console.log('data',sound);this.soundFx[ sound ] = audioData});
       });
     }
   }
 
-  playSound(soundBuffer, volume, loop, delay, pan) {
-    if (soundBuffer) {
+  playSound( soundBuffer, volume, loop, delay, pan ){
+    if( IS_SOUND_DISABLED ) return;
+
+    if( soundBuffer ){
 
       delay = delay || 0;
       let duration = Math.ceil(soundBuffer.duration + delay);
