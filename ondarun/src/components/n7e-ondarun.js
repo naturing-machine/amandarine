@@ -1274,7 +1274,6 @@ class Cloud {
     this.minX = minX;
     this.minY = minY;
     this.removed = false;
-    this.timer = ODR.time;
     this.speedModifier = 0.7 + 0.3*Math.random();
   }
 
@@ -2066,7 +2065,6 @@ class A8e {
     this.currentFrame = 0;
     this.currentAnimFrames = [];
     this.animStartTime = 0;
-    this.timer = 0;
     this.msPerFrame = 1000 / FPS;
     A8e.config = A8e.config;
     // Current status.
@@ -3306,7 +3304,7 @@ DistanceMeter.config = {
 */
 
 class Panel {
-  constructor( canvas, associatedButton = null ) {
+  constructor( canvas, previousMenu = null, associatedButton = null ) {
     this.canvas = canvas;
     this.canvasCtx  = canvas.getContext('2d');
     this.submenu = null;
@@ -3316,10 +3314,16 @@ class Panel {
     this.willEnter = false; //Indicate double-pressed.
     this.offset = 0;
     this.timer = 0;
+    this.previousMenu = previousMenu;
+    this.hasEndded = false;
   }
 
   forward( deltaTime ){
     this.timer += deltaTime;
+  }
+
+  end(){
+    this.hasEndded = true;
   }
 
 /**
@@ -3578,7 +3582,7 @@ The Thai Redcross Society #redcross
 
     let runout = 0;
     let tfactor = 0;
-    if( this.ender && ( ODR.soundFx.SOUND_SCORE || IS_IOS ) ){
+    if( this.ender && ( ODR.soundFx && ODR.soundFx.SOUND_SCORE || IS_IOS ) ){
       tfactor = this.timer - this.ender;
       runout = 0.8*tfactor - 200;
       //200*200
@@ -3695,20 +3699,38 @@ The Thai Redcross Society #redcross
 }
 
 class WaitingPanel extends Panel {
-  constructor( canvas, progressingCallback ) {
-    super( canvas );
+  constructor( canvas, previousMenu = null, bottomMessage, progressingCallback ) {
+    super( canvas, previousMenu );
     this.progressingCallback = progressingCallback;
     this.timer = 0;
-    this.bottomText = new Text(600/14,0).setString("signing in..please wait");
+    this.ticker = 0;
+    this.bottomText = new Text(600/14,0).setString( bottomMessage );
   }
 
   forward( deltaTime ) {
+    if( this.hasEndded ){
+      return this.previousMenu;
+    }
+
+    if( this.timer == 0 ){
+      this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
+      this.bottomText.draw(this.canvasCtx,0,180);
+      this.canvasCtx.drawImage( ODR.spriteGUI,
+        38 + ~~(this.timer/100)%4 * 22, 73, 22, 22,
+        300 -11, 100 -11, 22, 22 );
+    } else if( this.timer > this.ticker ){
+      this.canvasCtx.drawImage( ODR.consoleImage,
+        100 +300 -11, 237 +100 -11, 22, 22,
+        300 -11, 100 -11, 22, 22 );
+      this.canvasCtx.drawImage( ODR.spriteGUI,
+        38 + ~~(this.timer/100)%4 * 22, 73, 22, 22,
+        300 -11, 100 -11, 22, 22 );
+        this.ticker+= 200;
+    }
+
     this.timer += deltaTime;
-    this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
-    this.canvasCtx.drawImage( ODR.spriteGUI,
-      38 + ~~(this.timer/100)%4 * 22, 73, 22, 22,
-      300-11, 100-11, 22, 22 );
-    this.bottomText.draw(this.canvasCtx,0,180);
+
+    if( !this.progressingCallback ) return this;
     return this.progressingCallback() ? this : null;
   }
 
@@ -3719,9 +3741,8 @@ class WaitingPanel extends Panel {
 
 class Menu extends Panel {
   constructor( canvas, model, associatedButton, muted = false ) {
-    super( canvas );
+    super( canvas, null, associatedButton );
     this.model = model;
-    this.associatedButton = associatedButton;
     this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
     this.xOffset = 0;
     this.yOffset = 0;
@@ -5576,7 +5597,7 @@ https://www.redcross.or.th/donate/
     this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
 
     if( N7e.signing.progress ){
-      return new WaitingPanel( this.canvas, () => N7e.signing.progress );
+      return new WaitingPanel( this.canvas, null, "signing in..please wait", () => N7e.signing.progress );
     }
 
     return new Greeter( this.canvas, this.notifier );
@@ -6017,7 +6038,7 @@ https://www.redcross.or.th/donate/
                 return mainMenu;
               } else {
                 N7e.user = new User(['facebook','twitter','google'][entryIndex]);
-                return new WaitingPanel( this.canvas, () => N7e.signing.progress );
+                return new WaitingPanel( this.canvas, null, `signing with ${['facebook','twitter','google'][entryIndex]}..please wait`, () => N7e.signing.progress );
               }
             },
           }, this.consoleButtons.CONSOLE_D );
@@ -6253,7 +6274,7 @@ https://www.redcross.or.th/donate/
  * OnDarun main forwarding
  */
   forward( now ) {
-    this.forwardPending = false;
+    //this.forwardPending = false;
 
     var deltaTime = now - (this.time || now);
     this.time = now;
@@ -6453,6 +6474,16 @@ https://www.redcross.or.th/donate/
   handleEvent(e) {
 
     switch( e.type ){
+      case OnDaRun.events.VISIBILITY:
+      case OnDaRun.events.FOCUS:
+      case OnDaRun.events.BLUR:
+        if( document.hiddden || document.webkitHidden || e.type == OnDaRun.events.BLUR
+            || document.visibilityState != 'visible' ){
+          this.menu = new WaitingPanel( this.canvas, this.menu, "PAUSED");
+        } else {
+          this.menu.end();
+        }
+        break;
       case OnDaRun.events.KEYDOWN:{
         let button = this.consoleButtonForKeyboardCodes[ e.code ];
         if( button ){
@@ -6597,6 +6628,10 @@ https://www.redcross.or.th/donate/
     this.addEventListener( OnDaRun.events.CONSOLEDOWN, this );
     this.addEventListener( OnDaRun.events.CONSOLEUP, this );
 
+    document.addEventListener(OnDaRun.events.VISIBILITY, this );
+    window.addEventListener(OnDaRun.events.BLUR, this );
+    window.addEventListener(OnDaRun.events.FOCUS, this );
+
     if (!IS_MOBILE) {
       /*
       document.addEventListener(OnDaRun.events.MOUSEDOWN, this);
@@ -6661,10 +6696,12 @@ https://www.redcross.or.th/donate/
       console.warn('FROZEN');
       return;
     }
+    /*
     if (!this.forwardPending) {
       this.forwardPending = true;
-      this.raqId = requestAnimationFrame((now) => this.forward( now ));
     }
+    */
+      this.raqId = requestAnimationFrame((now) => this.forward( now ));
   }
 
   /*
