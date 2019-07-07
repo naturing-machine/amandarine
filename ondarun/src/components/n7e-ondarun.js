@@ -500,52 +500,14 @@ class Obstacle extends Entity {
 
   collide( collision ) {
     return {
-      type: A8e.status.CRASHED,
+      type: A8e.status.CEASING,
       timer: 0,
       priority: 3,
-      boxes: collision,
+      crash: collision,
       obstacle: this
     };
   }
 }
-
-  Obstacle.situation = {
-    Cactus: { situation:'Cactus' }, // Default situation.
-  };
-  Obstacle.situationList = [];
-
-  // The map of chances for randoming an obstacle at a current speed. A miss one will be routed to a cactus.
-  let svgSrc = `
-<svg xmlns="http://www.w3.org/2000/svg" id="SituationMap">
-  <path class="Liver" d="M 0.1,0.15 0.4,0.05 1,0 v 0.15 z" />
-  <path class="Rubber" d="M 0.1,0.15 H 1 V 0.3 L 0.4,0.25 Z" />
-  <path class="Rotata" d="M 0,0.5 0.15,0.4 1,0.3 v 0.2 z" />
-  <path class="Velota" d="M 0,0.5 H 1 V 0.7 L 0.15,0.6 Z" />
-  <path class="RubberSweeper" d="M 0.4,0.25 0.25,0.2 1,0.25 V 0.3 Z" />
-  <path class="LiverSweeper" d="M 0.25,0.1 0.4,0.05 1,0 v 0.05 z" />
-  <path class="SituationA" d="M 1,0.4 0.15,0.5 1,0.6 Z" />
-  <path class="SituationB" d="M 1,0.1 0.25,0.15 1,0.2 Z" />
-  <path class="SituationC" d="M 1,0.75 0.25,0.8 1,0.85 Z" />
-</svg>
-`;
-
-  { // Generate the situation list.
-    // TODO Plot this by sampling into a bitmap.
-    let svg = new DOMParser().parseFromString(svgSrc, 'image/svg+xml');
-    let paths = svg.getElementsByTagName('path');
-    for( let path of paths) {
-      let entry = {
-        name: path.attributes.class.value,
-        path: new Path2D(path.attributes.d.value),
-      };
-      Obstacle.situationList.unshift(entry);
-      Obstacle.situation[entry.name] = entry;
-    }
-  }
-
-  Obstacle.situation.LiverSweeper.glider = [ 100, 50, 0, 50, 100 ];
-  Obstacle.situation.RubberSweeper.glider = [ 1000, 1100, 1200, 1100, 1000 ];
-
 
 /* TODO Mixin */
 
@@ -847,26 +809,150 @@ Velota.registerType();
 Rotata.registerType();
 
 class Sequencer {
-  constructor( scenery, canvasCtx ){
-    this.scenery = scenery;
-    this.canvasCtx = canvasCtx;
-    this.totalRecall = [];
-    this.recallee = null;
+  constructor( canvas ){
+    this.canvas = canvas;
+    this.canvasCtx = this.canvas.getContext('2d');
+    this.resetEntities();
+    this.totalRecall = null;
+    this.dejavus = null;
+
+    if( !Sequencer.chanceMap ){
+
+      Sequencer.chanceMapSize = 100;
+      Sequencer.chanceMap = new Uint8Array( Sequencer.chanceMapSize**2 );
+      for( let y = 0; y < Sequencer.chanceMapSize; y++ ){
+        for( let x = 0; x < Sequencer.chanceMapSize; x++ ){
+
+          let idx = Sequencer.situationList.findIndex( situation =>
+            this.canvasCtx.isPointInPath( situation.path, x/Sequencer.chanceMapSize, y/Sequencer.chanceMapSize )
+          );
+
+          console.assert( idx != -1, "SVG hit-testing error.");
+          Sequencer.chanceMap[ y *Sequencer.chanceMapSize +x ] = idx == -1 ? Sequencer.situationList.length - 1: idx;
+        }
+      }
+
+    }
   }
+
+  reset(){
+    this.resetEntities();
+
+    this.dejavus = null;
+    if( ODR.config.GAME_MODE_REPLAY ){
+      this.totalRecall = [ ODR.gameMode ];
+    } else {
+      this.totalRecall = null;
+    }
+  }
+
+  resetEntities() {
+    if( this.entities ){
+      this.entities.forEach( entity => entity.removed = true );
+    }
+
+    let t = ODR.config.CLEAR_TIME/1000;
+    let v = ODR.config.SPEED * FPS;
+    let a = ODR.config.ACCELERATION * FPS * 1000;
+
+    let clearZone = new Space( DEFAULT_WIDTH + t * v + 0.5*a * t**2 );
+
+    //clearZone.debugCtx = this.canvasCtx;
+    clearZone.minX = 65;
+    this.entities = [ clearZone ];
+  }
+
+  // Change to addEntities to allow adding a group
+  addEntity( ...theArgs ) {
+    theArgs.forEach( anEntity => {
+      if( this.entities.length >= 25 ) {
+        return;
+      }
+
+      if( ODR.config.GAME_MODE_REPLAY && !this.dejavus ){
+        this.register( ODR.runTime, anEntity );
+      }
+
+      this.entities.push( anEntity );
+    });
+  }
+
+  get numberOfEntities(){
+    return this.entities.length;
+  }
+
+  forward( deltaTime, currentSpeed, shouldAddObstacle, entityExistence = 1 ){
+    let decrement = -currentSpeed * FPS / 1000 * deltaTime;
+    let lastEntity;
+
+    if( 1 == entityExistence ) {
+      lastEntity = this.forwardEntities( deltaTime, currentSpeed, decrement );
+    } else if( entityExistence > 0 ) {
+      this.canvasCtx.save();
+      this.canvasCtx.globalAlpha = entityExistence;
+      lastEntity = this.forwardEntities( deltaTime, currentSpeed, decrement );
+      this.canvasCtx.restore();
+    }
+
+    if( shouldAddObstacle ){
+      if( this.dejavus ){
+        this.recall();
+      } else {
+        this.arrange( lastEntity, currentSpeed );
+      }
+    }
+  }
+
+  forwardEntities( deltaTime, cs, decrement ){
+    // Obstacles, move to Scenery layer.
+    for (let i = 0; i < this.entities.length; i++) {
+      this.entities[i].forward( deltaTime, cs );
+    }
+
+    // Clean bygone obstacles & find right-most entity.
+    let lastEntity = null;
+    this.entities = this.entities.filter( entity => {
+      if( entity.removed ) return false;
+      if( !lastEntity || entity.maxX > lastEntity.maxX ) {
+        lastEntity = entity;
+      }
+      return true;
+    });
+
+    return lastEntity;
+  }
+
+  crashTest( amandarine ){
+    for( let i = 0, entity; entity = this.entities[i]; i++ ) {
+
+      let collision = amandarine.hitTest( entity );
+      if( collision ) {
+        let crashAction = entity.collide( collision );
+        if( crashAction ){
+          return crashAction;
+        }
+      }
+
+    }
+
+    return null;
+  }
+
+
 
   getSituation( currentSpeed ) {
 
     if( ODR.gameMode.key == 'GAME_S'){
       return [
-        Obstacle.situation.SituationA,
-        Obstacle.situation.SituationB,
-        Obstacle.situation.SituationC ][ getRandomNum( 0, 2 )];
+        Sequencer.situation.SituationA,
+        Sequencer.situation.SituationB,
+        Sequencer.situation.SituationC ][ getRandomNum( 0, 2 )];
     }
 
     let x = ( currentSpeed - 6 )/7;
     let y = Math.random();
-    let situation = Obstacle.situationList.find( situation => this.canvasCtx.isPointInPath( situation.path, x, y ));
-    return situation ? situation : Obstacle.situation.Cactus;
+    let situation = Sequencer.situationList.find( situation => this.canvasCtx.isPointInPath( situation.path, x, y ));
+    return situation ? situation : Sequencer.situation.Cactus;
   }
 
   arrange( lastEntity, currentSpeed ){
@@ -883,133 +969,133 @@ class Sequencer {
         let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
         space.ctx = this.canvasCtx;
         tangerine.minX = space.minX + space.width/2 - 25;
-        this.scenery.addEntity( space, tangerine );
+        this.addEntity( space, tangerine );
         return;
       }
 
       let situation = lastEntity ? this.getSituation( currentSpeed ) : 0;
-      this.totalRecall.push( situation ); //Marking situations
-      do {switch( situation ) {
-        case Obstacle.situation.Velota: {
 
-          this.scenery.addEntity(
+      do {switch( situation ) {
+        case Sequencer.situation.Velota: {
+
+          this.addEntity(
             new Space( 50*currentSpeed ),
             lastEntity.muster( 100, currentSpeed,
-              new Velota( this.canvasCtx, currentSpeed*Velota.speedFactor*( 0.8 + 0.2*Math.random()))));
+              new Velota( this.canvasCtx, currentSpeed * Velota.speedFactor *( 0.8 + 0.2*Math.random()))));
 
         } break;
-        case Obstacle.situation.Rotata: {
+        case Sequencer.situation.Rotata: {
 
-          this.scenery.addEntity(
+          this.addEntity(
             new Space( 60*currentSpeed ),
             lastEntity.muster( 700, currentSpeed,
-              new Rotata( this.canvasCtx, currentSpeed*Rotata.speedFactor*( 0.8 + 0.2*Math.random()))));
+              new Rotata( this.canvasCtx, currentSpeed * Rotata.speedFactor *( 0.8 + 0.2*Math.random()))));
 
         } break;
-        case Obstacle.situation.Rubber: {
+        case Sequencer.situation.Rubber: {
 
-          this.scenery.addEntity(
+          this.addEntity(
             new Space( 80*currentSpeed ),
             lastEntity.muster( 1000, currentSpeed,
               Rubber.getRandomObstacle( this.canvasCtx, currentSpeed )));
 
         } break;
         /* Liver */
-        case Obstacle.situation.Liver: {
+        case Sequencer.situation.Liver: {
 
-          this.scenery.addEntity(
+          this.addEntity(
             new Space( 50*currentSpeed ),
             lastEntity.muster( 150, currentSpeed,
               Liver.getRandomObstacle( this.canvasCtx, currentSpeed )));
 
         } break;
-        case Obstacle.situation.LiverSweeper: {
+        case Sequencer.situation.LiverSweeper: {
 
-          this.scenery.addEntity( new Space( 100*currentSpeed ));
+          this.addEntity( new Space( 100*currentSpeed ));
           for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
-            this.scenery.addEntity( lastEntity.muster( situation.glider[i], currentSpeed,
+            this.addEntity( lastEntity.muster( situation.glider[i], currentSpeed,
               new Liver( this.canvasCtx,
-                currentSpeed*Liver.speedFactor*( 0.9 + 0.1*Math.random()),
+                currentSpeed * Liver.speedFactor *( 0.9 + 0.1*Math.random()),
                 DuckType.elevationList[ i + 1 ])));
           }
 
         } break;
-        case Obstacle.situation.RubberSweeper: {
+        case Sequencer.situation.RubberSweeper: {
 
-          this.scenery.addEntity( new Space( 100*currentSpeed ));
+          this.addEntity( new Space( 100*currentSpeed ));
           for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
-            this.scenery.addEntity( lastEntity.muster( situation.glider[i], currentSpeed,
+            this.addEntity( lastEntity.muster( situation.glider[i], currentSpeed,
               new Rubber( this.canvasCtx,
-                currentSpeed*Rubber.speedFactor*( 0.9 + 0.1*Math.random()),
+                currentSpeed * Rubber.speedFactor *( 0.9 + 0.1*Math.random()),
                 DuckType.elevationList[ i + 1 ])));
           }
 
         } break;
         /* Extra */
 
-        case Obstacle.situation.SituationA: {
+        case Sequencer.situation.SituationA: {
 
-          this.scenery.addEntity( lastEntity.muster( 0, currentSpeed, new Space( 300*currentSpeed )));
+          this.addEntity( lastEntity.muster( 0, currentSpeed, new Space( 300*currentSpeed )));
 
-          this.scenery.addEntity( lastEntity.muster( 150, currentSpeed,
+          this.addEntity( lastEntity.muster( 150, currentSpeed,
             Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
 
-          this.scenery.addEntity( lastEntity.muster( 1000, currentSpeed,
+          this.addEntity( lastEntity.muster( 1000, currentSpeed,
             Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
 
-          let velota = new Velota( this.canvasCtx, currentSpeed*Velota.speedFactor*( 0.8 + 0.2*Math.random()));
-          this.scenery.addEntity( lastEntity.muster( 1500, currentSpeed, velota ));
+          let velota = new Velota( this.canvasCtx, currentSpeed * Velota.speedFactor *( 0.8 + 0.2*Math.random()));
+          this.addEntity( lastEntity.muster( 1500, currentSpeed, velota ));
 
-          this.scenery.addEntity( velota.muster( 600, currentSpeed,
+          this.addEntity( velota.muster( 600, currentSpeed,
             Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
 
-          this.scenery.addEntity( velota.muster( 1500, currentSpeed,
+          this.addEntity( velota.muster( 1500, currentSpeed,
             Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
 
-          this.scenery.addEntity( velota.muster( 1700, currentSpeed, Rotata.getRandomObstacle( this.canvasCtx, currentSpeed )));
+          this.addEntity( velota.muster( 1700, currentSpeed, Rotata.getRandomObstacle( this.canvasCtx, currentSpeed )));
 
         } break;
 
-        case Obstacle.situation.SituationB: {
+        case Sequencer.situation.SituationB: {
 
-          this.scenery.addEntity( lastEntity.muster( 0, currentSpeed, new Space( 150*currentSpeed )));
+          this.addEntity( lastEntity.muster( 0, currentSpeed, new Space( 150*currentSpeed )));
 
           let cactusA = Cactus.getRandomObstacle( this.canvasCtx, currentSpeed );
-          this.scenery.addEntity( lastEntity.muster( 500, currentSpeed, cactusA ));
+          this.addEntity( lastEntity.muster( 500, currentSpeed, cactusA ));
 
-          let liver = new Liver( this.canvasCtx, currentSpeed*Liver.speedFactor*( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 1 ]);
-          this.scenery.addEntity( cactusA.muster( 400, currentSpeed, liver ));
+          let liver = new Liver( this.canvasCtx, currentSpeed * Liver.speedFactor *( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 1 ]);
+          this.addEntity( cactusA.muster( 400, currentSpeed, liver ));
 
-          liver = new Liver( this.canvasCtx, currentSpeed*Liver.speedFactor * (0.9 + 0.1*Math.random()),
+          liver = new Liver( this.canvasCtx, currentSpeed * Liver.speedFactor *(0.9 + 0.1*Math.random()),
             DuckType.elevationList[ getRandomNum( 0, 1 )<<1 ]);
-          this.scenery.addEntity( cactusA.muster( 430, currentSpeed, liver ));
+          this.addEntity( cactusA.muster( 430, currentSpeed, liver ));
 
-          this.scenery.addEntity( liver.muster( 0, currentSpeed,
-            new Rubber( this.canvasCtx, currentSpeed*Rubber.speedFactor*( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 5 ])));
+          this.addEntity( liver.muster( 0, currentSpeed,
+            new Rubber( this.canvasCtx, currentSpeed * Rubber.speedFactor *( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 5 ])));
 
-          this.scenery.addEntity( cactusA.muster( 1200, currentSpeed, new SmallCactus( this.canvasCtx, 1 )));
+          this.addEntity( cactusA.muster( 1200, currentSpeed, new SmallCactus( this.canvasCtx, 1 )));
 
         } break;
 
-        case Obstacle.situation.SituationC: {
+        case Sequencer.situation.SituationC: {
           let i,cactus;
           for( i = 0; i < 8; i++) {
             cactus = new SmallCactus( this.canvasCtx, getRandomNum( 1, 3 ));
-            this.scenery.addEntity( lastEntity.muster( i * 550 , currentSpeed, cactus ));
+            this.addEntity( lastEntity.muster( i * 550 , currentSpeed, cactus ));
           }
 
-          this.scenery.addEntity( cactus.muster( 0, currentSpeed, new Space( 100*currentSpeed )));
+          this.addEntity( cactus.muster( 0, currentSpeed, new Space( 100*currentSpeed )));
         } break;
 
         /* Single Cactus */
         default:
-        case Obstacle.situation.Cactus: {
+        case Sequencer.situation.Cactus: {
           let cactus = Cactus.getRandomObstacle( this.canvasCtx, currentSpeed );
-          let minGap = Math.round( cactus.width*currentSpeed + 72 );
+          let minGap = Math.round( cactus.width * currentSpeed + 72 );
           let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
           space.ctx = this.canvasCtx;
           cactus.minX = space.minX + space.width/2 - cactus.width/2;
-          this.scenery.addEntity( space, cactus );
+          this.addEntity( space, cactus );
         } break;
 
       } break; } while( true );
@@ -1017,6 +1103,7 @@ class Sequencer {
   }
 
   register( runTime, entity ){
+
     let entry = { runTime: runTime, minX: entity.minX };
 
     switch( entity.constructor.name ){
@@ -1040,59 +1127,93 @@ class Sequencer {
     }
   }
 
-  reset(){
-    this.totalRecall = [];
-  }
-
   recall(){
-
-    while( this.recallee.length ){
-      if( this.recallee[ 0 ].situation ){
-        console.log( this.recallee.shift());
+    while( this.dejavus.length ){
+      if( this.dejavus[ 0 ].runTime > ODR.runTime ){
+        return;
       } else {
-        if( this.recallee[ 0 ].runTime > ODR.runTime ){
-          return;
-        } else {
-          let entityCode = this.recallee.shift();
-          let entity;
-          ODR.runTime = entityCode.runTime;
-          switch( entityCode.className ){
-            case 'SmallCactus':
-              entity = new SmallCactus( this.scenery.canvasCtx, entityCode.size );
-              entity.minX = entityCode.minX;
-              break;
-            case 'LargeCactus':
-              entity = new LargeCactus( this.scenery.canvasCtx, entityCode.size );
-              entity.minX = entityCode.minX;
-              break;
-            case 'Velota':
-              entity = new Velota( this.scenery.canvasCtx, entityCode.speed );
-              entity.minX = entityCode.minX;
-              break;
-            case 'Rotata':
-              entity = new Rotata( this.scenery.canvasCtx, entityCode.speed );
-              entity.minX = entityCode.minX;
-              break;
-            case 'Liver':
-              entity = new Liver( this.scenery.canvasCtx, entityCode.speed, entityCode.elevation );
-              entity.minX = entityCode.minX;
-              break;
-            case 'Rubber':
-              entity = new Rubber( this.scenery.canvasCtx, entityCode.speed, entityCode.elevation );
-              entity.minX = entityCode.minX;
-              break;
-          }
-
-          if( entity )
-            this.scenery.addEntity( entity );
-
-          continue;
+        let entityCode = this.dejavus.shift();
+        let entity;
+        //ODR.runTime = entityCode.runTime;
+        switch( entityCode.className ){
+          case 'SmallCactus':
+            entity = new SmallCactus( this.canvasCtx, entityCode.size );
+            entity.minX = entityCode.minX;
+            break;
+          case 'LargeCactus':
+            entity = new LargeCactus( this.canvasCtx, entityCode.size );
+            entity.minX = entityCode.minX;
+            break;
+          case 'Velota':
+            entity = new Velota( this.canvasCtx, entityCode.speed );
+            entity.minX = entityCode.minX;
+            break;
+          case 'Rotata':
+            entity = new Rotata( this.canvasCtx, entityCode.speed );
+            entity.minX = entityCode.minX;
+            break;
+          case 'Liver':
+            entity = new Liver( this.canvasCtx, entityCode.speed, entityCode.elevation );
+            entity.minX = entityCode.minX;
+            break;
+          case 'Rubber':
+            entity = new Rubber( this.canvasCtx, entityCode.speed, entityCode.elevation );
+            entity.minX = entityCode.minX;
+            break;
         }
+
+        if( entity )
+          this.addEntity( entity );
+
+        continue;
       }
     }
 
   }
 }
+
+Sequencer.situation = {};
+Sequencer.situationList = [];
+
+{
+  // NOTE: The SVG below has nothing to do with rendering. It's just a map
+  // for defining chances over time of random values.
+  // A miss one will be routed to a simple cactus situation.
+
+  let densityMap = `
+<svg xmlns="http://www.w3.org/2000/svg" id="SituationMap">
+  <path class="Default" d="M 0,0 H 1 V 1 H 0 Z" />
+  <path class="Liver" d="M 0.1,0.15 0.4,0.05 1,0 v 0.15 z" />
+  <path class="Rubber" d="M 0.1,0.15 H 1 V 0.3 L 0.4,0.25 Z" />
+  <path class="Rotata" d="M 0,0.5 0.15,0.4 1,0.3 v 0.2 z" />
+  <path class="Velota" d="M 0,0.5 H 1 V 0.7 L 0.15,0.6 Z" />
+  <path class="RubberSweeper" d="M 0.4,0.25 0.25,0.2 1,0.25 V 0.3 Z" />
+  <path class="LiverSweeper" d="M 0.25,0.1 0.4,0.05 1,0 v 0.05 z" />
+  <path class="SituationA" d="M 1,0.4 0.15,0.5 1,0.6 Z" />
+  <path class="SituationB" d="M 1,0.1 0.25,0.15 1,0.2 Z" />
+  <path class="SituationC" d="M 1,0.75 0.25,0.8 1,0.85 Z" />
+</svg>
+`;
+
+  // Generate the situation list.
+  // TODO Plot this by sampling into a bitmap.
+  let svg = new DOMParser().parseFromString( densityMap, 'image/svg+xml');
+  let paths = svg.getElementsByTagName('path');
+  for( let path of paths ) {
+    let entry = {
+      name: path.attributes.class.value,
+      path: new Path2D(path.attributes.d.value),
+    };
+
+    //Reverse the order.
+    Sequencer.situationList.unshift( entry );
+    Sequencer.situation[ entry.name ] = entry;
+  }
+
+}
+
+Sequencer.situation.LiverSweeper.glider = [ 100, 50, 0, 50, 100 ];
+Sequencer.situation.RubberSweeper.glider = [ 1000, 1100, 1200, 1100, 1000 ];
 
 
 class Particles {
@@ -1691,7 +1812,7 @@ class HorizonLine {
     console.trace();
   }
 
-  forward( deltaTime, screenIncrement ){
+  forward( /*deltaTime,*/ screenIncrement ){
     if( ODR.config.GRAPHICS_GROUND_TYPE != 'DIRT' ){
       screenIncrement /= 3;
     }
@@ -1734,14 +1855,10 @@ class Scenery {
   constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = this.canvas.getContext('2d');
-    this.resetEntities();
     this.obstacleHistory = [];
     this.horizonOffsets = [0, 0];
     this.cloudFrequency = 1.0;
     this.nightMode = null;
-
-    this.sequencer = new Sequencer( this, this.canvasCtx );
-    this.recall = false;
 
     this.layerCount = 5;
 
@@ -1797,14 +1914,12 @@ class Scenery {
     }
   }
 
-  forward( deltaTime, currentSpeed, showNightMode, shouldAddObstacle = false, entityExistence = 1 ){
+  forward( deltaTime, currentSpeed, showNightMode ){
     //FIXME Try sorting depth on single scene array.
     /*
     this.forwardClouds(deltaTime, currentSpeed, true);
     this.forwardMountains(deltaTime, currentSpeed);
     */
-
-    let decrement = -currentSpeed * FPS / 1000 * deltaTime;
 
     let numClouds = 0;
     let numMountains = 0;
@@ -1905,105 +2020,13 @@ class Scenery {
     ODR.sky.repaint( this.canvasCtx );
     this.canvasCtx.restore();
 
+    this.horizonLine.forward( -currentSpeed * FPS / 1000 * deltaTime );
 
-    this.horizonLine.forward( deltaTime, decrement);
-
-    let lastEntity;
-    if( 1 == entityExistence ) {
-      lastEntity = this.forwardEntities( deltaTime, currentSpeed, decrement );
-    } else if( entityExistence > 0 ) {
-      this.canvasCtx.save();
-      this.canvasCtx.globalAlpha = entityExistence;
-      lastEntity = this.forwardEntities( deltaTime, currentSpeed, decrement );
-      this.canvasCtx.restore();
-    }
-
-    if( shouldAddObstacle ){
-      if( !this.recall ){
-        this.sequencer.arrange( lastEntity, currentSpeed );
-      } else {
-        this.sequencer.recall();
-      }
-    }
-
-  }
-
-  crashTest( amandarine ){
-    for( let i = 0, entity; entity = this.entities[i]; i++ ) {
-
-      let collision = amandarine.hitTest( entity );
-      if( collision ) {
-        let crashAction = entity.collide( collision );
-        if( crashAction ){
-          return crashAction;
-        }
-      }
-
-    }
-
-    return null;
-  }
-
-  resetEntities() {
-    if( this.entities ){
-      this.entities.forEach( entity => entity.removed = true );
-    }
-
-    let t = ODR.config.CLEAR_TIME/1000;
-    let v = ODR.config.SPEED * FPS;
-    let a = ODR.config.ACCELERATION * FPS * 1000;
-
-    let clearZone = new Space( DEFAULT_WIDTH + t*v + 0.5*a*t*t );
-
-    //clearZone.debugCtx = this.canvasCtx;
-    clearZone.minX = 65;
-    this.entities = [ clearZone ];
-  }
-
-  // Change to addEntities to allow adding a group
-  addEntity( ...theArgs ) {
-    theArgs.forEach( anEntity => {
-      if( this.entities.length >= 25 ) {
-        return;
-      }
-
-      if( !this.recall ){
-        this.sequencer.register( ODR.runTime, anEntity );
-      }
-
-      this.entities.push( anEntity );
-    });
-  }
-
-  forwardEntities( deltaTime, cs, decrement ){
-    // Obstacles, move to Scenery layer.
-    for (let i = 0; i < this.entities.length; i++) {
-      this.entities[i].forward( deltaTime, cs );
-    }
-
-    // Clean bygone obstacles & find right-most entity.
-    let lastEntity = null;
-    this.entities = this.entities.filter( entity => {
-      if( entity.removed ) return false;
-      if( !lastEntity || entity.maxX > lastEntity.maxX ) {
-        lastEntity = entity;
-      }
-      return true;
-    });
-
-    return lastEntity;
   }
 
   reset() {
-    if( !this.recall ){
-      this.sequencer.reset();
-    } else {
-      this.sequencer.recallee = this.sequencer.totalRecall.slice();
-    }
-    this.resetEntities();
     this.horizonLine.reset();
     this.nightMode.reset();
-    this.recall = false;
   }
 
   resize(width, height) {
@@ -2063,14 +2086,6 @@ class A8e {
       ODR.config.BOTTOM_PAD;
     this.minY = this.groundMinY;
     this.minJumpHeight = this.groundMinY - A8e.config.MIN_JUMP_HEIGHT;
-
-    /*
-    this.currentAnimFrames = A8e.animFrames.WAITING.frames;
-    this.currentSprite = A8e.animFrames.WAITING.sprite;
-    this.currentFrame = 0;
-
-    this.draw(0, 0);
-    */
 
     // For collision testings
     this.hitTestA = new CollisionBox();
@@ -2921,6 +2936,7 @@ class Notifier {
   }
 }
 
+/*
 class DistanceMeter {
   constructor(canvas, spritePos, canvasWidth) {
     this.canvas = canvas;
@@ -2972,7 +2988,7 @@ class DistanceMeter {
     var sourceX = DistanceMeter.dimensions.WIDTH * value;
     var sourceY = 0;
 
-    var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH + DistanceMeter.dimensions.DEST_WIDTH/2;
+    var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH + DistanceMeter.dimensions.DEST_WIDTH>>1;
     var targetY = this.minY;
     var targetWidth = DistanceMeter.dimensions.WIDTH;
     var targetHeight = DistanceMeter.dimensions.HEIGHT;
@@ -2984,7 +3000,7 @@ class DistanceMeter {
 
     if (opt_highScore) {
       // Left of the current score.
-      var highScoreX = this.minX - (this.maxScoreUnits * 2) *
+      var highScoreX = this.minX - ( 2*this.maxScoreUnits ) *
       DistanceMeter.dimensions.WIDTH;
       this.canvasCtx.translate(highScoreX, this.minY);
     } else {
@@ -3064,6 +3080,7 @@ class DistanceMeter {
   }
 }
 
+
 DistanceMeter.dimensions = {
   WIDTH: 14,
   HEIGHT: 14,
@@ -3076,6 +3093,7 @@ DistanceMeter.config = {
   FLASH_DURATION: 1000 / 4,
   FLASH_ITERATIONS: 3
 };
+*/
 
 class Panel {
   constructor( canvas, associatedButton = null ) {
@@ -3996,13 +4014,13 @@ class Greeter extends Panel {
     }
 
     if( e.type == OnDaRun.events.CONSOLEUP
-      && this.timer > ODR.config.GAMEOVER_CLEAR_TIME
+      && ODR.activeAction
+      && 0 == ODR.activeAction.speed
       && 0 == this.buttonUpTime[ 0 ]
       && 0 == this.buttonUpTime[ 1 ]){
 
       this.willStart = true;
-
-      ODR.play();
+      ODR.gameState = 1;
     }
     return true;
   }
@@ -4845,7 +4863,6 @@ class OnDaRun extends LitElement {
     window['N7e'] = N7e;
 
     //FIXME just replace
-    this.dimensions = OnDaRun.defaultDimensions;
     this.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
     //this.scene = null;
 
@@ -4854,8 +4871,10 @@ class OnDaRun extends LitElement {
 
     this.menu = null;
     this.sky = null;
+    this.scenery = null;
+    this.sequencer = null;
     this.amandarine = null;
-    this.distanceMeter = null;
+    //this.distanceMeter = null;
 
     this.time = 0;
     this.totalTangerines = 0;
@@ -4875,7 +4894,195 @@ class OnDaRun extends LitElement {
 
     this.consoleButtonForKeyboardCodes = {};
 
-    this.restoreBaseValues();
+    this.gameState = 0;
+  }
+
+  get dailyTangerines(){
+    return this._dailyTangerines;
+  }
+
+  set dailyTangerines( newDaily ){
+    this._dailyTangerines = newDaily;
+    if( this.scoreboard )
+      this.scoreboard.minTangerines = newDaily;
+  }
+
+  get gameState(){
+    return this._gameState;
+  }
+
+  set gameState( newState ){
+    switch( this._gameState ){
+      case undefined:
+        if( 0 === newState ){
+          this._gameState = 0;
+          this.stateResetProperties();
+        }
+        break;
+      case 0:
+        if( 1 === newState ){
+          this._gameState = 1;
+          this.statePlay();
+        } else if( 0 === newState ){
+          this.stateResetProperties();
+        }
+        break;
+      case 1:
+        if( 2 === newState ){
+          this._gameState = 2;
+          this.stateCrash();
+        } else if( 0 === newState ){
+          this._gameState = 0;
+          this.stateResetProperties();
+        }
+        break;
+      case 2:
+        if( 1 === newState ){
+          this._gameState = 1;
+          if( this.config.GAME_MODE_REPLAY ){
+            let sequencer = ODR.sequencer;
+
+            // Existing dejavus means the player restarted after
+            // choosing to replay, so replay again.
+            if( sequencer.dejavus ){
+              let totalRecall = sequencer.totalRecall;
+              let dejavus = totalRecall.slice();
+
+              this.stateResetProperties();
+              // TODO, passing a flag to prevent resetting sequencer
+              this.stateRestart();
+
+              sequencer.totalRecall = totalRecall;
+              sequencer.dejavus = dejavus;
+
+              //Just getting rid of the default clearZone
+              //although it should be harmless.
+              ODR.sequencer.entities = [];
+            } else {
+              this.stateResetProperties();
+              this.stateRestart();
+            }
+          } else {
+            this.stateResetProperties();
+            this.stateRestart();
+          }
+        } else if( 0 === newState ){
+          this._gameState = 0;
+          this.stateResetProperties();
+        }
+        break;
+    }
+    console.log([
+      "IDLE",
+      "PLAY",
+      "CRASH"
+    ][ newState ]);
+
+    if( newState == 0 ){
+
+      this._HACC = this.config.ACCELERATION * FPS/1000 * 0.5;
+      this._HSPD = this.config.SPEED * FPS / 1000;
+
+    } else if( newState == 1 ){
+      ODR.gameRecord = {
+        tangerines: 0,
+        hiscore: this.gameModeScore,
+      };
+      if( this.config.GAME_MODE_REPLAY && ODR.sequencer.dejavus ){
+        ODR.scoreboard.replay = true;
+      }
+      ODR.scoreboard.existence = 1;
+    }
+  }
+
+  stateResetProperties(){
+    this.runTime = 0;
+    // Setting runTime will auto-set the currentSpeed
+    // so a custom speed must be set after runtime.
+    this.currentSpeed = 0;
+    //this.distance = 0;
+
+    this.shouldDropTangerines = false;
+    this.tangerineTimer = 0;
+
+    this.inverted = false;
+    this.invertTimer = 0;
+
+    this.actions = [];
+    this.consoleButtonActionMap = new Map();
+    this.activeAction = null;
+    this.playLyrics = false;
+  }
+
+  statePlay(){
+    this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
+    this.sky.setShade( Sky.config.DAY, 3000 );
+
+    this.currentSpeed = this.config.SPEED;
+    this.activeAction.speed = ODR.config.SPEED;
+    this.activeAction.priority = 1;
+
+    this.checkShouldDropTangerines();
+
+    this.showGameModeInfo();
+
+    this.notifier.notify("go go go!!", 2000 );
+    this.playSound( this.soundFx.SOUND_GOGOGO, 0.8 * this.config.SOUND_EFFECTS_VOLUME/10, false, 0, -0.2 );
+  }
+
+  stateCrash(){
+    this.scoreboard.existence = 0;
+    if( !this.sequencer.dejavus )
+      this.updateScore();
+
+    this.setMenu();
+    vibrate(200);
+    //this.distanceMeter.flashIterations = 0;
+    this.music.stop();
+    this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, -0.2 );
+    this.sky.setShade( Sky.config.SUNSET, 3000 );
+
+    // Load lyrics, FIXME if needed.
+    let lyrics = [];
+    for( let i = 0, l = this.config.NATHERINE_LYRICS; i < l.length; i+= 2 ){
+      let string = l[ i + 1 ];
+      let duration = (l[ i + 2 ] || 5)*1000;
+      lyrics.push( new Message( string, 10000, 0, l[ i ]));
+    }
+    this.music.load('offline-intro-music', this.config.PLAY_MUSIC, 3000, lyrics );
+  }
+
+  stateRestart(){
+    //this.music.stop();
+    this.scenery.reset();
+    this.sequencer.reset();
+    //this.distanceMeter.reset();
+
+    this.scoreboard.reset();
+    if( N7e.user ){
+      this.scoreboard.minTangerines = this.dailyTangerines;
+      this.scoreboard.maxTangerines = Math.max( 1, ~~(this.gameModeTotalScore/100));
+    }
+
+    this.sky.setShade( Sky.config.DAY,  3000 );
+    this.invert( true );
+
+    this.playSound( this.soundFx.SOUND_SCORE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
+    this.checkShouldDropTangerines();
+    this.showGameModeInfo();
+
+    this.amandarine.reset();
+
+    let startingSlide = new SlideAction( this.time - ODR.config.MAX_ACTION_PRESS, 7.2);
+    startingSlide.priority = 1;
+    startingSlide.end = this.time;
+    startingSlide.maxPressDuration = 1500;
+
+    this.queueAction( startingSlide );
+    let defaultAction = new DefaultAction( this.config.SPEED );
+    defaultAction.priority = 1;
+    this.queueAction( defaultAction );
   }
 
 /** Class OnDarun
@@ -4884,7 +5091,7 @@ class OnDaRun extends LitElement {
  * - Load image sprites.
  * @param {Map} changedProperties
  */
-  firstUpdated(changedProperties) {
+  firstUpdated( changedProperties ){
 
     this.consoleButtons = {
       CONSOLE_LEFT: new ConsoleLeftButton(104, 495, 100, 100),
@@ -4979,6 +5186,69 @@ class OnDaRun extends LitElement {
     });
   }
 
+/** Class OnDarun
+ * Initialize the game parameters & game-play graphics.
+ */
+  init(){
+    Object.values( OnDaRun.gameModes ).forEach( mode => {
+      this.gameModeList.push( mode );
+      mode.distance = 0;
+    });
+    this.gameMode = OnDaRun.gameModes[ this.config.GAME_MODE ];
+
+    this.canvas = this.shadowRoot.getElementById('console-screen');
+    this.canvas.width = DEFAULT_WIDTH;
+    this.canvas.height = DEFAULT_HEIGHT;
+    this.canvasCtx = this.canvas.getContext('2d');
+    this.canvas.style.visibility = 'visible';
+
+    //this.generateShadowCache();
+    Mountain.generateMountainImages();
+
+    this.config.PLAY_MUSIC = true;
+    this.music = new Music();
+    this.music.load('offline-intro-music', false);
+    this.music.load('offline-play-music', false);
+
+    this.sky = new Sky( this.canvas );
+    this.sky.setShade( Sky.config.START, 0 );
+    this.scenery = new Scenery( this.canvas );
+    this.sequencer = new Sequencer( this.canvas );
+
+
+    this.menu = new TitlePanel( this.canvas );
+
+    this.amandarine = new A8e( this.canvas );
+
+    //this.distanceMeter = new DistanceMeter(this.canvas,
+     // this.spriteDef.TEXT_SPRITE, DEFAULT_WIDTH);
+
+    this.scoreboard = new Scoreboard( this.canvas );
+
+    this.achievements = [
+      200, 'KEEP RUNNING!#natB',
+      400, 'GOOD JOB!#natB',
+      800, 'JUST DONT DIE!#natB',
+    ];
+
+    this.notifier = new Notifier( this.canvas );
+    this.cc = new Terminal( this.canvas, 0, 180 ); //Closed Caption
+
+    this.actionIndex = 0;
+
+    /* Set default custom mode to setting 0 */
+    this.config.GRAPHICS_MODE_SETTINGS[ 3 ] = JSON.parse( JSON.stringify( OnDaRun.Configurations.GRAPHICS_MODE_SETTINGS[ 0 ]));
+    this.setGraphicsMode( 3, false );
+    this.scenery.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
+
+    this.style.opacity = 1;
+
+    this.startListening();
+    this.signIn();
+    this.scheduleNextRepaint();
+
+  }
+
   /* TODO
   generateShadowCache() {
     // Generate A8e shadows.
@@ -5038,67 +5308,15 @@ class OnDaRun extends LitElement {
   }
   */
 
-/** Class OnDarun
- * Initialize the game parameters & game-play graphics.
- */
-  init(){
-    Object.values( OnDaRun.gameModes ).forEach( mode => {
-      this.gameModeList.push( mode );
-      mode.distance = 0;
-    });
-    this.gameMode = OnDaRun.gameModes[ this.config.GAME_MODE ];
-
-    //this.generateShadowCache();
-    Mountain.generateMountainImages();
-
-    this.config.PLAY_MUSIC = true;
-    this.music = new Music();
-    this.music.load('offline-intro-music', false);
-    this.music.load('offline-play-music', false);
-    this.setSpeed();
-
-    this.canvas = this.shadowRoot.getElementById('console-screen');
-    this.canvas.width = DEFAULT_WIDTH;
-    this.canvas.height = DEFAULT_HEIGHT;
-    this.canvasCtx = this.canvas.getContext('2d');
-    this.canvas.style.visibility = 'visible';
-
-    this.sky = new Sky( this.canvas );
-    this.sky.setShade( Sky.config.START, 0 );
-    this.scenery = new Scenery( this.canvas );
-
-    this.menu = new TitlePanel( this.canvas );
-
-    this.amandarine = new A8e( this.canvas );
-
-    this.distanceMeter = new DistanceMeter(this.canvas,
-      this.spriteDef.TEXT_SPRITE, DEFAULT_WIDTH);
-    this.achievements = [
-      200, 'KEEP RUNNING!#natB',
-      400, 'GOOD JOB!#natB',
-      800, 'JUST DONT DIE!#natB',
-    ];
-
-    this.notifier = new Notifier( this.canvas );
-    this.cc = new Terminal( this.canvas, 0, 180 ); //Closed Caption
-
-    this.actionIndex = 0;
-
-    /* Set default custom mode to setting 0 */
-    this.config.GRAPHICS_MODE_SETTINGS[ 3 ] = JSON.parse( JSON.stringify( OnDaRun.Configurations.GRAPHICS_MODE_SETTINGS[ 0 ]));
-    this.setGraphicsMode( 3, false );
-    this.scenery.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
-
-    this.style.opacity = 1;
-
-    this.startListening();
-    this.signIn();
-    this.scheduleNextRepaint();
-
+  get runTime(){
+    return this._runTime;
   }
 
-  setSpeed( opt_speed ){
-    this.currentSpeed = opt_speed === undefined ? this.currentSpeed : opt_speed;
+  set runTime( rt ){
+    this._runTime = rt;
+    this.currentSpeed = this.config.SPEED + rt * this.config.ACCELERATION;
+    if( this.currentSpeed > this.config.MAX_SPEED )
+      this.currentSpeed = this.config.MAX_SPEED;
   }
 
 /** Class OnDarun
@@ -5118,25 +5336,6 @@ class OnDaRun extends LitElement {
     }
 
     return new Greeter( this.canvas, this.notifier );
-  }
-
-  play(){
-    this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
-    this.sky.setShade( Sky.config.DAY, 3000 );
-
-    this.setSpeed( this.config.SPEED )
-    this.activeAction.speed = ODR.config.SPEED;
-    this.activeAction.priority = 1;
-
-    this.checkShouldDropTangerines();
-    this.shouldAddObstacle = true;
-    this.shouldIncreaseSpeed = true;
-
-    this.showGameModeInfo();
-
-    this.playState = 1;
-    this.notifier.notify("go go go!!", 2000 );
-
   }
 
   signIn(){
@@ -5218,10 +5417,12 @@ class OnDaRun extends LitElement {
               if( serverDistance > mode.distance ){
                 mode.distance = serverDistance;
                 if( mode === this.gameMode ){
-                  this.distanceMeter.setHighScore( Math.round( serverDistance * this.config.TO_SCORE ));
+                  //this.distanceMeter.setHighScore( Math.round( serverDistance * this.config.TO_SCORE ));
                 }
               }
             });
+
+            this.scoreboard.maxTangerines = ~~(this.gameModeTotalScore/100);
           }
 
           N7e.userSigningInfo('distances', true );
@@ -5256,7 +5457,7 @@ class OnDaRun extends LitElement {
       this.notifier.notify('♬ OFF', 2000 );
     } else {
       this.config.PLAY_MUSIC = true;
-      if( 1 == this.playState ){
+      if( 1 == this.gameState ){
         this.music.load('offline-play-music', this.config.PLAY_MUSIC );
       } else {
         this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
@@ -5398,48 +5599,26 @@ class OnDaRun extends LitElement {
     }, this.consoleButtons.CONSOLE_B );
   }
 
-  showGameModeInfo( duration = 2000, delay = 0 ){
+  showGameModeInfo( duration = 3000, delay = 0 ){
     if( this.totalTangerines ){
-      let maxPerDay = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
-      this.cc.append( `#trophy:${this.gameMode.title}  #tangerine:${this.dailyTangerines}/${maxPerDay}`, duration, delay );
+      this.cc.append( `${this.gameMode.title} #trophy${this.gameModeScore}`, duration, delay );
     } else this.cc.append( this.gameMode.title, duration, delay );
-  }
-
-  crash( action ){
-    console.assert( 2 != this.playState, 'crash reentry', this.playState );
-    this.playState = 2;
-
-    this.updateScore();
-
-    this.setMenu();
-    vibrate(200);
-    this.distanceMeter.flashIterations = 0;
-    this.music.stop();
-    this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-    this.sky.setShade( Sky.config.SUNSET, 3000 );
-
-    // Load lyrics, FIXME if needed.
-    let lyrics = [];
-    for( let i = 0, l = this.config.NATHERINE_LYRICS; i < l.length; i+= 2 ){
-      let string = l[ i + 1 ];
-      let duration = (l[ i + 2 ] || 5)*1000;
-      lyrics.push( new Message( string, 10000, 0, l[ i ]));
-    }
-    this.music.load('offline-intro-music', this.config.PLAY_MUSIC, 3000, lyrics );
   }
 
   setGameMode( choice ){
     /* FIXME avoid modifying config */
     this.gameMode = choice;
 
-    this.distanceMeter.setHighScore( this.gameModeScore );
+    //this.distanceMeter.setHighScore( this.gameModeScore );
+    this.scoreboard.score = 0;
 
     this.config.ACCELERATION = choice.ACCELERATION;
 
-    this.restoreBaseValues();
+    this.gameState = 0;
 
     this.amandarine.reset();
     this.scenery.reset();
+    this.sequencer.reset();
 
     this.invert(true);
 
@@ -5536,11 +5715,11 @@ class OnDaRun extends LitElement {
 
                   ODR.totalTangerines = 0;
                   ODR.dailyTangerines = 0;
-                  ODR.distance = 0;
+                  ODR.runTime = 0;
 
                   // Reset game score.
                   ODR.gameModeList.forEach( mode => mode.distance = 0 );
-                  ODR.distanceMeter.setHighScore( 0 );
+                  //ODR.distanceMeter.setHighScore( 0 );
                 }
               },
             }, this.consoleButtons.CONSOLE_D )
@@ -5760,10 +5939,10 @@ class OnDaRun extends LitElement {
 
   setMenu( menu ){
     if(! menu ){
-      if( 0 == this.playState ){
+      if( 0 == this.gameState ){
         this.menu = new Greeter( this.canvas, this.notifier );
         return;
-      } else if( 2 == this.playState ){
+      } else if( 2 == this.gameState ){
         this.menu = new GameOver( this.canvas );
         return;
       }
@@ -5794,72 +5973,61 @@ class OnDaRun extends LitElement {
       return;
     }
 
-    if( 1 <= this.playState ){
+    if( 1 == this.gameState ){
 
-      let hasObstacles = this.runTime > this.config.CLEAR_TIME ? 1 : 0;
+      if( this.config.GAME_MODE_REPLAY ){
+        let dejavus = this.sequencer.dejavus;
+        if( dejavus ){
 
-      //CRASHED
-      if( 2 == this.playState ){
+          //Sync runTime with the next entity in the replay mode.
+          if( dejavus.length ){
+            if( dejavus[0].runTime < this.runTime + deltaTime ){
+              let extra = this.runTime + deltaTime - dejavus[0].runTime;
+              deltaTime -= extra;
+              if(deltaTime <= 0) console.log('min delta', deltaTime);
+            }
+          } else {
+            if( this.sequencer.numberOfEntities == 0 ){
 
-        //Define existence as a timing ratio used to by the gameover animations.
-        let existence = Math.max( 0,
-          this.actions[0]
-          ? Math.min( 1, (this.config.GAMEOVER_CLEAR_TIME - this.actions[0].timer) / this.config.GAMEOVER_CLEAR_TIME )
-          : 0
-        );
+              // For now
+              DuckType.elevationList.forEach(( elev, index ) => {
+                let rubber = new Rubber( this.canvasCtx,
+                  this.currentSpeed * Rubber.speedFactor, elev);
+                rubber.minX = DEFAULT_WIDTH + index * 20;
+                this.sequencer.addEntity( rubber );
+              });
 
-        this.horizon.forward( deltaTime, this.currentSpeed, this.inverted, hasObstacles && existence );
-
-        if (existence > 0.9) {
-          let crashPoint = this.actions[0].boxes.C.center();
-          this.canvasCtx.drawImage(ODR.spriteGUI,
-              OnDaRun.spriteDefinition.CRASH.x,
-              OnDaRun.spriteDefinition.CRASH.y,
-              this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT,
-              crashPoint.minX - this.config.CRASH_WIDTH/2, crashPoint.minY - this.config.CRASH_HEIGHT/2,
-              this.config.CRASH_WIDTH, this.config.CRASH_HEIGHT);
-        }
-
-      } else {
-        this.runTime += deltaTime;
-
-        //Drop tangerine
-        if( this.tangerineTimer < 5000 ){
-          this.tangerineTimer += deltaTime;
-          if( this.tangerineTimer >= 5000 ){
-            this.checkShouldDropTangerines();
-          }
-        }
-
-        this.horizon.forward( deltaTime, this.currentSpeed, this.inverted, hasObstacles);
-
-        if( hasObstacles ) {
-          for( let i = 0, entity; entity = this.horizon.entities[i]; i++ ) {
-
-            let crashBoxes = this.amandarine.hitTest(entity, this.amandarine);
-
-            if( crashBoxes && entity.collide( crashBoxes )) {
-              // if collide() return true then gameover
-              break;
             }
           }
+
+          this.runTime += deltaTime;
+          this.scoreboard.score = this.score;
+        } else {
+          this.runTime += deltaTime;
+          //this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
+          this.scoreboard.score = this.score;
         }
-
-        this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
-
-        if( this.shouldIncreaseSpeed ){
-          this.currentSpeed = this.config.SPEED + this.runTime * this.config.ACCELERATION;
-          if( this.currentSpeed > this.config.MAX_SPEED )
-            this.currentSpeed = this.config.MAX_SPEED;
-        }
-
-
-
+      } else {
+        this.runTime += deltaTime;
+        //this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
+        this.scoreboard.score = this.score;
       }
 
-      this.scenery.forward( deltaTime, this.currentSpeed, this.inverted, true );
+      //Drop tangerine
+      if( this.tangerineTimer < 5000 ){
+        this.tangerineTimer += deltaTime;
+        if( this.tangerineTimer >= 5000 ){
+          this.checkShouldDropTangerines();
+        }
+      }
 
-      // Meter & Score
+      this.scenery.forward( deltaTime, this.currentSpeed, this.inverted );
+      this.sequencer.forward( deltaTime, this.currentSpeed, true );
+      this.scoreboard.forward( deltaTime );
+
+
+
+      /*
       let playAchievementSound = this.distanceMeter.forward( deltaTime, this.score );
       if( playAchievementSound ){
         if (playAchievementSound != this.lastAchievement) {
@@ -5872,6 +6040,7 @@ class OnDaRun extends LitElement {
           this.notifier.notify( this.achievements.shift(), 6000 );
         }
       }
+      */
 
       // Night & Day FIXME use time instead of timer
       if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
@@ -5891,34 +6060,34 @@ class OnDaRun extends LitElement {
         }
       }
 
-      let crashAction = this.scenery.crashTest( this.amandarine );
+      let crashAction = this.sequencer.crashTest( this.amandarine );
       if( crashAction ){
-        // The scheduler will call this.crash()
+        // The scheduler will set gameState to 2 that will call this.crash()
         this.queueAction( crashAction );
       }
 
-      this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
 
-      /*
+      /* Auto by setting runTime
       this.currentSpeed = this.config.SPEED + this.runTime * this.config.ACCELERATION;
       if( this.currentSpeed > this.config.MAX_SPEED )
         this.currentSpeed = this.config.MAX_SPEED;
         */
 
-    } else if( 2 == this.playState ){
-      //CRASHED
-
+    } else if( 2 == this.gameState ){
+      //CEASING
       //Define existence as a timing ratio used to by the gameover animations.
       let existence = Math.max( 0,
-        this.actions[0]
-        ? Math.min( 1, (this.config.GAMEOVER_CLEAR_TIME - this.actions[0].timer) / this.config.GAMEOVER_CLEAR_TIME )
-        : 0
+        Math.min( 1,
+          ( this.config.GAMEOVER_CLEAR_TIME - this.activeAction.timer )
+            /this.config.GAMEOVER_CLEAR_TIME )
       );
 
-      this.scenery.forward( deltaTime, this.currentSpeed, this.inverted, false );
+      this.scenery.forward( deltaTime, this.currentSpeed, this.inverted );
+      this.sequencer.forward( deltaTime, this.currentSpeed, false, existence );
+      this.scoreboard.forward( deltaTime );
 
       if (existence > 0.9) {
-        let crashPoint = this.actions[0].boxes.C.center();
+        let crashPoint = this.actions[0].crash.C.center();
         this.canvasCtx.drawImage( ODR.spriteGUI,
             OnDaRun.spriteDefinition.CRASH.x,
             OnDaRun.spriteDefinition.CRASH.y,
@@ -5928,8 +6097,10 @@ class OnDaRun extends LitElement {
       }
 
     } else {
-      // 0 == this.playState
-      this.scenery.forward( deltaTime, 0, this.inverted, false );
+      // 0 == this.gameState
+      this.scenery.forward( deltaTime, 0, this.inverted );
+      this.sequencer.forward( deltaTime, this.currentSpeed, false );
+      //this.scoreboard.existence = 0;
     }
 
     let a = this.actions[0];
@@ -6240,7 +6411,7 @@ GOOD JOB! #natB`, 15000 );
         console.log('Scores updated.');
       }
       this.gameMode.distance = Math.ceil( this.distance );
-      this.distanceMeter.setHighScore( this.score );
+      //this.distanceMeter.setHighScore( this.score );
     }
   }
 
@@ -6251,11 +6422,15 @@ GOOD JOB! #natB`, 15000 );
   }
 
   get gameModeScore(){
-    return Math.round(this.gameMode.distance * this.config.TO_SCORE);
+    return Math.round( this.gameMode.distance * this.config.TO_SCORE );
   }
 
   get score(){
-    return Math.round(this.distance * this.config.TO_SCORE);
+    return Math.round( this.distance * this.config.TO_SCORE );
+  }
+
+  get distance(){
+    return (this._HSPD + this._HACC * this._runTime) * this._runTime;
   }
 
   checkShouldDropTangerines() {
@@ -6286,72 +6461,15 @@ GOOD JOB! #natB`, 15000 );
             this.shouldDropTangerines = false;
             //this.notifier.notify( `no #tangerine today! [${tangerines.dayCount}/${maxPerDay}]`, 5000 );
           }
+
+          this.scoreboard.minTangerines = tangerines.dayCount;
+          this.scoreboard.maxTangerines = maxPerDay;
         } else {
           console.error('Data was not committed???');
         }
 
       });
     }
-  }
-
-  restoreBaseValues(){
-
-    this.playState = 0;
-
-    this.currentSpeed = 0;
-    this.runTime = 0;
-    this.distance = 0;
-
-    this.shouldAddObstacle = false;
-    this.shouldIncreaseSpeed = false;
-
-    this.shouldDropTangerines = false;
-    this.tangerineTimer = 0;
-
-    this.inverted = false;
-    this.invertTimer = 0;
-
-    this.actions = [];
-    this.consoleButtonActionMap = new Map();
-    this.activeAction = null;
-    this.playLyrics = false;
-  }
-
-
-  restart(){
-    //this.music.stop();
-    console.assert(this.activeAction.type == 'CRASHED', 'Active action should be CRASHED')
-
-    //Dequeue the crashed action.
-    this.activeAction.priority = -1;
-
-    this.restoreBaseValues();
-
-    this.scenery.reset();
-    this.distanceMeter.reset();
-    this.sky.setShade( Sky.config.DAY,  3000 );
-    this.invert( true );
-
-    this.playState = 1;
-
-    this.setSpeed( this.config.SPEED );
-    this.playSound( this.soundFx.SOUND_SCORE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-    this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
-    this.checkShouldDropTangerines();
-    this.showGameModeInfo();
-
-    this.amandarine.reset();
-
-    let startingSlide = new SlideAction( this.time - ODR.config.MAX_ACTION_PRESS, 7.2);
-    startingSlide.priority = 1;
-    startingSlide.end = this.time;
-    startingSlide.maxPressDuration = 1500;
-
-    this.queueAction( startingSlide );
-    let defaultAction = new DefaultAction( this.config.SPEED );
-    defaultAction.priority = 1;
-    this.queueAction( defaultAction );
-
   }
 
   invert(reset) {
@@ -6453,13 +6571,10 @@ GOOD JOB! #natB`, 15000 );
               case A8e.status.JUMPING:
                 this.activeAction = action;
 
-                    if( 2 == this.playState ) {
+                    if( 2 == this.gameState ) {
                       console.trace();
                       /* crash action should have locked the scheduler */
                       console.error('Shoud never be here.')
-                      if (getTimeStamp() - this.crashedTime >= this.config.GAMEOVER_CLEAR_TIME) {
-                        this.restart();
-                      }
                       break HANDLE_ACTION_QUEUE;
                     }
 
