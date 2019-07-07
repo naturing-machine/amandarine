@@ -186,15 +186,15 @@ class CollisionBox {
 }
 
 class User {
-  constructor(opt_providerName) {
+  constructor( providerName = null) {
     let redirect = true;
     let provider;
-    if( opt_providerName ){
+    if( providerName ){
       N7e.userSignedIn = false;
       N7e.signing.progress = true;
 
       firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => {
-        switch(opt_providerName) {
+        switch(providerName) {
           case "google":
             provider = new firebase.auth.GoogleAuthProvider();
             break;
@@ -217,6 +217,8 @@ class User {
       });
     }
   }
+
+
 }
 /***
  * Entity
@@ -1291,7 +1293,7 @@ class Cloud {
   forward( deltaTime, currentSpeed ) {
     if( !this.removed ){
 
-      this.minX -= currentSpeed*this.speedModifier * FPS / 1000 * deltaTime;
+      this.minX -= currentSpeed * this.speedModifier * FPS/1000 * deltaTime;
       this.draw();
 
       // Mark as removeable if no longer in the canvas.
@@ -1483,7 +1485,7 @@ class NightMode {
       yShift *= yShift;
       let fw = 2 * (NightMode.config.WIDTH + NightMode.config.MOON_BLUR);
       let fh = NightMode.config.HEIGHT + NightMode.config.MOON_BLUR * 2;
-      mx = Math.ceil(this.minX/DEFAULT_WIDTH * (DEFAULT_WIDTH+fw*2) - fw - NightMode.config.MOON_BLUR);
+      mx = Math.ceil( this.minX / DEFAULT_WIDTH *( DEFAULT_WIDTH + 2*fw ) -fw -NightMode.config.MOON_BLUR );
       my = yShift + this.minY - NightMode.config.MOON_BLUR;
 
       this.canvasCtx.globalAlpha = this.opacity * darkness/255
@@ -1798,7 +1800,7 @@ class HorizonLine {
           canvasCtx.beginPath();
           canvasCtx.moveTo(0, y + i);
           canvasCtx.lineTo(width, y + i);
-          canvasCtx.lineDashOffset = -spinner + s + ~~(i*i/8) - width/2;
+          canvasCtx.lineDashOffset = -spinner + s + ~~( i**2/8 ) - width/2;
           canvasCtx.stroke();
         }
       }
@@ -1886,8 +1888,8 @@ class Scenery {
     // Every 2-layer will be lightly tinted with an atmosphere (sky).
 
     for( let i = 0; i < this.cloudFrequency * 10; i++ ){
-      let x = getRandomNum(-50, DEFAULT_WIDTH*2 );
-      this.layers[[0,2,4][getRandomNum(0,2)]].push( new Cloud( this.canvas, Cloud.randomCloudType,
+      let x = getRandomNum(-50, 2*DEFAULT_WIDTH );
+      this.layers[[ 0, 2, 4 ][ getRandomNum( 0, 2 )]].push( new Cloud( this.canvas, Cloud.randomCloudType,
         x, Cloud.randomCloudHeight ));
     }
   }
@@ -2094,7 +2096,7 @@ class A8e {
 
   get collisionBoxes() {
 //    switch (this.status) {
-    switch (ODR.activeAction.type) {
+    switch ( ODR.activeAction.type ){
       case A8e.status.SLIDING:
         return A8e.collisionBoxes.SLIDING
 
@@ -2193,18 +2195,11 @@ class A8e {
 
     switch (action.type) {
       case A8e.status.WAITING:
-        if (action.heldStart) {
+        if( action.heldStart ){
           if (action.timer - action.heldStart > 450) action.heldStart = action.timer - 450;
           action.currentFrame = 72 + ~~((action.timer - action.heldStart)/150);
-        } else if (!IS_MOBILE){
-          //let xMap = [2,1,-2,-3,-2,1], yMap = [1,0,-2,-2,-2,0];
-          /*
-          let yMap = [0,2,3,2,0];
-          this.canvasCtx.drawImage(ODR.spriteGUI, 0, 96, 105, 54,
-            Math.round(this.minX + 20),
-            Math.round(this.minY + yMap[(action.timer>>7)%5] - 50), 105, 54);
-            */
         }
+
         break;
       case A8e.status.RUNNING: {
         if (action.speed != speed) {
@@ -2250,7 +2245,7 @@ class A8e {
       case A8e.status.SLIDING: {
         var increment = speed * FPS / 1000 * deltaTime;
 
-        if (action.distance == 0 && increment > 0) {
+        if( action.distance == 0 && increment > 0 ){
           ODR.playSound( ODR.soundFx.SOUND_SLIDE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
         }
 
@@ -2258,7 +2253,7 @@ class A8e {
 
         let it = action.fullTime - action.timer/1000;
           if (it < 0) it = 0;
-        let distance = action.fullDistance - 1/2 * it * it * action.friction - action.distance;
+        let distance = action.fullDistance - 1/2 * it**2 * action.friction - action.distance;
 
         this.minX = action.minX + distance;
         //Sliding animation
@@ -2380,22 +2375,22 @@ class A8e {
       if (action.priority == 2) {
         let last = now - action.end;
         shiftLeft = increment * last / DRAW_STEP;
-        fadeOut = (action.halfTime - last) / action.halfTime;
+        fadeOut = ( action.halfTime - last )/ action.halfTime;
           if (fadeOut < 0) fadeOut = 0;
       }
 
       let unit = action.halfTime * 2 / DRAW_STEP;
       let gravityFactor = 0.0000005 * A8e.config.GRAVITY;
       this.canvasCtx.moveTo(
-        baseX + unit*increment - shiftLeft,
-        baseY - (action.top - (gravityFactor * action.halfTime * action.halfTime)) * A8e.config.SCALE_FACTOR
+        baseX + unit * increment - shiftLeft,
+        baseY -( action.top -( gravityFactor * action.halfTime**2 ))* A8e.config.SCALE_FACTOR
       );
 
       for (let timer = action.halfTime; timer > - action.halfTime - DRAW_STEP; timer-= DRAW_STEP, unit--) {
-        let drawY = baseY - (action.top - (gravityFactor * timer * timer)) * A8e.config.SCALE_FACTOR;
-        let drawX = baseX + unit*increment - shiftLeft;
+        let drawY = baseY -( action.top -( gravityFactor * timer * timer ))* A8e.config.SCALE_FACTOR;
+        let drawX = baseX + unit * increment - shiftLeft;
 
-        if (drawX < this.minX + 20 && drawY > baseY - 60 ) {
+        if (drawX < this.minX +20 && drawY > baseY -60 ) {
           break;
         }
 
@@ -2403,7 +2398,7 @@ class A8e {
       }
 
       now = (now/10)%40;
-      let alpha = fadeOut * (action.halfTime-150)/200;
+      let alpha = fadeOut *( action.halfTime -150 )/200;
         if (alpha > 1) alpha = 1;
 
       this.canvasCtx.lineCap = 'round';
@@ -2424,9 +2419,9 @@ class A8e {
 
     action.willEnd(now,speed);
     if (action.priority != 0) {
-      baseX = A8e.config.START_X_POS - action.distance;
-      alpha = (action.fullDistance - action.distance)/action.fullDistance;
-      alpha *= alpha;
+      baseX = A8e.config.START_X_POS -action.distance;
+      alpha = ( action.fullDistance -action.distance )/ action.fullDistance;
+      alpha*= alpha;
     } else {
       alpha = action.pressDuration/ODR.config.MAX_ACTION_PRESS;
     }
@@ -2435,12 +2430,13 @@ class A8e {
 
     this.canvasCtx.save();
 
-    for (let i = 0, len = ODR.config.GRAPHICS_SLIDE_STEPS, s = 0, sd = Math.abs(now/100%4 - 2);
+    // Draw future body shadows
+    for( let i = 0, len = ODR.config.GRAPHICS_SLIDE_STEPS, s = 0, sd = Math.abs( now/100 %4 -2 );
         i < len; i++, s+=sd) {
-      this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/(1<<i);
+      this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/( 1<<i );
       this.canvasCtx.drawImage(A8e.animFrames.SLIDING.sprite,
-        A8e.animFrames.SLIDING.frames[(frame+i)%3], 40, 40, 40,
-        ~~(baseX + action.fullDistance - i * 30 *alpha) - s*s, this.groundMinY,
+        A8e.animFrames.SLIDING.frames[( frame +i )%3 ], 40, 40, 40,
+        ~~( baseX +action.fullDistance - 30*i *alpha ) - s**2, this.groundMinY,
         A8e.config.WIDTH, A8e.config.HEIGHT);
     }
 
@@ -2626,6 +2622,8 @@ class Text {
     this.minLength = Math.max(wordList[0].length,this.minLength);
     this.numberOfLines = 1;
 
+    //FIXME leading space won't appear,
+    //Rewrite to break line first.
     for (let i = 1, cur = wordList[0].length ; i < wordList.length ; i++) {
       let words = wordList[i].split('\n');
 
@@ -2654,6 +2652,7 @@ class Text {
       });
 
     }
+
     messageStr = newList.join('');
 
     this.glyphs = [...messageStr.toUpperCase()].map(ch => {
@@ -2809,7 +2808,7 @@ class Terminal {
     this.messages = [];
     this.timer = 0;
     //TODO make width configurable
-    this.text = new Text( 600/14, 0 );
+    this.text = new Text( 600 /14, 0 );
     this.endTime = Infinity;
     this.minX = minX;
     this.minY = minY;
@@ -2897,13 +2896,8 @@ class Notifier {
   constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
-    this.minY = 5;
     this.timer = 0;
-    this.init();
     this.text = new Text(20);
-  }
-
-  init() {
     this.opacity = 0;
   }
 
@@ -2915,15 +2909,15 @@ class Notifier {
   forward( deltaTime ) {
     if (this.timer > 0) {
 
-      if (this.timer > 500) this.opacity += deltaTime/100;
+      if (this.timer > 500) this.opacity += deltaTime /100;
       else this.opacity -= deltaTime/200;
         if (this.opacity > 1) this.opacity = 1;
         else if (this.opacity < 0) this.opacity = 0;
 
       this.opacity +=
         this.timer > 500
-        ? deltaTime / 200
-        : -deltaTime / 200;
+        ? deltaTime /200
+        : -deltaTime /200;
           if (this.opacity < 0) this.opacity = 0;
           else if (this.opacity > 1) this.opacity = 1;
 
@@ -3674,7 +3668,7 @@ class Menu extends Panel {
       let title = entry.title ? entry.title : entry;
 
       let xxx = Math.abs(this.displayEntry - i);
-      this.canvasCtx.globalAlpha = /*(entry.disabled ? 0.5 : 1) **/ Math.max(0.1,(4 - xxx)/4);
+      this.canvasCtx.globalAlpha = (entry.disabled ? 0.5 : 1)*Math.max(0.1,(4 - xxx)/4);
       if (entry.hasOwnProperty('value')) title += '.'.repeat(32-title.length-(entry.value+'').length)+'[ '+entry.value+' ]';
 
       this.text.setText((i == this.model.currentIndex ? (entry.exit ? '◅ ' : ' ▻'):'  ') + title).draw(
@@ -4013,6 +4007,14 @@ class Greeter extends Panel {
       return false;
     }
 
+    if( e.type == OnDaRun.events.CONSOLEDOWN ){
+      if( !this.GoGoGo && ODR.activeAction && 0 == ODR.activeAction.speed ){
+        this.GoGoGo = true;
+        ODR.activeAction.heldStart = ODR.activeAction.timer;
+      }
+      return true;
+    }
+
     if( e.type == OnDaRun.events.CONSOLEUP
       && ODR.activeAction
       && 0 == ODR.activeAction.speed
@@ -4147,7 +4149,6 @@ class DefaultAction extends Action {
     this.index = Infinity;
     this._timer = 0;
     this._priority = 3;
-    this._minX = 0;
   }
 
   set timer( timer ) {
@@ -4160,10 +4161,10 @@ class DefaultAction extends Action {
   } get priority() { return this._priority; }
 
   set speed( newSpeed ) {
-    if( this._speed != newSpeed && (this._speed || 0) <= ODR.config.SPEED ) {
+    if( this._speed != newSpeed && (this._speed || 0) <= ODR.config.SPEED ){
       if( newSpeed == 0) {
         this._type = A8e.status.WAITING;
-        Object.assign(this, A8e.animFrames.WAITING);
+        Object.assign( this, A8e.animFrames.WAITING );
         this.timer = 0;
       } else {
         this._type = A8e.status.RUNNING;
@@ -5534,6 +5535,7 @@ class OnDaRun extends LitElement {
             this.sounds = this.sounds || [
               'SOUND_QUACK',
               'SOUND_OGGG',
+              'SOUND_GOGOGO',
               'SOUND_BICYCLE',
               'SOUND_JUMP',
               'SOUND_SLIDE',
@@ -5737,7 +5739,7 @@ class OnDaRun extends LitElement {
           '#google GOOGLE',
           {title:'EXIT',exit:true}
         ],
-        enter: (entryIndex,choice) => {
+        enter: ( entryIndex, choice ) => {
           if (choice.exit) return null;
 
           return new Menu( this.canvas, {
@@ -6389,17 +6391,19 @@ class OnDaRun extends LitElement {
       ];
     } else {
 
+      /*
       if( this.distance > this.gameMode.distance )
         this.notifier.notify( `A NEW HIGH!
 ${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_SCORE )} ▻ ${Math.round( this.distance * this.config.TO_SCORE )}
 GOOD JOB! #natB`, 15000 );
+*/
 
       d = d/2 - d/2%100;
       this.achievements = [
         d, 'KEEP RUNNING!#natB',
-        d*2, 'GOOD JOB!#natB',
-        d*3, 'JUST DONT DIE!#natB',
-        d*4, '...#natB',
+        2*d, 'GOOD JOB!#natB',
+        3*d, 'JUST DONT DIE!#natB',
+        4*d, '...#natB',
       ];
     }
 
@@ -6751,7 +6755,7 @@ for( const key in OnDaRun.gameModes ) {
 }
 
 OnDaRun.Configurations = {
-  ACCELERATION: 0.00050/16,
+  ACCELERATION: OnDaRun.gameModes.GAME_A.ACCELERATION,
   BG_CLOUD_SPEED: 0.2,
   BOTTOM_PAD: 10,
   CLEAR_TIME: 3000,
@@ -6920,6 +6924,7 @@ OnDaRun.sounds = {
   SOUND_JUMP: 'offline-sound-piskup',
   SOUND_CRASH: 'offline-sound-crash',
   SOUND_OGGG: 'offline-sound-oggg',
+  SOUND_GOGOGO: 'offline-sound-gogogo',
   SOUND_QUACK: 'offline-sound-quack',
   SOUND_BICYCLE: 'offline-sound-bicycle',
   SOUND_BLIP: 'offline-sound-blip',
