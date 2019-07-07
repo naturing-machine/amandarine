@@ -18,6 +18,7 @@
 
 import { LitElement, html, css } from 'lit-element';
 
+var VERSION = "1.0"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;
@@ -2605,28 +2606,28 @@ class Scoreboard {
   set score( newScore ){
     this._score = newScore;
 
-    if( this.flashAchievementTimer != 0 ){
-      return;
-    }
+    if( this.flashAchievementTimer == 0 ){
+      newScore = newScore || 0;
 
-    newScore = newScore || 0;
-
-    this._playAchievement = 0;
-    while( newScore > this.nextScoreAchievement ){
-      if( !this._playAchievement ){
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10, false, 0, 0.8 );
-        this.flashAchievementTimer = 2300;
-      }
-      this._playAchievement = this.nextScoreAchievement;
-      this.nextScoreAchievement += Scoreboard.achievementScore;
-    }
-
-    if( this._playAchievement != 0 ){
-      if( this._playAchievement > ODR.achievements[ 0 ]){
-        ODR.achievements.shift();
-        ODR.notifier.notify( ODR.achievements.shift(), 6000 );
+      this._playAchievement = 0;
+      while( newScore > this.nextScoreAchievement ){
+        if( !this._playAchievement ){
+          ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10, false, 0, 0.8 );
+          this.flashAchievementTimer = 2300;
+        }
+        this._playAchievement = this.nextScoreAchievement;
+        this.nextScoreAchievement += Scoreboard.achievementScore;
       }
 
+      if( this._playAchievement != 0 ){
+        if( this._playAchievement > ODR.achievements[ 0 ]){
+          ODR.achievements.shift();
+          ODR.notifier.notify( ODR.achievements.shift(), 6000 );
+        }
+
+        newScore = this._playAchievement;
+      }
+    } else {
       newScore = this._playAchievement;
     }
 
@@ -2657,8 +2658,8 @@ class Scoreboard {
           this.text.cache[ i ] = 588;
         }
       }
-      this.flashAchievementTimer = Math.max( 0, this.flashAchievementTimer -deltaTime );
 
+      this.flashAchievementTimer = Math.max( 0, this.flashAchievementTimer -deltaTime );
       // Set back to the actual score.
       if( this.flashAchievementTimer == 0 ){
         this.score = this._score;
@@ -3478,7 +3479,7 @@ supporters / fanpages
 for buzzing about it.
 
 You can also support this project by making donations to
-the Thai Redcross Society #redcross
+The Thai Redcross Society #redcross
 
 `
         , true ),
@@ -3629,7 +3630,7 @@ the Thai Redcross Society #redcross
       new Text(600/14,0).drawString("loading data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
     } else {
       if (this.timer < 15000) {
-        new Text(600/14,0).drawString("Amandarine Frontier: On Da Run 1.0", this.canvasCtx,0,180-Math.min(0,runout));
+        new Text(600/14,0).drawString(`Amandarine Frontier: On Da Run [V.${VERSION}]`, this.canvasCtx,0,180-Math.min(0,runout));
       } else {
         new Text(600/14,0).drawString("press a button to continue.", this.canvasCtx,0,180-Math.min(0,runout));
       }
@@ -4277,6 +4278,7 @@ class Greeter extends Panel {
   }
 
   drawTutorial(){
+    if( IS_MOBILE ) return;
     let yMap = [0,2,3,2,0];
     this.canvasCtx.drawImage(ODR.spriteGUI, 0, 96, 105, 54,
       Math.round(ODR.amandarine.minX + 20),
@@ -5200,11 +5202,14 @@ class OnDaRun extends LitElement {
         }
         break;
     }
+
+    /*
     console.log([
       "IDLE",
       "PLAY",
       "CRASH"
     ][ newState ]);
+    */
 
     if( newState == 0 ){
 
@@ -5322,6 +5327,14 @@ class OnDaRun extends LitElement {
  * @param {Map} changedProperties
  */
   firstUpdated( changedProperties ){
+
+    console.log(`Amandarine Frontier : OnDaRun Version ${VERSION}
+Made for Natherine BNK48 (Dusita Kitisarakulchai) with ❤❤❤❤.
+
+The goal of the project is to support The Thai Red Cross Society➕
+Please support this project only by making donations to the society.
+https://www.redcross.or.th/donate/
+    `);
 
     this.consoleButtons = {
       CONSOLE_LEFT: new ConsoleLeftButton(104, 495, 100, 100),
@@ -6110,8 +6123,8 @@ class OnDaRun extends LitElement {
 
         // Async, so no guarantee of order in array.
         this.soundFx = {};
-        this.audioContext.decodeAudioData(bytes.buffer)
-          .then( audioData => { console.log('data',sound);this.soundFx[ sound ] = audioData});
+        this.audioContext.decodeAudioData( bytes.buffer )
+          .then( audioData => this.soundFx[ sound ] = audioData );
       });
     }
   }
@@ -6514,14 +6527,19 @@ class OnDaRun extends LitElement {
 
           // Music button
           case this.consoleButtons.CONSOLE_A:
-            if( e.detail.timeOut
-              || this.menu
-                && !this.menu.passthrough
-                && !this.closeMenuForButton( button )){
-              this.setMenu( this.createSoundMenu());
+            if( !IS_SOUND_DISABLED ){
+              if( e.detail.timeOut
+                || this.menu
+                  && !this.menu.passthrough
+                  && !this.closeMenuForButton( button )){
+                this.setMenu( this.createSoundMenu());
+              } else {
+                this.setMusicMode(-1 );
+                this.cc.append("hold the button for settings.", 3000 );
+              }
             } else {
-              this.setMusicMode(-1 );
-              this.cc.append("hold the button for settings.", 3000 );
+              this.menu = null;
+              this.cc.append("sounds currently disabled on ios.", 5000 );
             }
           break;
 
@@ -6922,7 +6940,7 @@ GOOD JOB! #natB`, 15000 );
                     break;
                   default:
                   if (this.playCount % 10 == 0) {
-                    this.notifier.notify('Love the game?\nPlease_Make_a_Donation\nTO_Thai_Redcross_#redcross',8000);
+                    this.notifier.notify('Love the game?\nPlease_Make_a_Donation\nto_The_Thai_Redcross_Society#redcross',8000);
                   } else {
                     this.notifier.notify('▻▻',1000);
                   }
