@@ -2542,23 +2542,20 @@ class Scoreboard {
     this.canvasCtx = canvas.getContext('2d');
     this.glyphs = new Text( 600/20, 1, '0123456789').glyphs;
 
-    this._score = 0;
-    this.template = '00000';
-    this.text = null;
-    this.existence = 0;
-    this.opacity = 0;
-    this._maxTang = null;
-    this._minTang = null;
-    this.replay = false;
+    this.reset();
   }
 
   reset(){
+    console.log('reset')
+    this._score = 0;
+    this.text = null;
     this.opacity = 0;
     this.existence = 0;
     this.template = '00000';
     this._minTang = null;
     this._maxTang = null;
     this.replay = false;
+    this.nextScoreAchievement = 200;
   }
 
   set replay( willReplay ){
@@ -2605,6 +2602,15 @@ class Scoreboard {
   set score( newScore ){
     newScore = newScore || 0;
 
+    let playAchievementSound = false;
+    while( newScore > this.nextScoreAchievement ){
+      this.nextScoreAchievement += Scoreboard.achievementScore;
+      if( !playAchievementSound ){
+        playAchievementSound = true;
+        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      }
+    }
+
     if( !this.text ){
       this.text = new Text( 600/18, 1, this._template, true );
       this.text.draw( null, 0, 5, 18, 16 ); //Just build the cache.
@@ -2645,6 +2651,8 @@ class Scoreboard {
   }
 
 }
+
+Scoreboard.achievementScore = 100;
 
 class Text {
   constructor( maxLength = 20, alignment = -1, string, useCache = false ){
@@ -5190,6 +5198,7 @@ class OnDaRun extends LitElement {
   statePlay(){
     this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
     this.sky.setShade( Sky.config.DAY, 3000 );
+    this.scoreboard.reset();
 
     this.currentSpeed = this.config.SPEED;
     this.activeAction.speed = ODR.config.SPEED;
