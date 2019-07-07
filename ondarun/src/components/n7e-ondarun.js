@@ -2536,6 +2536,116 @@ A8e.animFrames = {
   }
 };
 
+class Scoreboard {
+  constructor( canvas ){
+    this.canvas = canvas;
+    this.canvasCtx = canvas.getContext('2d');
+    this.glyphs = new Text( 600/20, 1, '0123456789').glyphs;
+
+    this._score = 0;
+    this.template = '00000';
+    this.text = null;
+    this.existence = 0;
+    this.opacity = 0;
+    this._maxTang = null;
+    this._minTang = null;
+    this.replay = false;
+  }
+
+  reset(){
+    this.opacity = 0;
+    this.existence = 0;
+    this.template = '00000';
+    this._minTang = null;
+    this._maxTang = null;
+    this.replay = false;
+  }
+
+  set replay( willReplay ){
+    this._replay = willReplay;
+    if( willReplay ){
+      this.template = `replay 00000`;
+      this.score = 0;
+      this.replayBlink = [];
+      this.replayBlink[0] = this.text;
+      this.template = `00000`;
+      this.score = 0;
+      this.replayBlink[1] = this.text;
+      this.replayTimer = 0;
+    } else {
+      this.replayBlink = null;
+      this.replayTimer = 0;
+    }
+  }
+  get replay(){
+    return this._replay;
+  }
+
+  set maxTangerines( newMaxTang ){
+    if( this.replay ) return;
+    if( newMaxTang != this._maxTang ){
+      this._maxTang = newMaxTang;
+      this.template = `#tangerine${this._minTang}/${this._maxTang} #trophy00000`;
+    }
+  }
+  set minTangerines( newMinTang ){
+    if( this.replay ) return;
+    if( newMinTang != this._minTang ){
+      this._minTang = newMinTang;
+      this.template = `#tangerine${this._minTang}/${this._maxTang} #trophy00000`;
+    }
+  }
+
+  set template( newTemplate ){
+    this._template = newTemplate;
+    this.text = null;
+    this.score = this._score;
+  }
+
+  set score( newScore ){
+    newScore = newScore || 0;
+
+    if( !this.text ){
+      this.text = new Text( 600/18, 1, this._template, true );
+      this.text.draw( null, 0, 5, 18, 16 ); //Just build the cache.
+    }
+
+    for( let i = this.text.cache.length - 3, j = 0; j < 5; i-=3, j++ ){
+      if( i < 2 ) break;
+
+      this.text.cache[ i ] = this.glyphs[ newScore % 10 ];
+      newScore = Math.floor(newScore / 10);
+    }
+
+  }
+
+  forward( deltaTime ){
+    if( !this.text ) return;
+
+    if( this.existence != this.opacity ){
+
+      this.opacity += deltaTime/300 * Math.sign( this.existence - this.opacity );
+      this.opacity = Math.max( 0, Math.min( 1, this.opacity ));
+
+    }
+
+    if( this.replay ){
+      this.replayTimer += deltaTime;
+      this.text = this.replayBlink[ this.replayTimer%1000 < 500 ? 0 : 1 ];
+    }
+
+    if( this.opacity != 1 ){
+      this.canvasCtx.save();
+      this.canvasCtx.globalAlpha = this.opacity;
+      this.text.draw(this.canvasCtx, this.existence ? 50*( 1 - this.opacity ) : 0, 10, 18, 16 );
+      this.canvasCtx.restore();
+    } else {
+      this.text.draw(this.canvasCtx, 0, 10, 18, 16 );
+    }
+  }
+
+}
+
 class Text {
   constructor( maxLength = 20, alignment = -1, text ){
     this.glyphs = null;
