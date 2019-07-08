@@ -27,7 +27,7 @@ var IS_MOBILE = /Android/.test(window.navigator.userAgent) || IS_IOS;
 var IS_TOUCH_ENABLED = 'ontouchstart' in window;
 
 var IS_SOUND_DISABLED = false;
-if( IS_IOS ) IS_SOUND_DISABLED = true;
+//if( IS_IOS ) IS_SOUND_DISABLED = true;
 
 var N7e = class {
   static get userSignedIn() {
@@ -3537,7 +3537,6 @@ The Thai Redcross Society #redcross
 
     switch( e.type ){
       case OnDaRun.events.CONSOLEDOWN:{
-        ODR.loadSounds();
         return true;
       }
       case OnDaRun.events.CONSOLEUP:
@@ -3551,7 +3550,9 @@ The Thai Redcross Society #redcross
             return true;
           }
 
+          ODR.loadSounds();
           this.ender = this.timer;
+
           ODR.sky.setShade( Sky.config.DAY, 3000 );
         }
         return true;
@@ -3582,7 +3583,7 @@ The Thai Redcross Society #redcross
 
     let runout = 0;
     let tfactor = 0;
-    if( this.ender && ( ODR.soundFx && ODR.soundFx.SOUND_SCORE || IS_IOS ) ){
+    if( this.ender && ODR.soundLoadProgress == 1 ){
       tfactor = this.timer - this.ender;
       runout = 0.8*tfactor - 200;
       //200*200
@@ -4173,6 +4174,9 @@ class GameOver extends Panel {
             t += 1000;
             if( !this.playedHiscore ){
               this.playedHiscore = true;
+              if( IS_IOS ){
+                ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+              } else
               for( let i = 0, j = 0 ; i <= 1 ; i+=0.1,j+=0.1){
                 ODR.playSound( ODR.soundFx.SOUND_SCORE, 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, false, j*1000, -i );
                 ODR.playSound( ODR.soundFx.SOUND_SCORE, 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, false, j*1000, i );
@@ -4593,10 +4597,10 @@ class ConsoleButton {
         this.dir = 1;
         this.handlePressed(e);
       } break;
+      case OnDaRun.events.TOUCHEND:
       case OnDaRun.events.MOUSEOUT:
       case OnDaRun.events.KEYUP:
-      case OnDaRun.events.MOUSEUP:
-      case OnDaRun.events.TOUCHEND: {
+      case OnDaRun.events.MOUSEUP:{
         if( 0 == this.pressure ) break;
         e.preventDefault();
         this.timer = 0;
@@ -4795,7 +4799,7 @@ class Music {
     song.autoplay = song.autoplay || autoplay;
 
     /* Turn-off the others */
-    if( song.autoplay ) {
+    if( song.autoplay ){
       for( let anotherName in this.songs ) {
         if( name == anotherName ) continue;
 
@@ -4807,7 +4811,7 @@ class Music {
       }
     }
 
-    if( song.autoplay && song.data ) {
+    if( song.autoplay && song.data ){
     /* The song has data ready, just play it. */
       if( !song.audio ) {
         this.currentSong = song;
@@ -4841,7 +4845,7 @@ class Music {
     } else if( song.source ) {
     /* Source was loaded but not yet processed. */
       if (ODR.audioContext) {
-        ODR.audioContext.decodeAudioData( song.source ).then( audioData => {
+        ODR.audioContext.decodeAudioData( song.source, audioData => {
           song.source = null;
           song.data = audioData;
           this.load( song.title, song.autoplay );
@@ -6117,19 +6121,32 @@ https://www.redcross.or.th/donate/
   loadSounds(){
     if( IS_SOUND_DISABLED ){
       this.soundFx = {};
+      this.soundLoadProgress = 1;
       return;
     }
 
+    this.soundLoadProgress = 0;
+
     if( !this.soundFx ) {
+
       if( !this.audioContext ){
-        this.audioContext = new AudioContext();
+        this.audioContext = new ( window.AudioContext || window.webkitAudioContext )();
+        if( this.audioContext.state == 'suspended' ){
+          this.audioContext.resume().then( this.loadSounds());
+          return;
+        }
       }
+
+      this.soundFx = {};
 
       var resourceTemplate =
       document.getElementById( this.config.RESOURCE_TEMPLATE_ID ).content;
 
-      this.audioContext.resume();
-      Object.entries(OnDaRun.sounds).forEach(([ sound, id ]) => {
+      let counter = 0;
+      let entries = Object.entries( OnDaRun.sounds );
+      let entriesLen = entries.length;
+
+      entries.forEach(([ sound, id ]) => {
         var soundSrc =
           resourceTemplate.getElementById( id ).src;
         soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
@@ -6143,19 +6160,25 @@ https://www.redcross.or.th/donate/
         }
 
         // Async, so no guarantee of order in array.
-        this.soundFx = {};
-        this.audioContext.decodeAudioData( bytes.buffer )
-          .then( audioData => this.soundFx[ sound ] = audioData );
+        this.audioContext.decodeAudioData( bytes.buffer , audioData => {
+          this.soundFx[ sound ] = audioData;
+          counter++;
+          this.soundLoadProgress = counter/entriesLen;
+        });
       });
     }
   }
 
-  playSound( soundBuffer, volume, loop, delay, pan ){
+  playSound( soundBuffer, volume, loop = false, delay = 0, pan = 0 ){
     if( IS_SOUND_DISABLED ) return;
+    if( IS_IOS ){
+      loop = false;
+      delay = 0;
+      pan = 0;
+    }
 
     if( soundBuffer ){
 
-      delay = delay || 0;
       let duration = Math.ceil(soundBuffer.duration + delay);
       let dest = this.audioContext.destination;
       var sourceNode;
@@ -6199,7 +6222,7 @@ https://www.redcross.or.th/donate/
 
       sourceNode.connect(dest);
 
-      if (loop) sourceNode.loop = true;
+      if( loop )sourceNode.loop = true;
 
       sourceNode.start(this.audioContext.currentTime + delay/1000);
       return {
@@ -6772,7 +6795,7 @@ GOOD JOB! #natB`, 15000 );
     return (this._HSPD + this._HACC * this._runTime) * this._runTime;
   }
 
-  checkShouldDropTangerines() {
+  checkShouldDropTangerines(){
     // Disable dropping until resolved.
 
     this.shouldDropTangerines = false;
