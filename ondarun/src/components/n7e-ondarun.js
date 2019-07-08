@@ -18,7 +18,7 @@
 
 import { LitElement, html, css } from 'lit-element';
 
-var VERSION = "1.0"
+var VERSION = "1.02"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;
@@ -5207,7 +5207,10 @@ class OnDaRun extends LitElement {
         }
         break;
       case 2:
-        if( 1 === newState ){
+        if( 0 === newState ){
+          this._gameState = 0;
+          this.stateResetProperties();
+        } else if( 1 === newState ){
           this._gameState = 1;
           if( this.config.GAME_MODE_REPLAY ){
             let sequencer = ODR.sequencer;
@@ -5236,9 +5239,6 @@ class OnDaRun extends LitElement {
             this.stateResetProperties();
             this.stateRestart();
           }
-        } else if( 0 === newState ){
-          this._gameState = 0;
-          this.stateResetProperties();
         }
         break;
     }
@@ -6027,7 +6027,7 @@ https://www.redcross.or.th/donate/
 
                   // Reset game score.
                   ODR.gameModeList.forEach( mode => mode.distance = 0 );
-                  //ODR.distanceMeter.setHighScore( 0 );
+                  ODR.setGameMode( OnDaRun.gameModes.GAME_A );
                 }
               },
             }, this.consoleButtons.CONSOLE_D )
