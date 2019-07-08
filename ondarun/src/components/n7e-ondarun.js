@@ -191,7 +191,7 @@ class CollisionBox {
 
 class User {
   constructor( providerName = null) {
-    let redirect = true;
+    let redirect = false;
     let provider;
     if( providerName ){
       N7e.userSignedIn = false;
@@ -3303,8 +3303,15 @@ DistanceMeter.config = {
 };
 */
 
+class NoPanel {
+  constructor(){ this.passthrough = true; }
+  forward(){ return this; }
+  end(){}
+  handleEvent( e ){ return false; }
+}
+
 class Panel {
-  constructor( canvas, previousMenu = null, associatedButton = null ) {
+  constructor( canvas, previousPanel = null, associatedButton = null ) {
     this.canvas = canvas;
     this.canvasCtx  = canvas.getContext('2d');
     this.submenu = null;
@@ -3314,16 +3321,26 @@ class Panel {
     this.willEnter = false; //Indicate double-pressed.
     this.offset = 0;
     this.timer = 0;
-    this.previousMenu = previousMenu;
-    this.hasEndded = false;
+    this.previousPanel = previousPanel;
   }
 
   forward( deltaTime ){
+    if( this.ender !== undefined ){
+      return this.ender;
+    }
+
+    let nextPanel = this.repaint( deltaTime );
     this.timer += deltaTime;
+
+    return nextPanel;
   }
 
-  end(){
-    this.hasEndded = true;
+  repaint( deltaTime ){
+    return this;
+  }
+
+  end( panel ){
+    this.ender = panel || this.previousPanel;
   }
 
 /**
@@ -3391,7 +3408,7 @@ class TitlePanel extends Panel {
   constructor( canvas ) {
     super( canvas );
     this.timer = 0;
-    this.ender = 0;
+    this.endTime = 0;
     this.dataReadyTime = 0;
 
     this.story = [
@@ -3543,7 +3560,7 @@ The Thai Redcross Society #redcross
         // Make sure all control buttons are released.
         if( 0 == this.buttonUpTime[ 0 ]
             && 0 == this.buttonUpTime[ 1 ]
-            && this.dataReadyTime && !this.ender ){
+            && this.dataReadyTime && !this.endTime ){
 
           if( this.scrolling ){
             this.scrolling = false;
@@ -3551,7 +3568,7 @@ The Thai Redcross Society #redcross
           }
 
           ODR.loadSounds();
-          this.ender = this.timer;
+          this.endTime = this.timer;
 
           ODR.sky.setShade( Sky.config.DAY, 3000 );
         }
@@ -3562,12 +3579,11 @@ The Thai Redcross Society #redcross
   }
 
 /**
- * TitlePanel forward.
+ * TitlePanel repaint.
  * @param {number} deltaTime - duration since last call.
  * @return {Panel} - a subsitute or null.
  */
-  forward( deltaTime ) {
-    this.timer += deltaTime;
+  repaint( deltaTime ) {
 
     if( this.buttonUpTime[ 0 ] && this.buttonUpTime[ 1 ] ){
       this.scrolling = true;
@@ -3583,8 +3599,8 @@ The Thai Redcross Society #redcross
 
     let runout = 0;
     let tfactor = 0;
-    if( this.ender && ODR.soundLoadProgress == 1 ){
-      tfactor = this.timer - this.ender;
+    if( this.endTime && ODR.soundLoadProgress == 1 ){
+      tfactor = this.timer - this.endTime;
       runout = 0.8*tfactor - 200;
       //200*200
       runout = ( 40000 - runout*runout ) / 1000 ;
@@ -3699,19 +3715,34 @@ The Thai Redcross Society #redcross
   }
 }
 
-class WaitingPanel extends Panel {
-  constructor( canvas, previousMenu = null, bottomMessage, progressingCallback ) {
-    super( canvas, previousMenu );
+class Pause extends Panel {
+  constructor( canvas, previousPanel = null ) {
+    super( canvas, previousPanel );
+    this.screenOpacity = ODR.canvas.style.opacity;
+    ODR.canvas.style.opacity /= 2;
+  }
+
+  handleEvent( e ){
+    return true;
+  }
+
+  end( panel ){
+    ODR.canvas.style.opacity = this.screenOpacity;
+    super.end( panel )
+  }
+}
+
+class Wait extends Panel {
+  constructor( canvas, previousPanel = null, bottomMessage, progressingCallback ) {
+    super( canvas, previousPanel );
     this.progressingCallback = progressingCallback;
     this.timer = 0;
     this.ticker = 0;
     this.bottomText = new Text(600/14,0).setString( bottomMessage );
+    this.isWaiting = true;
   }
 
-  forward( deltaTime ) {
-    if( this.hasEndded ){
-      return this.previousMenu;
-    }
+  repaint( deltaTime ){
 
     if( this.timer == 0 ){
       this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
@@ -3729,10 +3760,10 @@ class WaitingPanel extends Panel {
         this.ticker+= 200;
     }
 
-    this.timer += deltaTime;
-
-    if( !this.progressingCallback ) return this;
-    return this.progressingCallback() ? this : null;
+    if( this.progressingCallback ){
+      return this.progressingCallback( this );
+    }
+    return this;
   }
 
   handleEvent( e ){
@@ -4709,27 +4740,10 @@ class ConsoleDButton extends ConsoleSystemButton {
 
 class ConsoleResetButton extends ConsoleButton {
   constructor(x, y, w, h) { super('console-reset', x, y, w, h); }
-
-  /*
-  handleReleased(e) {
-    ODR.music.stop();
-    ODR.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
-  }
-  */
 }
 
 class ConsoleN7EButton extends ConsoleButton {
   constructor(x, y, w, h) { super('console-n7e', x, y, w, h); }
-  handleReleased(e) {
-    if (!this.urlList || this.urlList.length == 0) {
-      this.urlList = [
-        {name:'IG', url:'https://www.instagram.com/natherine.bnk48official'},
-        {name:'FACEBOOK', url:'https://www.facebook.com/bnk48official.natherine'},
-      ]
-    }
-    let item = this.urlList.splice(getRandomNum(0,this.urlList.length-1),1)[0];
-    window.open(item.url, '_blank');
-  }
 }
 
 /**
@@ -5124,7 +5138,6 @@ class OnDaRun extends LitElement {
     this.canvas = null;
     this.canvasCtx = null;
 
-    this.menu = null;
     this.sky = null;
     this.scenery = null;
     this.sequencer = null;
@@ -5150,6 +5163,8 @@ class OnDaRun extends LitElement {
     this.consoleButtonForKeyboardCodes = {};
 
     this.gameState = 0;
+
+    this._passthroughPanel = new NoPanel();
   }
 
   get dailyTangerines(){
@@ -5294,7 +5309,7 @@ class OnDaRun extends LitElement {
     if( !this.sequencer.dejavus )
       this.updateScore();
 
-    this.setMenu();
+    this.panel = null;
     vibrate(200);
     //this.distanceMeter.flashIterations = 0;
     ODR.music.stop();
@@ -5452,6 +5467,7 @@ https://www.redcross.or.th/donate/
         sprite.addEventListener('load', () => checkReady(sprite));
       }
     });
+
   }
 
 /** Class OnDarun
@@ -5485,7 +5501,7 @@ https://www.redcross.or.th/donate/
     this.sequencer = new Sequencer( this.canvas );
 
 
-    this.menu = new TitlePanel( this.canvas );
+    this.panel = new TitlePanel( this.canvas );
 
     this.amandarine = new A8e( this.canvas );
 
@@ -5600,8 +5616,10 @@ https://www.redcross.or.th/donate/
 
     this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
 
+    //FIXME should wait for a Promise and call end()?
     if( N7e.signing.progress ){
-      return new WaitingPanel( this.canvas, null, "signing in..please wait", () => N7e.signing.progress );
+      return new Wait( this.canvas, null, "signing in..please wait",
+        waiter =>  N7e.signing.progress ? waiter : null );
     }
 
     return new Greeter( this.canvas, this.notifier );
@@ -5736,9 +5754,9 @@ https://www.redcross.or.th/donate/
     }
   }
 
-  closeMenuForButton( button ){
-    if( this.menu && this.menu.associatedButton == button ){
-      this.setMenu( null );
+  closePanelForButton( button ){
+    if( this.panel.associatedButton == button ){
+      this.panel = null;
       return true;
     }
     return false;
@@ -6042,7 +6060,8 @@ https://www.redcross.or.th/donate/
                 return mainMenu;
               } else {
                 N7e.user = new User(['facebook','twitter','google'][entryIndex]);
-                return new WaitingPanel( this.canvas, null, `signing with ${['facebook','twitter','google'][entryIndex]}..please wait`, () => N7e.signing.progress );
+                return new Wait( this.canvas, null, `signing with ${['facebook','twitter','google'][entryIndex]}..please wait`,
+                  waiter => N7e.signing.progress ? waiter : null );
               }
             },
           }, this.consoleButtons.CONSOLE_D );
@@ -6252,45 +6271,16 @@ https://www.redcross.or.th/donate/
     }
   }
 
-  /*
-  startGame() {
-    this.runTime = 0;
-    this.playCount++;
-
-    // Handle tabbing off the page. Pause the current game.
-    document.addEventListener(OnDaRun.events.VISIBILITY,
-      this.onVisibilityChange.bind(this));
-
-    window.addEventListener(OnDaRun.events.BLUR,
-      this.onVisibilityChange.bind(this));
-
-    window.addEventListener(OnDaRun.events.FOCUS,
-      this.onVisibilityChange.bind(this));
+  set panel( newPanel ){
+    if(! newPanel )
+      if( 0 == this.gameState ) this._panel = new Greeter( this.canvas, this.notifier );
+      else if( 2 == this.gameState ) this._panel = new GameOver( this.canvas );
+      else this._panel = this._passthroughPanel;
+    else this._panel = newPanel;
   }
 
-  onVisibilityChange(e) {
-    if (document.hidden || document.webkitHidden || e.type == 'blur' || document.visibilityState != 'visible') {
-      this.stop();
-    } else if (!this.crashed) {
-      this.amandarine.reset();
-      this.play();
-    }
-  }
-  */
-
-  setMenu( menu ){
-    if(! menu ){
-      if( 0 == this.gameState ){
-        this.menu = new Greeter( this.canvas, this.notifier );
-        return;
-      } else if( 2 == this.gameState ){
-        this.menu = new GameOver( this.canvas );
-        return;
-      }
-    }
-
-    this.menu = menu;
-
+  get panel(){
+    return this._panel;
   }
 
 /**
@@ -6307,9 +6297,9 @@ https://www.redcross.or.th/donate/
       this.consoleButtons[ key ].forward( deltaTime );
     }
 
-    if( this.menu && !this.menu.passthrough ){
+    if( !this.panel.passthrough ){
       //this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
-      this.setMenu( this.menu.forward( deltaTime ));
+      this.panel = this.panel.forward( deltaTime );
       this.scheduleNextRepaint();
       return;
     }
@@ -6462,8 +6452,8 @@ https://www.redcross.or.th/donate/
     }
     */
 
-    if( this.menu && this.menu.passthrough ){
-      this.setMenu( this.menu.forward( deltaTime ));
+    if( this.panel.passthrough ){
+      this.panel = this.panel.forward( deltaTime );
     }
 
     if( this.config.GRAPHICS_DISPLAY_INFO == 'YES'){
@@ -6500,11 +6490,16 @@ https://www.redcross.or.th/donate/
       case OnDaRun.events.VISIBILITY:
       case OnDaRun.events.FOCUS:
       case OnDaRun.events.BLUR:
-        if( document.hiddden || document.webkitHidden || e.type == OnDaRun.events.BLUR
-            || document.visibilityState != 'visible' ){
-          this.menu = new WaitingPanel( this.canvas, this.menu, "PAUSED");
-        } else {
-          this.menu.end();
+        if( this.panel.isWaiting ) break;
+        if( !this._handleEvent_Pause
+            && ( e.type == OnDaRun.events.BLUR
+                || document.hiddden || document.webkitHidden
+                || document.visibilityState != 'visible')){
+          this.panel = new Pause ( this.canvas, this.panel, "PAUSED");
+          this._handleEvent_Pause = this.panel;
+        } else if( this._handleEvent_Pause ){
+          this._handleEvent_Pause.end();
+          this._handleEvent_Pause = null;
         }
         break;
       case OnDaRun.events.KEYDOWN:{
@@ -6514,7 +6509,7 @@ https://www.redcross.or.th/donate/
           if( !e.repeat ){
             button.handleEvent( e );
           }
-        } else if( !this.menu || !this.menu.handleEvent || !this.menu.handleEvent( e )){
+        } else if( !this.panel.handleEvent || !this.panel.handleEvent( e )){
           this.onKeyDown( e );
         }
 
@@ -6526,13 +6521,13 @@ https://www.redcross.or.th/donate/
           if( !e.repeat ){
             button.handleEvent( e );
           }
-        } else if( !this.menu || !this.menu.handleEvent || !this.menu.handleEvent( e )){
+        } else if( !this.panel.handleEvent || !this.panel.handleEvent( e )){
           this.onKeyUp( e );
         }
       } break;
 
       case OnDaRun.events.CONSOLEDOWN: {
-        if( this.menu && this.menu.handleEvent && this.menu.handleEvent( e )){
+        if( this.panel.handleEvent && this.panel.handleEvent( e )){
           return;
         }
 
@@ -6562,7 +6557,7 @@ https://www.redcross.or.th/donate/
       } break;
 
       case OnDaRun.events.CONSOLEUP:{
-        if( this.menu && this.menu.handleEvent && this.menu.handleEvent( e )){
+        if( this.panel.handleEvent && this.panel.handleEvent( e )){
           return;
         }
 
@@ -6582,50 +6577,42 @@ https://www.redcross.or.th/donate/
           // Music button
           case this.consoleButtons.CONSOLE_A:
             if( !IS_SOUND_DISABLED ){
-              if( e.detail.timeOut
-                || this.menu
-                  && !this.menu.passthrough
-                  && !this.closeMenuForButton( button )){
-                this.setMenu( this.createSoundMenu());
+              if( e.detail.timeOut || !this.panel.passthrough ){
+                if( !this.closePanelForButton( button ))
+                  this.panel = this.createSoundMenu();
               } else {
                 this.setMusicMode(-1 );
                 this.cc.append("hold the button for settings.", 3000 );
               }
             } else {
-              this.menu = null;
+              this.panel = null;
               this.cc.append("sounds currently disabled on ios.", 5000 );
-            }
-          break;
+            } break;
 
           // Graphics button
           case this.consoleButtons.CONSOLE_B:
-            if( e.detail.timeOut
-              || this.menu
-                && !this.menu.passthrough
-                && !this.closeMenuForButton( button )){
-              this.setMenu( this.createGraphicsMenu());
+            if( e.detail.timeOut || !this.panel.passthrough ){
+              if( !this.closePanelForButton( button ))
+                this.panel = this.createGraphicsMenu();
             } else {
               this.setGraphicsMode(-1 );
               this.cc.append("hold the button for settings.", 3000 );
-            }
-            break;
+            } break;
 
           case this.consoleButtons.CONSOLE_C:
-            if( !this.closeMenuForButton( button )){
-              this.setMenu( this.createGameMenu());
-            }
-            break;
+            if( !this.closePanelForButton( button )){
+              this.panel = this.createGameMenu();
+            } break;
 
           case this.consoleButtons.CONSOLE_D:
-            if( !this.closeMenuForButton( button ))
-              this.setMenu( this.createUserMenu());
-            break;
+            if( !this.closePanelForButton( button )){
+              this.panel = this.createUserMenu();
+            } break;
 
           case this.consoleButtons.CONSOLE_RESET:
-              if( !this.closeMenuForButton( button ))
-                this.setMenu( this.createResetMenu());
-              break;
-            break;
+            if( !this.closePanelForButton( button )){
+              this.panel = this.createResetMenu();
+            } break;
 
           case this.consoleButtons.CONSOLE_N7E:{
             if (!this.n7eUrlList || this.n7eUrlList.length == 0) {
@@ -6634,7 +6621,7 @@ https://www.redcross.or.th/donate/
                 { name: 'FACEBOOK', url: 'https://www.facebook.com/bnk48official.natherine'},
               ];
             }
-            window.open( this.n7eUrlList.splice( getRandomNum( 0, this.urlList.length - 1 ), 1)[ 0 ].url, '_blank');
+            window.open( this.n7eUrlList.splice( getRandomNum( 0, this.n7eUrlList.length - 1 ), 1)[ 0 ].url, '_blank');
           } break;
         }
 
@@ -6699,7 +6686,7 @@ https://www.redcross.or.th/donate/
     }
 
     if( e.code == 'Escape' ){
-      this.setMenu( null );
+      this.panel = null;
     }
   }
 
