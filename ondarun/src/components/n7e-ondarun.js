@@ -1612,11 +1612,11 @@ class NightMode {
     ctx.filter = 'grayscale(100%)';
     ctx.drawImage( this.moonCanvas, 0, frameHeight );
 
-    ctx.filter = 'sepia(1) blur('+NightMode.config.MOON_BLUR/8+'px)';
+    ctx.filter = `sepia(1) blur(${~~(NightMode.config.MOON_BLUR/8)}px)`;
     ctx.drawImage( this.moonCanvas, 0, 0, 16*frameWidth, frameHeight,
       0, 0, 16*frameWidth, frameHeight );
 
-    ctx.filter = 'sepia(1) blur('+NightMode.config.MOON_BLUR/2+'px)';
+    ctx.filter = `sepia(1) blur(${~~(NightMode.config.MOON_BLUR/3)}px)`;
     ctx.drawImage( this.moonCanvas, 0, 0, 16*frameWidth, frameHeight,
       0, 0, 16*frameWidth, frameHeight );
 
@@ -2726,6 +2726,7 @@ class Text {
       [ '#note', 0xe012 ],
       [ '#football', 0xe013 ],
       [ '#bell', 0xe014 ],
+      [ '#noentry', 0xe015 ],
     ].forEach( sym =>
       this.symbolMap.push({
         char: String.fromCharCode( sym[ 1 ]),
@@ -2837,6 +2838,7 @@ class Text {
         case 0xe012: return 602;
         case 0xe013: return 756;
         case 0xe014: return 966;
+        case 0xe015: return 980;
       }
 
       switch (ch) {
@@ -3943,7 +3945,7 @@ class Menu extends Panel {
       this.canvasCtx.globalAlpha = (entry.disabled ? 0.5 : 1)*Math.max(0.1,(4 - xxx)/4);
       if (entry.hasOwnProperty('value')) title += '.'.repeat(32-title.length-(entry.value+'').length)+'[ '+entry.value+' ]';
 
-      this.text.setString((i == this.model.currentIndex ? (entry.exit ? '◅ ' : ' ▻'):'  ') + title).draw(
+      this.text.setString((i == this.model.currentIndex ? (entry.exit ? '◅ ' : ' ▻'):'  ') +title +(entry.disabled ? '#noentry' : '')).draw(
         this.canvasCtx,
         this.xOffset + 20 + 2 * 3 * Math.round(Math.sqrt(100*xxx) / 3),
         this.yOffset + 90 + 5 * Math.round(4 * (i-this.displayEntry)));
@@ -5189,7 +5191,7 @@ class OnDaRun extends LitElement {
           this.stateResetProperties();
         }
         break;
-      case 0:
+      case 0: /* IDLE */
         if( 1 === newState ){
           this._gameState = 1;
           this.statePlay();
@@ -5197,7 +5199,7 @@ class OnDaRun extends LitElement {
           this.stateResetProperties();
         }
         break;
-      case 1:
+      case 1: /* RUN */
         if( 2 === newState ){
           this._gameState = 2;
           this.stateCrash();
@@ -5206,7 +5208,7 @@ class OnDaRun extends LitElement {
           this.stateResetProperties();
         }
         break;
-      case 2:
+      case 2: /* CRASH */
         if( 0 === newState ){
           this._gameState = 0;
           this.stateResetProperties();
@@ -5376,6 +5378,8 @@ Please support this project only by making donations to the society.
 https://www.redcross.or.th/donate/
     `);
 
+    document.querySelector('title').textContent += ` ${VERSION}`;
+    document.getElementById('version-banner').textContent = `Version ${VERSION}`;
     this.consoleButtons = {
       CONSOLE_LEFT: new ConsoleLeftButton(104, 495, 100, 100),
       CONSOLE_RIGHT: new ConsoleRightButton(596, 495, 100, 100),
