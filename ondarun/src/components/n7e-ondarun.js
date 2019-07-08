@@ -5729,6 +5729,9 @@ https://www.redcross.or.th/donate/
               this.setGraphicsMode( 3, false );
               this.scenery.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
             }
+            if( this.config.GAME_MODE_REPLAY ){
+              this.sequencer.reset();
+            }
           }
         });
 
@@ -6080,7 +6083,7 @@ https://www.redcross.or.th/donate/
     this.music.stop();
 
     return new Menu( this.canvas, {
-      title: 'WHOA DEJA VU?',
+      title: 'WHOA...DEJA VU?',
       entries: [
         { title:'YES', disabled:this.config.GAME_MODE_REPLAY },
         { title:'NO', disabled:!this.config.GAME_MODE_REPLAY},
@@ -6093,6 +6096,9 @@ https://www.redcross.or.th/donate/
           this.setGameMode( this.gameMode );
           this.cc.append("REPLAY MODE ENABLED", 2000);
           this.cc.append("IN THE GAME MENU.", 2000,2000);
+          if (N7e.user) {
+            N7e.user.odrRef.child('settings/GAME_MODE_REPLAY').set( this.config.GAME_MODE_REPLAY );
+          }
         }
         return null;
       },
