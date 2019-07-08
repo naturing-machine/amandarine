@@ -6478,10 +6478,7 @@ https://www.redcross.or.th/donate/
         this.paintCounter = 0;
       }
 
-      new Text(600/14, 0).setString(
-        'S:'+this.currentSpeed.toFixed(3)
-      +' T:'+(this.runTime/1000).toFixed(1)
-      +' FPS:'+this.paintRound).draw(this.canvasCtx,-10,200-16);
+      this.cc.append(`S:${this.currentSpeed.toFixed(3)} T:${(this.runTime/1000).toFixed(1)} FPS:${this.paintRound}`);
     }
 
     this.scheduleNextRepaint();
@@ -7231,8 +7228,8 @@ OnDaRun.Configurations = {
     29.2, "across the Argentine",
     32.7, "Yes, she has them all",
     34.3, "#tangerine on da run #tangerine",
-    35.6, "And their #<3hearts#<3 belong to just one",
-    38.4, "Their #<3hearts#<3 belong to",
+    35.6, "And their #<3#<3#<3 belong to just one",
+    38.4, "Their #<3#<3#<3 belong to",
     40, "#natA Natherine #natB",
     45, null,
   ],
