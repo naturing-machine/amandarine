@@ -216,6 +216,7 @@ class User {
         var errorCode = error.code;
         var errorMessage = error.message;
         console.log("Error", error);
+        ODR.panel.exit();
         Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
         ODR.cc.append('Error Linking; details in the console.', 5000 );
       });
@@ -3171,169 +3172,10 @@ class Notifier {
   }
 }
 
-/*
-class DistanceMeter {
-  constructor(canvas, spritePos, canvasWidth) {
-    this.canvas = canvas;
-    this.canvasCtx = canvas.getContext('2d');
-    this.image = ODR.spriteGUI;
-    this.spritePos = spritePos;
-    this.minX = 0;
-    this.minY = 5;
-
-    this.maxScore = 0;
-    this.highScore = 0;
-    this.container = null;
-
-    this.digits = [];
-    this.achievement = 0;
-    this.defaultString = '';
-    this.flashTimer = 0;
-    this.flashIterations = 0;
-    this.invertTrigger = false;
-
-    this.config = DistanceMeter.config;
-    this.maxScoreUnits = this.config.MAX_SCORE_UNITS;
-    this.init(canvasWidth);
-  }
-
-  init(width) {
-    var maxDistanceStr = '';
-
-    this.calcXPos(width);
-    this.maxScore = this.maxScoreUnits;
-    this.achievement = this.config.ACHIEVEMENT_SCORE;
-    for (var i = 0; i < this.maxScoreUnits; i++) {
-      this.draw(i, 0);
-      this.defaultString += '0';
-      maxDistanceStr += '9';
-    }
-
-    this.maxScore = parseInt(maxDistanceStr);
-  }
-
-  calcXPos(canvasWidth) {
-    this.minX = canvasWidth - (DistanceMeter.dimensions.DEST_WIDTH *
-      (this.maxScoreUnits + 1));
-  }
-
-  draw(digitPos, value, opt_highScore) {
-    var sourceWidth = DistanceMeter.dimensions.WIDTH;
-    var sourceHeight = DistanceMeter.dimensions.HEIGHT;
-    var sourceX = DistanceMeter.dimensions.WIDTH * value;
-    var sourceY = 0;
-
-    var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH + DistanceMeter.dimensions.DEST_WIDTH>>1;
-    var targetY = this.minY;
-    var targetWidth = DistanceMeter.dimensions.WIDTH;
-    var targetHeight = DistanceMeter.dimensions.HEIGHT;
-
-    sourceX += this.spritePos.x;
-    sourceY += this.spritePos.y;
-
-    this.canvasCtx.save();
-
-    if (opt_highScore) {
-      // Left of the current score.
-      var highScoreX = this.minX - ( 2*this.maxScoreUnits ) *
-      DistanceMeter.dimensions.WIDTH;
-      this.canvasCtx.translate(highScoreX, this.minY);
-    } else {
-      this.canvasCtx.translate(this.minX, this.minY);
-    }
-
-    this.canvasCtx.drawImage(this.image, sourceX, sourceY,
-      sourceWidth, sourceHeight,
-      targetX, targetY,
-      targetWidth, targetHeight
-    );
-
-    this.canvasCtx.restore();
-  }
-
-  forward( deltaTime, score ) {
-    var paint = true;
-    var playSound = false;
-
-    //FIXME WHY MAX?
-    if( score > this.maxScore && this.maxScoreUnits ==
-        this.config.MAX_SCORE_UNITS ){
-      this.maxScoreUnits++;
-      this.maxScore = parseInt( this.maxScore + '9');
-    }
-
-    // Achievement
-    if( !this.flashIterations && score > this.achievement ){
-      this.flashIterations = this.config.FLASH_ITERATIONS;
-      this.achievement += this.config.ACHIEVEMENT_SCORE;
-      this.flashTimer = 0;
-      playSound = true;
-    }
-
-    if( this.flashIterations ){
-      this.flashTimer += deltaTime;
-      if( this.flashTimer > this.config.FLASH_DURATION ){
-        this.flashTimer-= this.config.FLASH_DURATION;
-        this.flashIterations--;
-      }
-    } else {
-      let distanceStr = ( this.defaultString + score )
-      .substr(-this.maxScoreUnits );
-      this.digits = distanceStr.split('');
-    }
-
-
-    // Draw the digits if not flashing.
-    if(( this.flashIterations & 1 ) == 0 ){
-      for (var i = this.digits.length - 1; i >= 0; i--) {
-        this.draw(i, parseInt(this.digits[i]));
-      }
-    }
-
-    this.drawHighScore();
-
-    return playSound;
-  }
-
-  drawHighScore() {
-    this.canvasCtx.save();
-    this.canvasCtx.globalAlpha = .8;
-    for (var i = this.highScore.length - 1; i >= 0; i--) {
-      this.draw(i, parseInt(this.highScore[i], 10), true);
-    }
-    this.canvasCtx.restore();
-  }
-
-  setHighScore( score ) {
-    let highScoreStr = ( this.defaultString + score ).substr(-this.maxScoreUnits );
-    this.highScore = ( N7e.user ? ['','62',''] : ['17', '18', '']).concat( highScoreStr.split(''));
-  }
-
-  reset() {
-    this.forward(0);
-    this.achievement = this.config.ACHIEVEMENT_SCORE;
-  }
-}
-
-
-DistanceMeter.dimensions = {
-  WIDTH: 14,
-  HEIGHT: 14,
-  DEST_WIDTH: 16
-};
-
-DistanceMeter.config = {
-  MAX_SCORE_UNITS: 5,
-  ACHIEVEMENT_SCORE: 100,
-  FLASH_DURATION: 1000 / 4,
-  FLASH_ITERATIONS: 3
-};
-*/
-
 class NoPanel {
   constructor(){ this.passthrough = true; }
   forward(){ return this; }
-  end(){}
+  exit(){}
   handleEvent( e ){ return false; }
 }
 
@@ -3349,11 +3191,12 @@ class Panel {
     this.offset = 0;
     this.timer = 0;
     this.previousPanel = previousPanel;
+    this.nextPanel = undefined;
   }
 
   forward( deltaTime ){
-    if( this.ender !== undefined ){
-      return this.ender;
+    if( undefined !== this.nextPanel ){
+      return this.nextPanel;
     }
 
     let nextPanel = this.repaint( deltaTime );
@@ -3366,8 +3209,8 @@ class Panel {
     return this;
   }
 
-  end( panel ){
-    this.ender = panel || this.previousPanel;
+  exit( panel ){
+    this.nextPanel = panel || this.previousPanel;
   }
 
 /**
@@ -3704,7 +3547,7 @@ The Thai Redcross Society #redcross
 
         this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200 );
 
-        this.photoTiming.forEach(([beginTime,endTime,beginX,beginY,beginSize,endX,endY,endSize],index) => {
+        this.photoTiming.forEach(([ beginTime, endTime, beginX, beginY, beginSize, endX, endY, endSize ], index ) => {
           if (storyTimer > beginTime && storyTimer < endTime) {
 
             beginTime = storyTimer - beginTime;
@@ -3748,13 +3591,29 @@ class Pause extends Panel {
     ODR.canvas.style.opacity /= 2;
   }
 
+  repaint(){
+    if( 0 == this.timer ){
+      console.log('PAUSED');
+      this.canvasCtx.save();
+      for( let i = 4; i >= 0; i -= 4 ){
+        this.canvasCtx.fillStyle = i ? "#0003" : "#fffd";
+        this.canvasCtx.filter =  i ? `blur(4px)` : 'blur(0px)';
+        this.canvasCtx.fillRect( 270+i, 70+i, 20, 60 );
+        this.canvasCtx.fillRect( 310+i, 70+i, 20, 60 );
+      }
+      this.canvasCtx.restore();
+    }
+    return this;
+  }
+
   handleEvent( e ){
     return true;
   }
 
-  end( panel ){
+  exit( panel ){
     ODR.canvas.style.opacity = this.screenOpacity;
-    super.end( panel )
+    console.log('UNPAUSED');
+    super.exit( panel );
   }
 }
 
@@ -3798,7 +3657,7 @@ class Wait extends Panel {
 }
 
 class Menu extends Panel {
-  constructor( canvas, model, associatedButton, muted = false ) {
+  constructor( canvas, model, associatedButton, muted = false ){
     super( canvas, null, associatedButton );
     this.model = model;
     this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
@@ -5428,7 +5287,6 @@ class OnDaRun extends LitElement {
     this.scenery = null;
     this.sequencer = null;
     this.amandarine = null;
-    //this.distanceMeter = null;
 
     this.time = 0;
     this.totalTangerines = 0;
@@ -5593,7 +5451,6 @@ class OnDaRun extends LitElement {
 
     this.panel = null;
     vibrate(200);
-    //this.distanceMeter.flashIterations = 0;
     Sound.inst.currentSong = null;
     Sound.inst.effects.SOUND_OGGG.play( ODR.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2 );
     this.sky.setShade( Sky.config.SUNSET, 3000 );
@@ -5612,8 +5469,6 @@ class OnDaRun extends LitElement {
   stateRestart(){
     this.scenery.reset();
     this.sequencer.reset();
-    //this.distanceMeter.reset();
-
     this.scoreboard.reset();
     if( N7e.user ){
       this.scoreboard.minTangerines = this.dailyTangerines;
@@ -5787,9 +5642,6 @@ https://www.redcross.or.th/donate/
     this.panel = new TitlePanel( this.canvas );
 
     this.amandarine = new A8e( this.canvas );
-
-    //this.distanceMeter = new DistanceMeter(this.canvas,
-     // this.spriteDef.TEXT_SPRITE, DEFAULT_WIDTH);
 
     this.scoreboard = new Scoreboard( this.canvas );
 
@@ -5986,9 +5838,6 @@ https://www.redcross.or.th/donate/
               let serverDistance = distances[ mode.key ];
               if( serverDistance > mode.distance ){
                 mode.distance = serverDistance;
-                if( mode === this.gameMode ){
-                  //this.distanceMeter.setHighScore( Math.round( serverDistance * this.config.TO_SCORE ));
-                }
               }
             });
 
@@ -6089,7 +5938,7 @@ https://www.redcross.or.th/donate/
       muted: true,
     });
 
-    entries.push({title:'exit', exit:true});
+    entries.push({ title:'exit', exit: true });
 
     let mainMenu = new Menu( this.canvas, {
       title: 'sounds',
@@ -6184,7 +6033,6 @@ https://www.redcross.or.th/donate/
     /* FIXME avoid modifying config */
     this.gameMode = choice;
 
-    //this.distanceMeter.setHighScore( this.gameModeScore );
     this.scoreboard.score = 0;
 
     this.config.ACCELERATION = choice.ACCELERATION;
@@ -6470,7 +6318,6 @@ https://www.redcross.or.th/donate/
             if( dejavus[0].runTime < this.runTime + deltaTime ){
               let extra = this.runTime + deltaTime - dejavus[0].runTime;
               deltaTime -= extra;
-              if(deltaTime <= 0) console.log('min delta', deltaTime);
             }
           } else {
             if( this.sequencer.numberOfEntities == 0 ){
@@ -6510,23 +6357,6 @@ https://www.redcross.or.th/donate/
       this.scenery.forward( deltaTime, this.currentSpeed, this.inverted );
       this.sequencer.forward( deltaTime, this.currentSpeed, true );
       this.scoreboard.forward( deltaTime );
-
-
-
-      /*
-      let playAchievementSound = this.distanceMeter.forward( deltaTime, this.score );
-      if( playAchievementSound ){
-        if (playAchievementSound != this.lastAchievement) {
-          this.playSound( this.soundFx.SOUND_SCORE, 0.8 * ODR.config.SOUND_EFFECTS_VOLUME/10 );
-        }
-        this.lastAchievement = playAchievementSound;
-
-        if( playAchievementSound >= this.achievements[ 0 ]){
-          this.achievements.shift();
-          this.notifier.notify( this.achievements.shift(), 6000 );
-        }
-      }
-      */
 
       // Night & Day FIXME use time instead of timer
       if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
@@ -6650,7 +6480,7 @@ https://www.redcross.or.th/donate/
           this.panel = new Pause ( this.canvas, this.panel, "PAUSED");
           this._handleEvent_Pause = this.panel;
         } else if( this._handleEvent_Pause ){
-          this._handleEvent_Pause.end();
+          this._handleEvent_Pause.exit();
           this._handleEvent_Pause = null;
         }
         break;
@@ -6912,7 +6742,6 @@ GOOD JOB! #natB`, 15000 );
         console.log('Scores updated.');
       }
       this.gameMode.distance = Math.ceil( this.distance );
-      //this.distanceMeter.setHighScore( this.score );
     }
   }
 
@@ -7114,47 +6943,6 @@ GOOD JOB! #natB`, 15000 );
           case 2: /* priority */
             this.activeAction = action;
             //this.amandarine.activateAction(action, deltaTime, speed);
-
-
-            /*
-            // TODO! Don't delete.
-            if (action.priority == -1) {
-
-              // At the end of the first action, the actual game begins.
-              console.log(action.start,this.playCount)
-              if (action.start && action.start != this.playCount) {
-                this.playCount++;
-                switch(this.playCount) {
-                  case 1:
-                    this.notifier.notify( "go go go!!",2000);
-                    break;
-                  case 10:
-                    this.notifier.notify('NATHERINE ♥ YOU.#natB',10000);
-                    break;
-                  case 20:
-                    OR.notifier.notify('NATHERINE STILL ♥ You.#natB',10000);
-                    break;
-                  case 30:
-                    this.notifier.notify('NATHERINE WILL ALWAYS ♥ You.#natB',10000);
-                    break;
-                  default:
-                  if (this.playCount % 10 == 0) {
-                    this.notifier.notify('Love the game?\nPlease_Make_a_Donation\nto_The_Thai_Redcross_Society#redcross',8000);
-                  } else {
-                    this.notifier.notify('▻▻',1000);
-                  }
-                }
-
-                this.music.stop(); // FIXME shouldn't need, better try to prevent music from starting after key down.
-                this.music.load('offline-play-music', this.config.PLAY_MUSIC);
-                this.playIntro();
-                this.setSpeed(this.config.SPEED);
-                this.defaultAction.type = A8e.status.RUNNING;
-              }
-
-              // To get default action updated.
-              this.defaultAction.priority = 0;
-            }*/
 
             break HANDLE_ACTION_QUEUE;
           case 3: /* priority */
