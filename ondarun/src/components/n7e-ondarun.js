@@ -25,9 +25,7 @@ var FPS = 60;
 var IS_IOS = /iPad|iPhone|iPod/.test(window.navigator.platform);
 var IS_MOBILE = /Android/.test(window.navigator.userAgent) || IS_IOS;
 var IS_TOUCH_ENABLED = 'ontouchstart' in window;
-
 var IS_SOUND_DISABLED = false;
-//if( IS_IOS ) IS_SOUND_DISABLED = true;
 
 var N7e = class {
   static get userSignedIn() {
@@ -218,6 +216,8 @@ class User {
         var errorCode = error.code;
         var errorMessage = error.message;
         console.log("Error", error);
+        Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        ODR.cc.append('Error Linking; details in the console.', 5000 );
       });
     }
   }
@@ -403,8 +403,8 @@ class Tangerine extends Entity {
 
   collide( collision ) {
     if( !this.collected ) {
-      ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
-      ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/20 );
+      Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/20 );
       this.collected = true;
       this.collectedY = this.minY;
       this.collectedTimer = 0;
@@ -567,7 +567,7 @@ class MultiWidth extends Obstacle {
   }
 
   collide( collision ) {
-    ODR.playSound( ODR.soundFx.SOUND_HIT, ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    Sound.inst.effects.SOUND_HIT.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
     return super.collide( collision );
   }
 }
@@ -677,7 +677,7 @@ class DuckType extends DynamicObstacle {
   */
 
   collide( collision ) {
-    ODR.playSound( ODR.soundFx.SOUND_QUACK, 0.8 * ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0.1 );
+    Sound.inst.effects.SOUND_QUACK.play( 0.8 * ODR.config.SOUND_EFFECTS_VOLUME/10, 0.1 );
     return super.collide( collision );
   }
 
@@ -704,10 +704,27 @@ class Liver extends DuckType {
   forward( deltaTime, currentSpeed ) {
     super.forward( deltaTime, currentSpeed );
 
-    if( this.minX < 1000 && !this.alarmed ) {
-      ODR.playSound( ODR.soundFx.SOUND_QUACK, 0.1 * ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, 1 );
+    if( !this.alarmed ) {
+      // Liver alarms 1.5s before hitting.
+      let t = ( this.minX -25 )/( currentSpeed - this.speed )/FPS -1.5;
+
+      // Try to scatter the noise around a bit in case of many Livers.
+      Liver.lastQuack = Liver.lastQuack || 0;
+      let audioTime = Sound.inst.audioContext.currentTime;
+      let diff = audioTime + t - Liver.lastQuack;
+      let shift = 0.3;
+      if( diff < shift ){
+        t = Liver.lastQuack + 0.3 - audioTime -0.2*Math.random();
+      }
+      Liver.lastQuack = audioTime + t;
+
+      // Calculate the location that match the sound at time for setting the panner
+      // 300 == center
+      let s = this.minX - t * ( currentSpeed - this.speed )*FPS - 300;
+      Sound.inst.effects.SOUND_QUACK.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, Math.max(-600, Math.min( s, 600 ))/600 );
+
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
-        ODR.cc.append('quack', 1000 );
+        ODR.cc.append('quack', 1000, t*1000 );
       this.alarmed = true;
     }
   }
@@ -745,8 +762,8 @@ class BicycleType extends DynamicObstacle {
   }
 
   collide( collision ) {
-    ODR.playSound( ODR.soundFx.SOUND_CRASH, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-    ODR.playSound( ODR.soundFx.SOUND_BICYCLE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    Sound.inst.effects.SOUND_CRASH.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    Sound.inst.effects.SOUND_BICYCLE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
     return super.collide( collision );
   }
 
@@ -772,10 +789,18 @@ class Velota extends BicycleType {
   forward( deltaTime, currentSpeed ) {
     super.forward( deltaTime, currentSpeed );
 
-    if( this.minX < 1000 && !this.alarmed ) {
-      ODR.playSound( ODR.soundFx.SOUND_BICYCLE, 0.1 * ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, 1 );
+    if( !this.alarmed ) {
+
+      // Velota alarm 1s before hitting.
+      let t = ( this.minX -25 )/( currentSpeed - this.speed )/FPS -1.0;
+
+      // Calculate the location that match the sound at time for setting the panner
+      // 300 == center
+      let s = this.minX - t * ( currentSpeed - this.speed )*FPS - 300;
+      Sound.inst.effects.SOUND_BICYCLE.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, Math.max(-600, Math.min( s, 600 ))/600 );
+
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
-        ODR.cc.append('ring#bell', 1000 );
+        ODR.cc.append('ring#bell', 1000, t *1000 );
       this.alarmed = true;
     }
   }
@@ -2215,8 +2240,8 @@ class A8e {
       } break;
       case A8e.status.JUMPING: {
         if (action.timer == 0) {
-          ODR.playSound( ODR.soundFx.SOUND_JUMP, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-          ODR.playSound( ODR.soundFx.SOUND_DROP,
+          Sound.inst.effects.SOUND_JUMP.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+          Sound.inst.effects.SOUND_DROP.play(
             action.pressDuration/ODR.config.MAX_ACTION_PRESS
             * ODR.config.SOUND_EFFECTS_VOLUME/10 );
         }
@@ -2229,7 +2254,7 @@ class A8e {
               - action.top * A8e.config.SCALE_FACTOR );
 
         if (timer - 30 < -action.halfTime && !action.playedDrop ) {
-          ODR.playSound( ODR.soundFx.SOUND_DROP,
+          Sound.inst.effects.SOUND_DROP.play(
             action.pressDuration/ODR.config.MAX_ACTION_PRESS
             * ODR.config.SOUND_EFFECTS_VOLUME/10 );
           action.playedDrop = true;
@@ -2248,7 +2273,7 @@ class A8e {
         var increment = speed * FPS / 1000 * deltaTime;
 
         if( action.distance == 0 && increment > 0 ){
-          ODR.playSound( ODR.soundFx.SOUND_SLIDE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
+          Sound.inst.effects.SOUND_SLIDE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
         }
 
         action.distance += increment;
@@ -2610,7 +2635,7 @@ class Scoreboard {
       this._playAchievement = 0;
       while( newScore > this.nextScoreAchievement ){
         if( !this._playAchievement ){
-          ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10, false, 0, 0.8 );
+          Sound.inst.effects.SOUND_SCORE.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10, 0, 0.8 );
           this.flashAchievementTimer = 2300;
         }
         this._playAchievement = this.nextScoreAchievement;
@@ -3569,7 +3594,6 @@ The Thai Redcross Society #redcross
             return true;
           }
 
-          ODR.loadSounds();
           this.endTime = this.timer;
 
           ODR.sky.setShade( Sky.config.DAY, 3000 );
@@ -3601,7 +3625,7 @@ The Thai Redcross Society #redcross
 
     let runout = 0;
     let tfactor = 0;
-    if( this.endTime && ODR.soundLoadProgress == 1 ){
+    if( this.endTime && Sound.inst.effectsLoadingProgress == 1 ){
       tfactor = this.timer - this.endTime;
       runout = 0.8*tfactor - 200;
       //200*200
@@ -3648,11 +3672,11 @@ The Thai Redcross Society #redcross
       ~~(30 + 2 * factorD + runout * 1.4),
       99,97);
 
-    let total = IS_SOUND_DISABLED ? 100 : (ODR.music.songs['offline-intro-music'].progress + ODR.music.songs['offline-play-music'].progress) * 50;
-    if (total < 100) {
-      new Text(600/14,0).drawString("loading data:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
+    let total = IS_SOUND_DISABLED ? 100 : Sound.inst.musicLoadingProgress * 100;
+    if( total < 100 ){
+      new Text(600/14,0).drawString("loading:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
     } else {
-      if (this.timer < 15000) {
+      if( this.timer < 15000 ){
         new Text(600/14,0).drawString(`Amandarine Frontier: On Da Run [V.${VERSION}]`, this.canvasCtx,0,180-Math.min(0,runout));
       } else {
         new Text(600/14,0).drawString("press a button to continue.", this.canvasCtx,0,180-Math.min(0,runout));
@@ -3795,14 +3819,14 @@ class Menu extends Panel {
     return super.handleEvent( e );
   }
 
-  forward( deltaTime, depth ) {
+  forward( deltaTime, depth ){
     this.timer += deltaTime;
     this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
 
     if( this.offset ){
 
       if( !this.muted )
-        ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
 
       let newIdx = this.model.currentIndex + this.offset;
       let length = this.model.entries.length;
@@ -3823,9 +3847,9 @@ class Menu extends Panel {
       let entry = this.model.entries[ this.model.currentIndex ];
 
       if( entry.disabled || ( entry.hasOwnProperty('value') && !entry.options )){
-        ODR.playSound( ODR.soundFx.SOUND_ERROR, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
       } else {
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
 
         // The choosen entry has "options". Create a submenu.
         if (entry.options) {
@@ -3876,7 +3900,7 @@ class Menu extends Panel {
               }
               //hackish, to turn sample music off on leaving the submenu.
               if( this.associatedButton == ODR.consoleButtons.CONSOLE_A ){
-                ODR.music.stop();
+                Sound.inst.currentSong = null;
               }
               this.submenu = null;
             },
@@ -4019,7 +4043,7 @@ class TextEditor extends Panel {
     this.timer += deltaTime;
 
     if( this.offset && !this.muted )
-      ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
     if( this.offset > 0 ){
       this.curX = (this.curX + this.offset)%7;
       this.offset = 0;
@@ -4036,7 +4060,7 @@ class TextEditor extends Panel {
       }
       */
       if( this.curX == 6 && this.curY == 6 ){
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
         return this.callback( this.text );
       } else if( this.curX == 6 && this.curY == 0 ){
         this.text = this.text.slice( 0, this.text.length - 1 );
@@ -4054,9 +4078,9 @@ class TextEditor extends Panel {
 
       if( this.text.length > 25 ){
         this.text = this.text.slice(0,25);
-        ODR.playSound( ODR.soundFx.SOUND_ERROR, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
       } else {
-        ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
       }
     }
 
@@ -4207,12 +4231,14 @@ class GameOver extends Panel {
             t += 1000;
             if( !this.playedHiscore ){
               this.playedHiscore = true;
+              /*
               if( IS_IOS ){
-                ODR.playSound( ODR.soundFx.SOUND_SCORE, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+                Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
               } else
+              */
               for( let i = 0, j = 0 ; i <= 1 ; i+=0.1,j+=0.1){
-                ODR.playSound( ODR.soundFx.SOUND_SCORE, 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, false, j*1000, -i );
-                ODR.playSound( ODR.soundFx.SOUND_SCORE, 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, false, j*1000, i );
+                Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
+                Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
               }
             }
             this.newHighTimer = Math.min( 1000 , ( this.newHighTimer || 0 ) + deltaTime );
@@ -4229,7 +4255,7 @@ class GameOver extends Panel {
             new Text(300/14).drawString(`_${gotO}${gotT}`, this.canvasCtx, 300, lineY );
 
             if( !this.playedGotO && gotO ){
-              ODR.playSound( ODR.soundFx.SOUND_POP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+              Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
               this.playedGotO = true;
             }
           }
@@ -4749,29 +4775,314 @@ class ConsoleN7EButton extends ConsoleButton {
 }
 
 /**
- * FIXME
- * - Make sure not to setTimeout() to load music.
+ * +---------+   +-------+
+ * |  Sound  |--♦| Songs |
+ * +---------+   +-------+
+ *      |            |
+ *      ♦            ♦
+ * +---------+   +-------+
+ * | Effects |--♦| Audio |
+ * +---------+   +-------+
  */
-class Music {
+
+/**
+ * Audio class act like a generator, each play() streams and returns
+ * a collection of audio nodes that can be used to control the on-going audio.
+ */
+class Audio {
+  constructor( soundBuffer, title ){
+    this.soundBuffer = soundBuffer;
+    this.title = title;
+    this.controller = null;
+  }
+
+  play( volume, delay = 0, pan = null, loop = false ){
+
+    let actx = Sound.inst.audioContext;
+    let star
+    if( !actx ){
+      return;
+    }
+
+
+    let duration = Math.ceil( this.soundBuffer.duration + delay);
+    let dest = actx.destination;
+    let sourceNode = actx.createBufferSource();
+    let controller = { startTime: actx.currentTime + delay, sourceNode: sourceNode };
+
+    sourceNode.buffer = this.soundBuffer;
+
+
+    // gain(dest) -> destiation
+    if( volume !== undefined ){
+      let gainNode = actx.createGain();
+      controller.gainNode = gainNode;
+
+      //gainNode.gain.value = volume;
+      gainNode.gain.setValueAtTime( Math.max( volume, 0.000001 ), controller.startTime );
+      gainNode.connect( dest );
+      dest = gainNode;
+    }
+
+    // pan(dest) -> gain -> destiation
+    if( pan !== null ){
+      /*
+      let pannerNode = actx.createStereoPanner();
+      pannerNode.pan.value = pan;
+      pannerNode.pan.setValueAtTime( Math.max( pan, 0.000001 ), controller.startTime );
+      pannerNode.connect(dest);
+      */
+
+      let pannerNode = actx.createPanner();
+      pannerNode.panningModel = 'equalpower';
+      pannerNode.setPosition(pan, 0, 1 - Math.abs(pan));
+      pannerNode.connect(dest);
+
+      controller.pannerNode = pannerNode;
+      dest = pannerNode;
+    }
+
+    // source -> pan -> gain -> destiation
+    sourceNode.connect( dest );
+    if( loop ){
+      sourceNode.loop = loop;
+    }
+    sourceNode.start( controller.startTime );
+
+    return controller;
+  }
+}
+
+/**
+ * Song wraps an Audio and used to control the progression of the stream.
+ */
+class Song {
+  constructor( name, lyrics, autoload = true, decode = true ){
+    this.name = name;
+    this.lyrics = lyrics;
+    this.audio = undefined;
+    this.controller = null;
+
+    // a temporary blob for storing raw downloaded data if the audio context is not yet created.
+    this.source = null;
+
+    this.delayStart = 0; // For resuming calculation.
+    this.startTime = Infinity;
+    this.loadingProgress = null;
+
+    if( autoload ){
+      this.load( decode );
+    }
+  }
+
+  play( delay ){
+    this.delayStart = delay;
+    this.startTime = Sound.inst.audioContext.currentTime;
+    if( this.audio ){
+      this.controller = this.audio.play( ODR.config.SOUND_MUSIC_VOLUME/10, delay );
+    } else if( this.source ){
+      this._decodeAudioData( this.source );
+      this.source = null;
+    } else {
+      console.log('No Audio');
+    }
+  }
+
+  stop( fadingDuration = 0 ){
+    if( this.controller ){
+      let actx = Sound.inst.audioContext;
+      this.controller.sourceNode.stop( actx.currentTime + fadingDuration );
+      this.controller.gainNode.gain.exponentialRampToValueAtTime( 0.00001, actx.currentTime +fadingDuration );
+      //this.controller.gainNode.gain.linearRampToValueAtTime(0, Sound.inst.audioContext.currentTime+3);
+    }
+    this.startTime = Infinity;
+  }
+
+  set volume( newVolume ){
+    if( this.controller ){
+      this.controller.gainNode.gain.exponentialRampToValueAtTime( Math.max( 0.00001, newVolume ), Sound.inst.audioContext.currentTime+3);
+    }
+  }
+
+  //TODO
+  /*
+  pause(){
+
+  }
+  resume(){
+
+  }
+  */
+
+  get playing(){
+    return this.startTime != Infinity ? true : false;
+  }
+
+
+/** Class Song
+ * Decode and play the song if startTime has been set.
+ * @param {ArrayBuffer} src - loaded from XMLHttpRequest.
+ */
+  _decodeAudioData( src ){
+    if( this.audio === undefined ){
+
+      Sound.inst.contextReady().then( actx => {
+
+        actx.decodeAudioData( src, buffer => {
+          console.log(this.name+': Song was successfully decoded.');
+          this.audio = new Audio( buffer, this.name );
+          if( Infinity != this.startTime ){
+            //auto-adjust the given delay with the loading time.
+            let adjustedDelay = this.delayStart + this.startTime - this._audioContext.currentTime;
+            this.audio.play( ODR.config.SOUND_MUSIC_VOLUME/10, Math.max( 0, adjustedDelay ));
+          }
+
+          /* For testing
+          if( this.name == "offline-play-music" ){
+            console.log(name,'loaded 3')
+            let con = this.audio.play( 1 );
+            con.gainNode.gain.exponentialRampToValueAtTime( 0.00001, actx.currentTime+10 );
+          }
+          */
+        });
+
+      });
+
+    }
+  }
+
+  load( decode ){
+    if( this.loadingProgress != null ){
+      return;
+    }
+
+    this.loadingProgress = 0;
+
+    console.log('Downloading the requested song...',this.name);
+    // Start loading the song.
+    // TODO, option to load on playing.
+    let resourceTemplate = document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID ).content;
+    let request = new XMLHttpRequest();
+    request.open('GET', resourceTemplate.getElementById( this.name ).src, true);
+    request.responseType = 'arraybuffer';
+    request.onload = () => {
+
+      this.loadingProgress = 1;
+
+      if( decode ){
+        console.log('Decoding requested data...', this.name );
+        this._decodeAudioData( request.response );
+      } else {
+        // Without an audio context, just keep the blob for later decoding.
+        this.source = request.response;
+      }
+
+    }
+    request.onprogress = (e) => {
+      this.loadingProgress = e.loaded/e.total;
+    }
+    request.send();
+
+  }
+
+}
+
+class Sound {
+  //Make sure not to call this before a gesture unlocking (eg. touchend)
+  static get inst(){
+    return this.instance || new this();
+  }
+
   constructor( canvas ){
-    if( Music.singletonInstance_ )
-      return Music.singletonInstance_;
+    if( Sound.instnce )
+      return Sound.instance;
+    Sound.instance = this;
+
+    console.log('Creating AudioContext');
+    this.audioContext = new ( window.AudioContext || window.webkitAudioContext )();
+    console.log( 'AudioContext:',this.audioContext.state );
 
     this.songs = {};
     this.currentSong = null;
-    Music.singletonInstance_ = this;
+    this.effectsLoadingProgress = 0;
   }
 
-  stop(){
-    if( IS_SOUND_DISABLED ) return;
+/** Class Sound
+ * Wait until an event can resume the AudioContext state.
+ * This must be called for the first time using the AudioContext.
+ * @return {Promise} getting the AudioContext from the resolve.
+ */
+  contextReady(){
+    return new Promise(( resolve, reject ) => {
+      if( this.audioContext.state === 'suspended'){
+        let resume = (e) => {
 
-    this.currentSong = null;
-    for( let name in this.songs ) {
-      if (this.songs[name].audio) {
-        this.songs[name].autoplay = false;
-        this.songs[name].audio.fadeout();
-        this.songs[name].audio = null;
-      }
+          if( this.audioContext.state === 'suspended' ){
+            this.audioContext.resume().then(
+              () => resolve( this.audioContext )
+              , reason  => reject( reason ));
+          } else {
+            resolve( this.audioContext );
+          }
+        }
+
+        [ OnDaRun.events.CONSOLEUP, OnDaRun.events.CONSOLEDOWN ].forEach( et => document.body.addEventListener( et, resume, { passive: true, once: true }));
+
+      } else {
+        resolve( this.audioContext );
+      };
+    });
+  }
+
+
+/** Class Sound
+ * Load sound effects from the HTML.
+ */
+  loadSounds(){
+    if( IS_SOUND_DISABLED ){
+      this.effects = {};
+      this.effectsLoadingProgress = 1;
+      return;
+    }
+
+    if( !this.effects ){
+      this.effects = {};
+
+      console.log("Decoding sound effects...");
+      Sound.inst.contextReady().then( actx => {
+
+        var resourceTemplate = document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID ).content;
+
+        let counter = 0;
+        let entries = Object.entries( Sound.effectIds );
+        let entriesLen = entries.length;
+
+        entries.forEach(([ sound, id ]) => {
+          var soundSrc =
+            resourceTemplate.getElementById( id ).src;
+          soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
+          let len = (soundSrc.length / 4) * 3;
+          let str = atob(soundSrc);
+          let arrayBuffer = new ArrayBuffer(len);
+          let bytes = new Uint8Array(arrayBuffer);
+
+          for (let i = 0; i < len; i++) {
+            bytes[i] = str.charCodeAt(i);
+          }
+
+          // Async, so no guarantee of order in array.
+          this.audioContext.decodeAudioData( bytes.buffer , audioData => {
+
+            this.effects[ sound ] = new Audio( audioData, sound );
+            counter++;
+            this.effectsLoadingProgress = counter/entriesLen;
+
+            }
+          });
+
+        });// entries.forEach()
+      });// contextReady()
+
     }
   }
 
@@ -4785,92 +5096,65 @@ class Music {
     }
   }
 
-  set volume( vol ) {
+  set musicVolume( vol ) {
     if( IS_SOUND_DISABLED ) return;
     if( this.currentSong ) {
-      this.currentSong.audio.setVolume( vol/10 );
+      this.currentSong.volume = vol/10;
     }
   }
 
+  get currentSong(){
+    return this._currentSong;
+  }
 
-  /* TODO If the audio context is created late, music should
-  recall load on the existing autoplayed song. */
-  load( name, autoplay, delay = 0, lyrics = null ){
-    if( IS_SOUND_DISABLED ) return;
-    //console.log('load', name, autoplay)
-    //if (IS_IOS) return;
-    let song = this.songs[ name ] || ( this.songs[ name ] = { title: name, autoplay: autoplay, lyrics: lyrics});
-    song.lyrics = lyrics;
-    song.delay = delay;
+  set currentSong( song ){
+    this.setCurrentSong( song );
+  }
 
-    /*
-    if( song.autoplay ) {
-      console.log('This song is being already played.',song)
-      return;
+  setCurrentSong( song, delayStart ){
+    if( this._currentSong ){
+      this._currentSong.stop( 3 );
     }
-    */
+    this._currentSong = song;
+    if( song )
+      song.play( delayStart );
+  }
 
-    if (this.currentSong == song) return;
+  get musicLoadingProgress(){
+    return Object.entries( this.songs ).reduce(( acc, nameSong, index, array) => acc + nameSong[1].loadingProgress /array.length, 0);
+  }
 
-    song.autoplay = song.autoplay || autoplay;
+  loadMusic( name, autoplay, delayStart = 0, lyrics = null ){
+    if( IS_SOUND_DISABLED ) return;
+    let song = this.songs[ name ] || ( this.songs[ name ] = new Song( name, lyrics, true ));
+
+    if( this.currentSong == song ) return;
 
     /* Turn-off the others */
-    if( song.autoplay ){
-      for( let anotherName in this.songs ) {
-        if( name == anotherName ) continue;
-
-        this.songs[anotherName].autoplay = false;
-        if( this.songs[anotherName].audio ) {
-          this.songs[anotherName].audio.fadeout();
-          this.songs[anotherName].audio = null;
-        }
-      }
+    if( autoplay ){
+      this.setCurrentSong( song, delayStart );
     }
 
-    if( song.autoplay && song.data ){
-    /* The song has data ready, just play it. */
-      if( !song.audio ) {
-        this.currentSong = song;
-        song.audio = ODR.playSound( song.data, ODR.config.SOUND_MUSIC_VOLUME/10, false, song.delay );
-        song.startTime = ODR.audioContext.currentTime;
-      }
-    } else if( !song.hasOwnProperty('progress')) {
-    /* The song has not started being loaded. */
-      song.progress = 0;
-      var resourceTemplate = document.getElementById(ODR.config.RESOURCE_TEMPLATE_ID).content;
-      let request = new XMLHttpRequest();
-      request.open('GET', resourceTemplate.getElementById(name).src, true);
-      request.responseType = 'arraybuffer';
-      request.onload = () => {
-        song.progress = 1;
-
-        /* Without an audio context, it will just keep the blob around */
-        if (!ODR.audioContext) {
-          song.source = request.response;
-        } else {
-          ODR.audioContext.decodeAudioData(request.response, audioData => {
-            song.data = audioData;
-            this.load( song.title, song.autoplay );
-          });
-        }
-      }
-      request.onprogress = (e) => {
-        song.progress = e.loaded/e.total;
-      }
-      request.send();
-    } else if( song.source ) {
-    /* Source was loaded but not yet processed. */
-      if (ODR.audioContext) {
-        ODR.audioContext.decodeAudioData( song.source, audioData => {
-          song.source = null;
-          song.data = audioData;
-          this.load( song.title, song.autoplay );
-        });
-      }
-    }
   }
-
 }
+
+Sound.effectIds = {
+  BUTTON_PRESS: 'offline-sound-press',
+  SOUND_HIT: 'offline-sound-hit',
+  SOUND_ERROR: 'offline-sound-error',
+  SOUND_SCORE: 'offline-sound-reached',
+  SOUND_SLIDE: 'offline-sound-slide',
+  SOUND_DROP: 'offline-sound-drop',
+  SOUND_JUMP: 'offline-sound-piskup',
+  SOUND_CRASH: 'offline-sound-crash',
+  SOUND_OGGG: 'offline-sound-oggg',
+  SOUND_GOGOGO: 'offline-sound-gogogo',
+  SOUND_QUACK: 'offline-sound-quack',
+  SOUND_BICYCLE: 'offline-sound-bicycle',
+  SOUND_BLIP: 'offline-sound-blip',
+  SOUND_POP: 'offline-sound-pop',
+};
+
 
 class Layer {
   constructor(){
@@ -5156,10 +5440,6 @@ class OnDaRun extends LitElement {
     this.achievements = [];
     this.msPerFrame = 1000/FPS;
 
-    this.soundFx = null;
-    this.audioContext = null;
-    this.music = null;
-
     this.images = {};
 
     this.consoleButtonForKeyboardCodes = {};
@@ -5290,7 +5570,7 @@ class OnDaRun extends LitElement {
   }
 
   statePlay(){
-    this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
+    Sound.inst.loadMusic('offline-play-music', this.config.PLAY_MUSIC, 1 );
     this.sky.setShade( Sky.config.DAY, 3000 );
     this.scoreboard.reset();
 
@@ -5303,7 +5583,7 @@ class OnDaRun extends LitElement {
     this.showGameModeInfo();
 
     this.notifier.notify("go go go!!", 2000 );
-    this.playSound( this.soundFx.SOUND_GOGOGO, 0.8 * this.config.SOUND_EFFECTS_VOLUME/10, false, 0, -0.2 );
+    Sound.inst.effects.SOUND_GOGOGO.play( 0.8 * this.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2);
   }
 
   stateCrash(){
@@ -5314,8 +5594,8 @@ class OnDaRun extends LitElement {
     this.panel = null;
     vibrate(200);
     //this.distanceMeter.flashIterations = 0;
-    ODR.music.stop();
-    this.playSound( this.soundFx.SOUND_OGGG, ODR.config.SOUND_EFFECTS_VOLUME/10, false, 0, -0.2 );
+    Sound.inst.currentSong = null;
+    Sound.inst.effects.SOUND_OGGG.play( ODR.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2 );
     this.sky.setShade( Sky.config.SUNSET, 3000 );
 
     // Load lyrics, FIXME if needed.
@@ -5326,11 +5606,10 @@ class OnDaRun extends LitElement {
       lyrics.push( new Message( string, 10000, 0, l[ i ]));
     }
 
-    this.music.load('offline-intro-music', this.config.PLAY_MUSIC, 3000, lyrics );
+    Sound.inst.loadMusic('offline-intro-music', this.config.PLAY_MUSIC, 3, lyrics );
   }
 
   stateRestart(){
-    //this.music.stop();
     this.scenery.reset();
     this.sequencer.reset();
     //this.distanceMeter.reset();
@@ -5344,8 +5623,8 @@ class OnDaRun extends LitElement {
     this.sky.setShade( Sky.config.DAY,  3000 );
     this.invert( true );
 
-    this.playSound( this.soundFx.SOUND_SCORE, ODR.config.SOUND_EFFECTS_VOLUME/10 );
-    this.music.load('offline-play-music', this.config.PLAY_MUSIC, 500 );
+    Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    Sound.inst.loadMusic('offline-play-music', this.config.PLAY_MUSIC, 0.5 );
     this.checkShouldDropTangerines();
     this.showGameModeInfo();
 
@@ -5495,9 +5774,9 @@ https://www.redcross.or.th/donate/
 
     this.config.PLAY_MUSIC = true;
 
-    this.music = new Music();
-    this.music.load('offline-intro-music', false);
-    this.music.load('offline-play-music', false);
+    Sound.inst.loadMusic('offline-intro-music', false );
+    Sound.inst.loadMusic('offline-play-music', false );
+    Sound.inst.loadSounds();
 
     this.sky = new Sky( this.canvas );
     this.sky.setShade( Sky.config.START, 0 );
@@ -5612,13 +5891,13 @@ https://www.redcross.or.th/donate/
  * Amandarine walks into the scene.
  */
   start(){
-    this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
+    Sound.inst.loadMusic('offline-intro-music', this.config.PLAY_MUSIC );
 
     let defaultAction = new DefaultAction(1);
     defaultAction.setX = -100;
     this.queueAction(defaultAction);
 
-    this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
+    Sound.inst.effects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
 
     //FIXME should wait for a Promise and call end()?
     if( N7e.signing.progress ){
@@ -5746,16 +6025,16 @@ https://www.redcross.or.th/donate/
   /***/
   setMusicMode( mode ){
     if( this.config.PLAY_MUSIC ){
-      this.music.stop();
+      Sound.inst.currentSong = null;
       this.config.PLAY_MUSIC = false;
       this.notifier.notify('♬ OFF', 2000 );
     } else {
       this.config.PLAY_MUSIC = true;
 
       if( 1 == this.gameState ){
-        this.music.load('offline-play-music', this.config.PLAY_MUSIC );
+        Sound.inst.loadMusic('offline-play-music', this.config.PLAY_MUSIC );
       } else {
-        this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
+        Sound.inst.loadMusic('offline-intro-music', this.config.PLAY_MUSIC );
       }
       this.notifier.notify('♬ ON', 2000 );
     }
@@ -5771,7 +6050,7 @@ https://www.redcross.or.th/donate/
 
   createSoundMenu(){
     //this.config.PLAY_MUSIC = true;
-    this.music.stop();
+    Sound.inst.currentSong = null;
     let entries = [];
     let key;
 
@@ -5818,15 +6097,15 @@ https://www.redcross.or.th/donate/
       select: ( entry, vol, model ) => {
         if( mainMenu.model === model || vol > 10) {
           if( model.name == 'SOUND_MUSIC_VOLUME' && vol == 11) {
-            this.music.volume = ODR.config.SOUND_MUSIC_VOLUME;
+            Sound.inst.musicVolume = ODR.config.SOUND_MUSIC_VOLUME;
           } else {
-            ODR.playSound( ODR.soundFx.SOUND_BLIP, ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
           }
         } else {
           if( model.name == 'SOUND_SYSTEM_VOLUME' ) {
-            ODR.playSound( ODR.soundFx.SOUND_BLIP, vol/10 );
+            Sound.inst.effects.SOUND_BLIP.play( vol/10 );
           } else if( model.name == 'SOUND_EFFECTS_VOLUME' ) {
-            this.sounds = this.sounds || [
+            model.sampleNames = model.sampleNames || [
               'SOUND_QUACK',
               'SOUND_OGGG',
               'SOUND_GOGOGO',
@@ -5838,16 +6117,16 @@ https://www.redcross.or.th/donate/
               'SOUND_BLIP',
               'SOUND_POP',
             ];
-            ODR.playSound( ODR.soundFx[this.sounds[0]], vol/10 );
-            this.sounds.push(this.sounds.shift());
+            Sound.inst.effects[ model.sampleNames[ 0 ]].play( vol/10 );
+            model.sampleNames.push( model.sampleNames.shift());
           } else if( model.name == 'SOUND_MUSIC_VOLUME' ) {
-            this.music.volume = vol;
+            Sound.inst.musicVolume = vol;
           }
         }
       },
       enter: ( entryIndex, entry ) => {
         if( entry.name == 'SOUND_MUSIC_VOLUME' ) {
-          ODR.music.load('offline-play-music', this.config.PLAY_MUSIC );
+          Sound.inst.loadMusic('offline-play-music', this.config.PLAY_MUSIC );
         }
 
         if( entry.value != this.config[ entry.name ] ) {
@@ -5870,7 +6149,7 @@ https://www.redcross.or.th/donate/
   }
 
   createGraphicsMenu(){
-    this.music.stop();
+    Sound.inst.currentSong = null;
     let entries = [];
     for (let key in this.config.GRAPHICS_MODE_OPTIONS) {
       let def = this.config.GRAPHICS_MODE_OPTIONS[key];
@@ -5919,12 +6198,12 @@ https://www.redcross.or.th/donate/
     this.invert(true);
 
     //FIXME dup screen forward
-    this.music.load('offline-intro-music', this.config.PLAY_MUSIC );
+    Sound.inst.loadMusic('offline-intro-music', this.config.PLAY_MUSIC );
 
     let defaultAction = new DefaultAction(1);
     defaultAction.setX = -100;
     this.queueAction(defaultAction);
-    this.playSound( this.soundFx.SOUND_SCORE, this.config.SOUND_SYSTEM_VOLUME/10 );
+    Sound.inst.effects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
     this.sky.setShade( Sky.config.DAY, 0 );
 
     this.showGameModeInfo();
@@ -5932,7 +6211,7 @@ https://www.redcross.or.th/donate/
 
   createGameMenu(){
 
-    this.music.stop();
+    Sound.inst.currentSong = null;
     let entries = [];
 
     this.gameModeList.forEach( mode => {
@@ -5978,7 +6257,7 @@ https://www.redcross.or.th/donate/
   }
 
   createUserMenu(){
-    this.music.stop();
+    Sound.inst.currentSong = null;
     let mainMenu =
       /* User has signed in */
       N7e.user
@@ -6080,7 +6359,7 @@ https://www.redcross.or.th/donate/
 
   createResetMenu(){
 
-    this.music.stop();
+    Sound.inst.currentSong = null;
 
     return new Menu( this.canvas, {
       title: 'WHOA...DEJA VU?',
@@ -6145,140 +6424,6 @@ https://www.redcross.or.th/donate/
 
     //Generate caches
     //this.scenery.forward( 0, 0, 0, false, 0);
-  }
-
-  loadSounds(){
-    if( IS_SOUND_DISABLED ){
-      this.soundFx = {};
-      this.soundLoadProgress = 1;
-      return;
-    }
-
-    this.soundLoadProgress = 0;
-
-    if( !this.soundFx ) {
-
-      if( !this.audioContext ){
-        this.audioContext = new ( window.AudioContext || window.webkitAudioContext )();
-        if( this.audioContext.state == 'suspended' ){
-          this.audioContext.resume().then( this.loadSounds());
-          return;
-        }
-      }
-
-      this.soundFx = {};
-
-      var resourceTemplate =
-      document.getElementById( this.config.RESOURCE_TEMPLATE_ID ).content;
-
-      let counter = 0;
-      let entries = Object.entries( OnDaRun.sounds );
-      let entriesLen = entries.length;
-
-      entries.forEach(([ sound, id ]) => {
-        var soundSrc =
-          resourceTemplate.getElementById( id ).src;
-        soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
-        let len = (soundSrc.length / 4) * 3;
-        let str = atob(soundSrc);
-        let arrayBuffer = new ArrayBuffer(len);
-        let bytes = new Uint8Array(arrayBuffer);
-
-        for (let i = 0; i < len; i++) {
-          bytes[i] = str.charCodeAt(i);
-        }
-
-        // Async, so no guarantee of order in array.
-        this.audioContext.decodeAudioData( bytes.buffer , audioData => {
-          this.soundFx[ sound ] = audioData;
-          counter++;
-          this.soundLoadProgress = counter/entriesLen;
-        });
-      });
-    }
-  }
-
-  playSound( soundBuffer, volume, loop = false, delay = 0, pan = 0 ){
-    if( IS_SOUND_DISABLED ) return;
-    if( IS_IOS ){
-      loop = false;
-      delay = 0;
-      pan = 0;
-    }
-
-    if( soundBuffer ){
-
-      let duration = Math.ceil(soundBuffer.duration + delay);
-      let dest = this.audioContext.destination;
-      var sourceNode;
-
-      // FIXME Better reallocate on-load via configurations.
-      /*
-      if (delay) {
-        let newBuffer = this.audioContext.createBuffer(2, soundBuffer.sampleRate * 2 * duration, soundBuffer.sampleRate);
-        newBuffer.copyToChannel(soundBuffer.getChannelData(0), 0);
-        newBuffer.copyToChannel(soundBuffer.getChannelData(soundBuffer.numberOfChannels == 2? 1:0), 1);
-        soundBuffer = newBuffer;
-      }
-      */
-
-      sourceNode = this.audioContext.createBufferSource();
-      sourceNode.buffer = soundBuffer;
-      let vnode, pnode;
-
-      if( volume !== undefined ) {
-        vnode = this.audioContext.createGain();
-        vnode.gain.value = volume;
-        vnode.connect(dest);
-        dest = vnode;
-      }
-
-      if (pan) {
-        pnode = this.audioContext.createStereoPanner();
-        pnode.pan.value = pan;
-        pnode.connect(dest);
-        dest = pnode;
-      }
-
-      /*
-      if (delay) {
-        let dnode = this.audioContext.createDelay(duration);
-        dnode.delayTime.value = delay;
-        dnode.connect(dest);
-        dest = dnode;
-      }
-      */
-
-      sourceNode.connect(dest);
-
-      if( loop )sourceNode.loop = true;
-
-      sourceNode.start(this.audioContext.currentTime + delay/1000);
-      return {
-        node: sourceNode,
-        _gain: vnode,
-        _pan: pnode,
-        stop: function() {
-          this.node.stop();
-        },
-        setVolume: function( vol ) {
-          this._gain.gain.value = vol;
-        },
-        fadeCount: 10,
-        fadeout: function() {
-
-          if( this._gain.gain.value > 0 ) {
-            this._gain.gain.value -= 0.02;
-            if (this._gain.gain.value < 0) {
-              this.node.stop();
-              return;
-            }
-            setTimeout(() => { this.fadeout(); }, 50);
-          }
-
-        },
-      };
-    }
   }
 
   set panel( newPanel ){
@@ -6449,7 +6594,7 @@ https://www.redcross.or.th/donate/
     this.notifier.forward( deltaTime );
 
     if( this.playLyrics ){
-      this.music.updateLyricsIfNeeded( this.cc );
+      Sound.inst.updateLyricsIfNeeded( this.cc );
     }
     this.cc.forward( deltaTime );
 
@@ -6581,7 +6726,7 @@ https://www.redcross.or.th/donate/
             }
           } break;
 
-          // Music button
+          // Sound button
           case this.consoleButtons.CONSOLE_A:
             if( !IS_SOUND_DISABLED ){
               if( e.detail.timeOut || !this.panel.passthrough ){
@@ -7265,23 +7410,6 @@ OnDaRun.spriteDefinition = {
   DUST: { x: 776, y: 2 },
   RESTART: { x: 0, y: 40 },
   TEXT_SPRITE: { x: 0, y: 0 },
-};
-
-OnDaRun.sounds = {
-  BUTTON_PRESS: 'offline-sound-press',
-  SOUND_HIT: 'offline-sound-hit',
-  SOUND_ERROR: 'offline-sound-error',
-  SOUND_SCORE: 'offline-sound-reached',
-  SOUND_SLIDE: 'offline-sound-slide',
-  SOUND_DROP: 'offline-sound-drop',
-  SOUND_JUMP: 'offline-sound-piskup',
-  SOUND_CRASH: 'offline-sound-crash',
-  SOUND_OGGG: 'offline-sound-oggg',
-  SOUND_GOGOGO: 'offline-sound-gogogo',
-  SOUND_QUACK: 'offline-sound-quack',
-  SOUND_BICYCLE: 'offline-sound-bicycle',
-  SOUND_BLIP: 'offline-sound-blip',
-  SOUND_POP: 'offline-sound-pop',
 };
 
 OnDaRun.keycodes = {
