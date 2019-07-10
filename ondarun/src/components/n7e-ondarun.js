@@ -18,7 +18,7 @@
 
 import { LitElement, html, css } from 'lit-element';
 
-var VERSION = "1.02"
+var VERSION = "1.03"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;
@@ -897,7 +897,7 @@ class Sequencer {
   // Change to addEntities to allow adding a group
   addEntity( ...theArgs ) {
     theArgs.forEach( anEntity => {
-      if( this.entities.length >= 25 ) {
+      if( this.entities.length >= 30 ) {
         return;
       }
 
@@ -2580,7 +2580,7 @@ class Scoreboard {
     this.text = null;
     this.opacity = 0;
     this.existence = 0;
-    this.template = '00000';
+    this.template = `${ODR.gameMode.icon||''}00000`;
     this._minTang = null;
     this._maxTang = null;
     this.replay = false;
@@ -2589,11 +2589,11 @@ class Scoreboard {
   set replay( willReplay ){
     this._replay = willReplay;
     if( willReplay ){
-      this.template = `replay 00000`;
+      this.template = `replay #gameR00000`;
       this.score = 0;
       this.replayBlink = [];
       this.replayBlink[0] = this.text;
-      this.template = `00000`;
+      this.template = `${ODR.gameMode.icon||''}00000`;
       this.score = 0;
       this.replayBlink[1] = this.text;
       this.replayTimer = 0;
@@ -2610,14 +2610,14 @@ class Scoreboard {
     if( this.replay ) return;
     if( newMaxTang != this._maxTang ){
       this._maxTang = newMaxTang;
-      this.template = `#tangerine${this._minTang}/${this._maxTang} #trophy00000`;
+      this.template = `#tangerine${this._minTang}/${this._maxTang} ${ODR.gameMode.icon||'#trophy'}00000`;
     }
   }
   set minTangerines( newMinTang ){
     if( this.replay ) return;
     if( newMinTang != this._minTang ){
       this._minTang = newMinTang;
-      this.template = `#tangerine${this._minTang}/${this._maxTang} #trophy00000`;
+      this.template = `#tangerine${this._minTang}/${this._maxTang} ${ODR.gameMode.icon||'#trophy'}00000`;
     }
   }
 
@@ -2753,6 +2753,10 @@ class Text {
       [ '#football', 0xe013 ],
       [ '#bell', 0xe014 ],
       [ '#noentry', 0xe015 ],
+      [ '#gameA', 0xe016 ],
+      [ '#gameB', 0xe017 ],
+      [ '#gameS', 0xe018 ],
+      [ '#gameR', 0xe019 ],
     ].forEach( sym =>
       this.symbolMap.push({
         char: String.fromCharCode( sym[ 1 ]),
@@ -2761,7 +2765,7 @@ class Text {
     );
   }
 
-  static convertString( messageStr ){
+  static substituteString( messageStr ){
     if( !messageStr ){
       return messageStr;
     }
@@ -2777,10 +2781,10 @@ class Text {
 
   //TODO Consider a rewrite to use word-breaker
   setString( messageStr ){
-    return this.setConvertedString( Text.convertString( messageStr ));
+    return this.setSubstitutedString( Text.substituteString( messageStr ));
   }
 
-  setConvertedString( messageStr ){
+  setSubstitutedString( messageStr ){
 
     if( !messageStr ){
       this.glyphs = null;
@@ -2847,7 +2851,7 @@ class Text {
         return (code - 48) * 14;
       }
 
-      switch(code) {
+      switch( code ){
         case 0xe000: return 784;
         case 0xe001: return 630;
         case 0xe002: return 770;
@@ -2865,9 +2869,13 @@ class Text {
         case 0xe013: return 756;
         case 0xe014: return 966;
         case 0xe015: return 980;
+        case 0xe016: return 994;
+        case 0xe017: return 1008;
+        case 0xe018: return 1022;
+        case 0xe019: return 1036;
       }
 
-      switch (ch) {
+      switch( ch ){
         case '.': return 504;
         case '?': return 518;
         case '!': return 532;
@@ -2886,7 +2894,9 @@ class Text {
         case ':': return 742;
         case '⚽': return 756;
         case '+': return 840;
+        case '(':
         case '[': return 910;
+        case ')':
         case ']': return 924;
         case '%': return 952;
         default: return -code;
@@ -3828,7 +3838,7 @@ class Menu extends Panel {
       this.canvasCtx.globalAlpha = (entry.disabled ? 0.5 : 1)*Math.max(0.1,(4 - xxx)/4);
       if (entry.hasOwnProperty('value')) title += '.'.repeat(32-title.length-(entry.value+'').length)+'[ '+entry.value+' ]';
 
-      this.text.setString((i == this.model.currentIndex ? (entry.exit ? '◅ ' : ' ▻'):'  ') +title +(entry.disabled ? '#noentry' : '')).draw(
+      this.text.setString((i == this.model.currentIndex ? (entry.exit ? '◅ ' : ' ▻'):'  ') +title +(entry.disabled ? ' #noentry' : '')).draw(
         this.canvasCtx,
         this.xOffset + 20 + 2 * 3 * Math.round(Math.sqrt(100*xxx) / 3),
         this.yOffset + 90 + 5 * Math.round(4 * (i-this.displayEntry)));
@@ -6024,9 +6034,7 @@ https://www.redcross.or.th/donate/
   }
 
   showGameModeInfo( duration = 3000, delay = 0 ){
-    if( this.totalTangerines ){
-      this.cc.append( `${this.gameMode.title} #trophy${this.gameModeScore}`, duration, delay );
-    } else this.cc.append( this.gameMode.title, duration, delay );
+    this.cc.append( `${this.gameMode.title}`+ (this.gameModeScore ? ` #trophy ${this.gameModeScore}` : ''), duration, delay );
   }
 
   setGameMode( choice ){
@@ -6322,14 +6330,26 @@ https://www.redcross.or.th/donate/
           } else {
             if( this.sequencer.numberOfEntities == 0 ){
 
-              // For now
-              DuckType.elevationList.forEach(( elev, index ) => {
-                let rubber = new Rubber( this.canvasCtx,
-                  this.currentSpeed * Rubber.speedFactor, elev);
-                rubber.minX = DEFAULT_WIDTH + index * 20;
-                this.sequencer.addEntity( rubber );
-              });
-
+              ["@    @  ##   ##",
+               "@@   @#    #    #",
+               "@ @  @#         #",
+               "@  @ @ #       #",
+               "@   @@   #   #",
+               "@    @     #",].reverse().forEach(( line, elev ) => {
+                   line.split('').forEach(( c, x ) => {
+                     if( c == '@'){
+                       let rubber = new Rubber( this.canvasCtx,
+                         this.currentSpeed * Rubber.speedFactor, DuckType.elevationList[ elev ]);
+                       rubber.minX = DEFAULT_WIDTH + 20*x;
+                       this.sequencer.addEntity( rubber );
+                     } else if( c == '#'){
+                       let liver = new Liver( this.canvasCtx,
+                         this.currentSpeed * Liver.speedFactor, DuckType.elevationList[ elev ]);
+                       liver.minX = DEFAULT_WIDTH + 20*(x-3);
+                       this.sequencer.addEntity( liver );
+                     }
+                   });
+                 });
             }
           }
 
@@ -7030,9 +7050,9 @@ OnDaRun.defaultDimensions = {
 
 //TODO Implement class GameMode
 OnDaRun.gameModes = {
-  GAME_A: { title:'GAME A', ACCELERATION: 0.00050/16 },
-  GAME_B: { title:'GAME B', ACCELERATION: 0.00050/4 },
-  GAME_S: { title:'SITUATION HALL',  ACCELERATION: 0.00050/16 },
+  GAME_A: { title:'GAME A', icon:'#gameA', ACCELERATION: 0.00050/16 },
+  GAME_B: { title:'GAME B', icon:'#gameB', ACCELERATION: 0.00050/4 },
+  GAME_S: { title:'SITUATION HALL', icon:'#gameS', ACCELERATION: 0.00050/16 },
 };
 for( const key in OnDaRun.gameModes ) {
   OnDaRun.gameModes[key].key = key;
