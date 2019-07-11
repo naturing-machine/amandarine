@@ -400,6 +400,7 @@ class Tangerine extends Entity {
     this.spriteX = 0;
     this.spriteY = 20;
     this.collected = false;
+    this.timer = 0;
   }
 
   collide( collision ) {
@@ -407,8 +408,8 @@ class Tangerine extends Entity {
       Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
       Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/20 );
       this.collected = true;
+      this.timer = 0;
       this.collectedY = this.minY;
-      this.collectedTimer = 0;
       ODR.dailyTangerines++;
       ODR.gameRecord.tangerines++;
       Tangerine.increaseTangerine( 1 );
@@ -434,26 +435,28 @@ class Tangerine extends Entity {
   }
 
   forward( deltaTime, currentSpeed ) {
+    this.timer += deltaTime;
     if( this.collected ) {
-      this.collectedTimer += deltaTime;
-      if( this.collectedTimer > 400 ) {
+      if( this.timer > 400 ) {
         this.removed = true;
         return;
       }
 
-      let x = this.collectedTimer/400;
+      let x = this.timer/400;
       let y = -200 * x * x + 200 * x;
       this.minY = this.collectedY - y;
       //super.forward( 0, 0 );
 
       this.canvasCtx.save();
-      if( this.collectedTimer > 200 ) {
-        this.canvasCtx.globalAlpha = 1 - ((this.collectedTimer - 200) / 200);
+      if( this.timer > 200 ) {
+        this.canvasCtx.globalAlpha = 1 - ((this.timer - 200) / 200);
       }
-      this.spriteX = 20 * ~~(this.collectedTimer / 100);
+      this.spriteX = 20 * ~~(this.timer / 100);
       super.forward( deltaTime, currentSpeed/10 );
       this.canvasCtx.restore();
     } else {
+      this.minY = this.yOrigin + Math.abs(Math.sin((2000+this.timer)/4000)) * 25;
+      this.spriteX = 20 * ~~(this.timer /50 %6);
       super.forward( deltaTime, currentSpeed );
     }
   }
@@ -996,7 +999,7 @@ class Sequencer {
       if( ODR.shouldDropTangerines && N7e.user && !getRandomNum(0,10)){
         ODR.shouldDropTangerines = false;
         ODR.tangerineTimer = 0;
-        let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[ getRandomNum( 0, 4 )]);
+        let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[ getRandomNum( 1, 4 )]);
         let minGap = Math.round( 50*currentSpeed + 72 );
         let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
         space.ctx = this.canvasCtx;
@@ -2839,7 +2842,6 @@ class Text {
     return messageStr;
   }
 
-  //TODO Consider a rewrite to use word-breaker
   setString( messageStr ){
     return this.setSubstitutedString( Text.substituteString( messageStr ));
   }
