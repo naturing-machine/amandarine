@@ -2861,17 +2861,18 @@ class Text {
     this.minLength = 0;
     this.numberOfLines = 0;
     parts.forEach(( part, index ) => {
+
       let cur = 0;
       let space = 0;
       part.split(' ').forEach( word => {
         if( cur != 0 && cur + word.length > this.maxLength ){
+          this.numberOfLines++;
           this.glyphs.push(-10);
           cur = 0;
           space = 0;
         }
 
         if( word.length ){
-          if( cur == 0 ) this.numberOfLines++;
 
           this.glyphs.push(...Array( space ).fill( 588 ));
           for( let i = 0, code; code = word.charCodeAt( i ); i++ ){
@@ -2889,9 +2890,10 @@ class Text {
 
       });
 
-      if( index != parts.length -1 )
+      if( index < parts.length - 1 ){
+        this.numberOfLines++;
         this.glyphs.push(-10);
-
+      }
     });
 
     if( this.cache ) this.cache.splice(0);
@@ -2942,7 +2944,6 @@ class Text {
       case 0:
         paraX = glyphW*( this.maxLength - this.minLength )/2;
       case 1:
-          //if(this.tagggg) console.log(this.glyphs.length)
         for( let i = 0, cur = 0, l = 0; i <= this.glyphs.length; i++ ){
           if (i != this.glyphs.length && this.glyphs[i] != -10 ){
             continue;
@@ -3017,14 +3018,17 @@ class Text {
 }
 Text.generateSymbolMap();
 
-
+/**
+ * Message
+ * A timed string for Terminal class.
+ */
+class Message {
 /**
  * TODO
  * - Use priority. When 2 or more messages are overlapped, a lower one will be discarded.
  * - Multi-layers so we can push & pop back to the previous state, cancelling all in the current state.
  */
 
-class Message {
 /**
  * @param {string} string - string to be displayed.
  * @param {number} time - relative time to the time message got appended.
