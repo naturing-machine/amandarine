@@ -18,7 +18,7 @@
 
 import { LitElement, html, css } from 'lit-element';
 
-var VERSION = "1.03"
+var VERSION = "1.1"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;
@@ -1715,7 +1715,7 @@ class HorizonLine {
     if( this.cachedGroundType == groundType )
       return;
 
-    console.log(`Generating ${groundType}`);
+    //console.log(`Generating ${groundType}`);
 
     if( !this.groundCanvas ){
       this.groundCanvas = document.createElement('canvas');
@@ -3192,7 +3192,7 @@ class Panel {
     this.submenu = null;
     this.passthrough = false;
     this.associatedButton = associatedButton;
-    this.buttonUpTime = [ 0, 0 ];
+    this.buttonTime = [ 0, 0 ];
     this.willEnter = false; //Indicate double-pressed.
     this.offset = 0;
     this.timer = 0;
@@ -3233,13 +3233,13 @@ class Panel {
         let button = e.detail.consoleButton;
         switch( button ){
           case ODR.consoleButtons.CONSOLE_LEFT:{
-            this.willEnter = this.buttonUpTime[ 1 ] ? true : false;
-            this.buttonUpTime[ 0 ] = this.timer;
+            this.willEnter = this.buttonTime[ 1 ] ? true : false;
+            this.buttonTime[ 0 ] = this.timer;
           } break;
 
           case ODR.consoleButtons.CONSOLE_RIGHT:{
-            this.willEnter = this.buttonUpTime[ 0 ] ? true : false;
-            this.buttonUpTime[ 1 ] = this.timer;
+            this.willEnter = this.buttonTime[ 0 ] ? true : false;
+            this.buttonTime[ 1 ] = this.timer;
           } break;
 
           default:
@@ -3251,16 +3251,16 @@ class Panel {
         let button = e.detail.consoleButton;
         switch( button ){
           case ODR.consoleButtons.CONSOLE_LEFT:{
-            if( this.buttonUpTime[ 0 ]){
-              this.buttonUpTime[ 0 ] = 0;
+            if( this.buttonTime[ 0 ]){
+              this.buttonTime[ 0 ] = 0;
               if( !this.willEnter )
                 this.offset--;
             }
           } break;
 
           case ODR.consoleButtons.CONSOLE_RIGHT:{
-            if( this.buttonUpTime[ 1 ]){
-              this.buttonUpTime[ 1 ] = 0;
+            if( this.buttonTime[ 1 ]){
+              this.buttonTime[ 1 ] = 0;
               if( !this.willEnter )
                 this.offset++;
             }
@@ -3285,7 +3285,16 @@ class TitlePanel extends Panel {
     super( canvas );
     this.timer = 0;
     this.endTime = 0;
-    this.dataReadyTime = 0;
+    this.dataReadyTime = Infinity;
+    this.waitingForContext = true;
+    this.waitingForButtonUp = Sound.inst.audioContext.state === "suspended" ? true : false;
+    this.consoleOpacity = 1;
+    Sound.inst.contextReady().then( actx => {
+      this.waitingForContext = false;
+      this.dataReadyTime -= this.timer;
+      this.timer = 0;
+
+    });
 
     this.story = [
       new Text( 600/14 - 3,-1,
@@ -3375,7 +3384,7 @@ and some of her particular
 supporters / fanpages
 for buzzing about it.
 
-You can also support this project by making donations to
+You can also support this project by making a donation to
 The Thai Redcross Society #redcross
 
 `
@@ -3404,8 +3413,6 @@ The Thai Redcross Society #redcross
       clock += 20000 + this.story[i].numberOfLines * this.msPerLine;
       this.photoTiming[i][1] = clock;
     }
-
-    //console.log(Liver.collisionFrames[0]===Liver.collisionFrames[1])
   }
 
   loadImages() {
@@ -3434,9 +3441,17 @@ The Thai Redcross Society #redcross
       }
       case OnDaRun.events.CONSOLEUP:
         // Make sure all control buttons are released.
-        if( 0 == this.buttonUpTime[ 0 ]
-            && 0 == this.buttonUpTime[ 1 ]
-            && this.dataReadyTime && !this.endTime ){
+        if( this.waitingForButtonUp ){
+          if( !this.__donateOnce && e.detail.consoleButton.id === 'console-left'){
+            this.__donateOnce = true;
+            window.open( "https://www.redcross.or.th/donate/", '_blank');
+          }
+          this.waitingForButtonUp = false;
+        } else if( !this.waitingForContext
+            && 0 == this.buttonTime[ 0 ]
+            && 0 == this.buttonTime[ 1 ]
+            && this.dataReadyTime < this.timer
+            && !this.endTime ){
 
           if( this.scrolling ){
             this.scrolling = false;
@@ -3459,8 +3474,39 @@ The Thai Redcross Society #redcross
  * @return {Panel} - a subsitute or null.
  */
   repaint( deltaTime ) {
+    if( this.waitingForContext ){
+      this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
+      if( !this.__donationString ){
+        this.__donationString = new Text(600/14,0).setString(
+`#redcross
 
-    if( this.buttonUpTime[ 0 ] && this.buttonUpTime[ 1 ] ){
+Please support this project
+by making a donation to
+the thai redcross society
+
+
+◅ to donate #slide                #jump to sprint ▻
+`);
+      }
+      this.__donationString.draw(this.canvasCtx, 6, 30);
+
+      return this;
+    }
+
+    if( this.timer <= 800 ){
+      this.consoleOpacity = 1 - Math.min(1, this.timer / 800);
+    } else {
+      this.consoleOpacity = 0;
+      if( !this.__playedAFTitleAudio && !this.waitingForButtonUp ){
+        this.__playedAFTitleAudio = true;
+        //Sound.inst.loadMusic('amandarine-frontier', true );
+        Sound.inst.loadEffect('amandarine-frontier').then( audio => {
+          audio.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        });
+      }
+    }
+
+    if( this.buttonTime[ 0 ] && this.buttonTime[ 1 ] ){
       this.scrolling = true;
       this.timer += 300;
     }
@@ -3490,71 +3536,94 @@ The Thai Redcross Society #redcross
 
     }
 
-    /* A AMANDARINE FRONTIER */
-    this.canvasCtx.drawImage(ODR.spriteGUI,
-      148,15,208,85,
-      300-120 + 21,
-      ~~(3 + runout * 1.1),
-      208,85);
-    /* BB REDHAND */
-    this.canvasCtx.drawImage(ODR.spriteGUI,
-      125,100,37,30,
-      300-120 + 41 + Math.round(factorB),
-      ~~(80 + 6 * factorB + runout * 1.2),
-      37,30);
-    /* B AMANDARINE */
-    this.canvasCtx.drawImage(ODR.spriteGUI,
-      368,115,162,133,
-      300-120 + 37 + Math.round(factorC),
-      ~~(20 + 3 * factorB + runout * 1.35),
-      162,133);
-    /* C ONDARUN */
-    this.canvasCtx.drawImage(ODR.spriteGUI,
-      127,175,241,75,
-      300-120 + 0,
-      Math.round(100 + runout * 1.38),
-      241,75);
-    /* D TANGERINE */
-    this.canvasCtx.drawImage(ODR.spriteGUI,
-      368,16,99,97,
-      300-120 + 121 - Math.round(2 * factorC),
-      ~~(30 + 2 * factorD + runout * 1.4),
-      99,97);
+    if( this.consoleOpacity != 1 ){
 
+      /* A AMANDARINE FRONTIER */
+      this.canvasCtx.drawImage(ODR.spriteGUI,
+        148,15,208,85,
+        300-120 + 21,
+        ~~(3 + runout * 1.1),
+        208,85);
+      /* BB REDHAND */
+      this.canvasCtx.drawImage(ODR.spriteGUI,
+        125,100,37,30,
+        300-120 + 41 + Math.round(factorB),
+        ~~(80 + 6 * factorB + runout * 1.2),
+        37,30);
+      /* B AMANDARINE */
+      this.canvasCtx.drawImage(ODR.spriteGUI,
+        368,115,162,133,
+        300-120 + 37 + Math.round(factorC),
+        ~~(20 + 3 * factorB + runout * 1.35),
+        162,133);
+      /* C ONDARUN */
+      this.canvasCtx.drawImage(ODR.spriteGUI,
+        127,175,241,75,
+        300-120 + 0,
+        Math.round(100 + runout * 1.38),
+        241,75);
+      /* D TANGERINE */
+      this.canvasCtx.drawImage(ODR.spriteGUI,
+        368,16,99,97,
+        300-120 + 121 - Math.round(2 * factorC),
+        ~~(30 + 2 * factorD + runout * 1.4),
+        99,97);
+    }
+
+    let storyStartOffset = 18000;
+    let fadingTime = 2000;
+    let storyTimer = this.timer - this.dataReadyTime - storyStartOffset;
+    let topacity = ( tfactor > 0 ? 1 - Math.min( tfactor, 400 )/400 : 1 );
     let total = IS_SOUND_DISABLED ? 100 : Sound.inst.musicLoadingProgress * 100;
-    if( total < 100 ){
-      new Text(600/14,0).drawString("loading:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
-    } else {
+
+    if( total >= 100 ){
       if( this.timer < 15000 ){
         new Text(600/14,0).drawString(`Amandarine Frontier: On Da Run [Ver.${VERSION}]`, this.canvasCtx, 0, 180 -Math.min( 0, runout ));
       } else {
         new Text(600/14,0).drawString("press a button to continue.", this.canvasCtx, 0, 180 -Math.min( 0, runout ));
       }
+      if( this.imgLoadCounter == this.story.length
+          && this.timer - this.dataReadyTime > storyStartOffset ){
 
-      if (!this.dataReadyTime) {
-        this.dataReadyTime = this.timer;
+          this.consoleOpacity = Math.max( 0, Math.min( 1, storyTimer/2000 ))
+            * Math.max(0, Math.min(1, (this.photoTiming[this.story.length-1][1] + 2000 - storyTimer)/2000))
+            * topacity;
+      }
+    }
+
+    if( this.consoleOpacity !==0 ){
+      this.canvasCtx.save();
+      this.canvasCtx.globalAlpha = this.consoleOpacity;
+      this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
+      this.canvasCtx.restore();
+    }
+
+    if( total < 100 ){
+      new Text(600/14,0).drawString("loading:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
+    } else {
+
+      if( !this.storyPhotos.length ){
         this.loadImages();
       }
 
-      let storyStartOffset = 18000;
-      let fadingTime = 2000;
+      // Begin the story mode.
+
       if( this.imgLoadCounter == this.story.length
           && this.timer - this.dataReadyTime > storyStartOffset ){
         this.canvasCtx.save();
 
         //Providing smooth-out during story mode.
-
-        let storyTimer = this.timer - this.dataReadyTime - storyStartOffset;
-        let topacity = ( tfactor > 0 ? 1 - Math.min( tfactor, 400 )/400 : 1 );
-
         this.canvasCtx.globalAlpha = Math.max( 0, Math.min( 1, storyTimer/2000 ))
           * Math.max(0, Math.min(1, (this.photoTiming[this.story.length-1][1] + 2000 - storyTimer)/2000))
           * topacity;
 
-        this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200 );
-
         this.photoTiming.forEach(([ beginTime, endTime, beginX, beginY, beginSize, endX, endY, endSize ], index ) => {
           if (storyTimer > beginTime && storyTimer < endTime) {
+
+            if( index == 4 && !this.__playedAFTitleSong ){
+              this.__playedAFTitleSong = true;
+              Sound.inst.loadMusic('offline-intro-music', true );
+            }
 
             beginTime = storyTimer - beginTime;
             endTime = endTime - storyTimer;
@@ -3582,7 +3651,6 @@ The Thai Redcross Society #redcross
             this.story[index].draw(this.canvasCtx,25,~~(200-beginTime/(this.msPerLine/20))); //20 is the default glyph height.
           }
         });
-
         this.canvasCtx.restore();
       }
     }
@@ -3706,7 +3774,7 @@ class Menu extends Panel {
     */
 
     // An entry was chosen. Waiting until both buttons are released.
-    if( this.willEnter && 0 == this.buttonUpTime[ 0 ] && 0 == this.buttonUpTime[ 1 ]){
+    if( this.willEnter && 0 == this.buttonTime[ 0 ] && 0 == this.buttonTime[ 1 ]){
       this.willEnter = false;
 
       let entry = this.model.entries[ this.model.currentIndex ];
@@ -3917,7 +3985,7 @@ class TextEditor extends Panel {
       this.offset = 0;
     }
 
-    if( this.willEnter && 0 == this.buttonUpTime[ 0 ] && 0 == this.buttonUpTime[ 1 ]){
+    if( this.willEnter && 0 == this.buttonTime[ 0 ] && 0 == this.buttonTime[ 1 ]){
       this.willEnter = false;
       /*
       if (this.submenu) {
@@ -3999,8 +4067,8 @@ class GameOver extends Panel {
 
     if( e.type == OnDaRun.events.CONSOLEUP
       && this.timer > this.clearTime
-      && 0 == this.buttonUpTime[ 0 ]
-      && 0 == this.buttonUpTime[ 1 ]){
+      && 0 == this.buttonTime[ 0 ]
+      && 0 == this.buttonTime[ 1 ]){
 
       this.willRestart = true;
       ODR.gameState = 1;
@@ -4190,8 +4258,8 @@ class Greeter extends Panel {
     if( e.type == OnDaRun.events.CONSOLEUP
       && ODR.activeAction
       && 0 == ODR.activeAction.speed
-      && 0 == this.buttonUpTime[ 0 ]
-      && 0 == this.buttonUpTime[ 1 ]){
+      && 0 == this.buttonTime[ 0 ]
+      && 0 == this.buttonTime[ 1 ]){
 
       this.willStart = true;
       ODR.gameState = 1;
@@ -4681,7 +4749,6 @@ class Audio {
     if( volume !== undefined ){
       let gainNode = actx.createGain();
       controller.gainNode = gainNode;
-
       //gainNode.gain.value = volume;
       gainNode.gain.setValueAtTime( Math.max( volume, 0.000001 ), controller.startTime );
       gainNode.connect( dest );
@@ -4721,11 +4788,12 @@ class Audio {
  * Song wraps an Audio and used to control the progression of the stream.
  */
 class Song {
-  constructor( name, lyrics, autoload = true, decode = true ){
+  constructor( name, lyrics, autoload = true, decode = true, audioReadyCallback ){
     this.name = name;
     this.lyrics = lyrics;
     this.audio = undefined;
     this.controller = null;
+    this.audioReadyCallback = audioReadyCallback;
 
     // a temporary blob for storing raw downloaded data if the audio context is not yet created.
     this.source = null;
@@ -4733,22 +4801,26 @@ class Song {
     this.delayStart = 0; // For resuming calculation.
     this.startTime = Infinity;
     this.loadingProgress = null;
+    this._volume = ODR.config.SOUND_MUSIC_VOLUME/10;
 
     if( autoload ){
       this.load( decode );
     }
   }
 
-  play( delay ){
+  play( delay, volume ){
+    this._volume = volume;
     this.delayStart = delay;
     this.startTime = Sound.inst.audioContext.currentTime;
     if( this.audio ){
-      this.controller = this.audio.play( ODR.config.SOUND_MUSIC_VOLUME/10, delay );
+      this.controller = this.audio.play( volume, delay );
     } else if( this.source ){
       this._decodeAudioData( this.source );
       this.source = null;
+    } else if( this.loadingProgress !== null ){
+      console.log(this.name,'Loading');
     } else {
-      console.log('No Audio');
+      console.log('FIXME');
     }
   }
 
@@ -4763,6 +4835,7 @@ class Song {
   }
 
   set volume( newVolume ){
+    this._volume = newVolume;
     if( this.controller ){
       this.controller.gainNode.gain.exponentialRampToValueAtTime( Math.max( 0.00001, newVolume ), Sound.inst.audioContext.currentTime+3);
     }
@@ -4793,12 +4866,15 @@ class Song {
       Sound.inst.contextReady().then( actx => {
 
         actx.decodeAudioData( src, buffer => {
-          console.log(this.name+': Song was successfully decoded.');
+          //console.log(this.name+': Song was successfully decoded.');
           this.audio = new Audio( buffer, this.name );
+          if( this.audioReadyCallback ){
+            this.audioReadyCallback( this.audio );
+          }
           if( Infinity != this.startTime ){
             //auto-adjust the given delay with the loading time.
-            let adjustedDelay = this.delayStart + this.startTime - this._audioContext.currentTime;
-            this.audio.play( ODR.config.SOUND_MUSIC_VOLUME/10, Math.max( 0, adjustedDelay ));
+            let adjustedDelay = this.delayStart + this.startTime - Sound.inst.audioContext.currentTime;
+            this.audio.play( this._volume, Math.max( 0, adjustedDelay ));
           }
 
           /* For testing
@@ -4822,7 +4898,7 @@ class Song {
 
     this.loadingProgress = 0;
 
-    console.log('Downloading the requested song...',this.name);
+    //console.log('Downloading the requested song...',this.name);
     // Start loading the song.
     // TODO, option to load on playing.
     let resourceTemplate = document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID ).content;
@@ -4834,7 +4910,7 @@ class Song {
       this.loadingProgress = 1;
 
       if( decode ){
-        console.log('Decoding requested data...', this.name );
+        //console.log('Decoding requested data...', this.name );
         this._decodeAudioData( request.response );
       } else {
         // Without an audio context, just keep the blob for later decoding.
@@ -4862,10 +4938,11 @@ class Sound {
       return Sound.instance;
     Sound.instance = this;
 
-    console.log('Creating AudioContext');
+    //console.log('Creating AudioContext');
     this.audioContext = new ( window.AudioContext || window.webkitAudioContext )();
-    console.log( 'AudioContext:',this.audioContext.state );
+    //console.log( 'AudioContext:',this.audioContext.state );
 
+    this.musicVolume = ODR.config.SOUND_MUSIC_VOLUME/10;
     this.songs = {};
     this.currentSong = null;
     this.effectsLoadingProgress = 0;
@@ -4902,7 +4979,7 @@ class Sound {
 /** Class Sound
  * Load sound effects from the HTML.
  */
-  loadSounds(){
+  loadSoundResources(){
     if( IS_SOUND_DISABLED ){
       this.effects = {};
       this.effectsLoadingProgress = 1;
@@ -4912,7 +4989,7 @@ class Sound {
     if( !this.effects ){
       this.effects = {};
 
-      console.log("Decoding sound effects...");
+      //console.log("Decoding sound effects...");
       Sound.inst.contextReady().then( actx => {
 
         var resourceTemplate = document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID ).content;
@@ -4941,7 +5018,6 @@ class Sound {
             counter++;
             this.effectsLoadingProgress = counter/entriesLen;
 
-            }
           });
 
         });// entries.forEach()
@@ -4961,9 +5037,10 @@ class Sound {
   }
 
   set musicVolume( vol ) {
+    this._musicVolume = vol;
     if( IS_SOUND_DISABLED ) return;
     if( this.currentSong ) {
-      this.currentSong.volume = vol/10;
+      this.currentSong.volume = vol;
     }
   }
 
@@ -4981,7 +5058,7 @@ class Sound {
     }
     this._currentSong = song;
     if( song )
-      song.play( delayStart );
+      song.play( delayStart, this._musicVolume );
   }
 
   get musicLoadingProgress(){
@@ -5000,6 +5077,19 @@ class Sound {
     }
 
   }
+
+  loadEffect( name ){
+    if( IS_SOUND_DISABLED ) return;
+
+    return new Promise(( resolve, reject ) => {
+
+      new Song( name, null, true, true, audio => {
+        resolve( audio );
+      });
+
+    });
+  }
+
 }
 
 Sound.effectIds = {
@@ -5260,7 +5350,7 @@ class OnDaRun extends LitElement {
     };
   }
 
-  render() {
+  render(){
     return html`
       <canvas id="console-screen"></canvas>
       <canvas id="console-left"></canvas>
@@ -5274,15 +5364,16 @@ class OnDaRun extends LitElement {
     `;
   }
 
-  constructor() {
+  constructor(){
     super();
+
+    //FIXME just replace
+    this.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
 
     //ODR = this;
     window['ODR'] = this;
     window['N7e'] = N7e;
-
-    //FIXME just replace
-    this.config = JSON.parse(JSON.stringify(OnDaRun.Configurations));
+    window['D4a'] = Sound.inst;
     //this.scene = null;
 
     this.canvas = null;
@@ -5388,13 +5479,7 @@ class OnDaRun extends LitElement {
         break;
     }
 
-    /*
-    console.log([
-      "IDLE",
-      "PLAY",
-      "CRASH"
-    ][ newState ]);
-    */
+    //console.log([ "IDLE", "PLAY", "CRASH" ][ newState ]);
 
     if( newState == 0 ){
 
@@ -5512,10 +5597,14 @@ class OnDaRun extends LitElement {
     console.log(`Amandarine Frontier : OnDaRun Version ${VERSION}
 Made for Natherine BNK48 (Dusita Kitisarakulchai) with ❤❤❤❤.
 
-The goal of the project is to support The Thai Red Cross Society➕
-Please support this project only by making donations to the society.
+░░░░░░░░░░ The goal of the project
+░░░░██░░░░ is to support The
+░░██████░░ Thai Red Cross Society.
+░░░░██░░░░ Please support this
+░░░░░░░░░░ project only by making
+a donation to the society.
 https://www.redcross.or.th/donate/
-    `);
+`);
 
     document.querySelector('title').textContent += ` ${VERSION}`;
     document.getElementById('version-banner').textContent = `Version ${VERSION}`;
@@ -5553,6 +5642,12 @@ https://www.redcross.or.th/donate/
     this.consoleImage = new Image();
     this.consoleImage.src = 'assets/console/console.png';
     this.style.backgroundImage = 'url('+this.consoleImage.src+')';
+
+    let getRest = (...theArgs) => {
+      return theArgs;
+    };
+
+    this.consoleImageArguments = getRest( this.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
 
     /* HACK prevent initial transition */
     this.consoleImage.addEventListener('load', (e) => {
@@ -5636,7 +5731,8 @@ https://www.redcross.or.th/donate/
 
     Sound.inst.loadMusic('offline-intro-music', false );
     Sound.inst.loadMusic('offline-play-music', false );
-    Sound.inst.loadSounds();
+    //Sound.inst.loadMusic('amandarine-frontier', false );
+    Sound.inst.loadSoundResources();
 
     this.sky = new Sky( this.canvas );
     this.sky.setShade( Sky.config.START, 0 );
@@ -5670,8 +5766,8 @@ https://www.redcross.or.th/donate/
 
     this.startListening();
     this.signIn();
-    this.scheduleNextRepaint();
 
+    setTimeout(() => this.scheduleNextRepaint(), 1000 );
   }
 
   /* TODO
@@ -5865,6 +5961,8 @@ https://www.redcross.or.th/donate/
             if( this.config.GAME_MODE_REPLAY ){
               this.sequencer.reset();
             }
+
+            Sound.inst.musicVolume = ODR.config.SOUND_MUSIC_VOLUME/10;
           }
         });
 
@@ -5951,7 +6049,7 @@ https://www.redcross.or.th/donate/
       select: ( entry, vol, model ) => {
         if( mainMenu.model === model || vol > 10) {
           if( model.name == 'SOUND_MUSIC_VOLUME' && vol == 11) {
-            Sound.inst.musicVolume = ODR.config.SOUND_MUSIC_VOLUME;
+            Sound.inst.musicVolume = ODR.config.SOUND_MUSIC_VOLUME/10;
           } else {
             Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
           }
@@ -5974,7 +6072,7 @@ https://www.redcross.or.th/donate/
             Sound.inst.effects[ model.sampleNames[ 0 ]].play( vol/10 );
             model.sampleNames.push( model.sampleNames.shift());
           } else if( model.name == 'SOUND_MUSIC_VOLUME' ) {
-            Sound.inst.musicVolume = vol;
+            Sound.inst.musicVolume = vol/10;
           }
         }
       },
@@ -6304,7 +6402,6 @@ https://www.redcross.or.th/donate/
     }
 
     if( !this.panel.passthrough ){
-      //this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
       this.panel = this.panel.forward( deltaTime );
       this.scheduleNextRepaint();
       return;
