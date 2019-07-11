@@ -4525,7 +4525,6 @@ class ConsoleButton {
       case OnDaRun.events.MOUSEOUT:
       case OnDaRun.events.KEYUP:
       case OnDaRun.events.MOUSEUP:{
-        if( 0 == this.pressure ) break;
         e.preventDefault();
         this.timer = 0;
         this.dir = -1;
