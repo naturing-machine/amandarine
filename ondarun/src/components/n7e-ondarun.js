@@ -4587,12 +4587,18 @@ class ConsoleButton {
         e.preventDefault();
         this.timer = 0;
         this.dir = 1;
+        this.pressure = 1;
         this.handlePressed(e);
       } break;
+      case OnDaRun.events.TOUCHCANCEL:
+      break;
+      case OnDaRun.events.TOUCHMOVE:
+      break;
       case OnDaRun.events.TOUCHEND:
       case OnDaRun.events.MOUSEOUT:
       case OnDaRun.events.KEYUP:
       case OnDaRun.events.MOUSEUP:{
+        if( 0 == this.pressure ) break;
         e.preventDefault();
         this.timer = 0;
         this.dir = -1;
