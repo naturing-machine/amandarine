@@ -2733,8 +2733,68 @@ class Text {
  /**
   * Text
   * Map for substitute symbol codes.
+  * Better replace this with template string.
+  * `something ${natB}`
   */
   static generateSymbolMap(){
+
+    // #substitutions
+    this.glyphMap = new Map([
+      [ 0xe000, 784 ],
+      [ 0xe001, 630 ],
+      [ 0xe002, 770 ],
+      [ 0xe003, 812 ],
+      [ 0xe004, 826 ],
+      [ 0xe00a, 882 ],
+      [ 0xe00b, 896 ],
+      [ 0xe00c, 938 ],
+      [ 0xe00d, 798 ],
+      [ 0xe00e, 854 ],
+      [ 0xe00f, 644 ],
+      [ 0xe010, 868 ],
+      [ 0xe011, 616 ],
+      [ 0xe012, 602 ],
+      [ 0xe013, 756 ],
+      [ 0xe014, 966 ],
+      [ 0xe015, 980 ],
+      [ 0xe016, 994 ],
+      [ 0xe017, 1008 ],
+      [ 0xe018, 1022 ],
+      [ 0xe019, 1036 ],
+    ]);
+
+    // Alphanumerics
+    [[ 140, 97, 122 ], [ 140, 65, 90 ], [ 0, 48, 57 ]].forEach(([ a, b, c ]) => {
+      for( let code = b; code <= c; code++ ){
+        this.glyphMap.set( code, a + ( code - b ) * 14 );
+      }
+    });
+
+    // Unicode Symbols
+    [['.', 504 ],
+     ['?', 518 ],
+     ['!', 532 ],
+     ['▻', 546 ],
+     ['/', 560 ],
+     ['-', 574 ],
+     ['_', 588 ],
+     [' ', 588 ],
+     ['♬', 602 ],
+     ['◅', 658 ],
+     ['"', 672 ],
+     ["'", 686 ],
+     ["☼", 700 ],
+     [',', 714 ],
+     [';', 728 ],
+     [':', 742 ],
+     ['⚽', 756 ],
+     ['+', 840 ],
+     ['(', 910 ],
+     ['[', 910 ],
+     [')', 924 ],
+     [']', 924 ],
+     ['%', 952 ]].forEach(([c, glyph]) => this.glyphMap.set( c.charCodeAt(0), glyph ));
+
     this.symbolMap = [];
     [ [ '##', 0xe000 ],
       [ '#natA', 0xe001 ],
@@ -2793,115 +2853,45 @@ class Text {
       return this;
     }
 
-    /*
-    for( let i = 0; i < Text.symbolMap.length; i++ ){
-      if( messageStr.includes('#')){
-        let symbol = Text.symbolMap[ i ];
-        messageStr = messageStr.replace( symbol.regex, symbol.char );
-      } else break;
-    }
-    */
+    this.glyphs = [];
 
- //TODO multi-widths,multi-offsets
-    let lineLength = this.maxLength;
-    let wordList = messageStr.toString().split(' ');
-    let newList = [wordList[0]];
-    this.minLength = Math.max(wordList[0].length,this.minLength);
-    this.numberOfLines = 1;
+    let parts = messageStr.split('\n');
+    this.minLength = 0;
+    this.numberOfLines = 0;
+    parts.forEach(( part, index ) => {
+      let cur = 0;
+      let space = 0;
+      part.split(' ').forEach( word => {
+        if( cur != 0 && cur + word.length > this.maxLength ){
+          this.glyphs.push(-10);
+          cur = 0;
+          space = 0;
+        }
 
-    //FIXME leading space won't appear,
-    //Rewrite to break line first.
-    for (let i = 1, cur = wordList[0].length ; i < wordList.length ; i++) {
-      let words = wordList[i].split('\n');
+        if( word.length ){
+          if( cur == 0 ) this.numberOfLines++;
 
-      words.forEach((w,index) => {
-        if (cur == 0 && w.length) {
-          /* 0st word */
-          if (index) {
-            newList.push('\n');
-            this.numberOfLines++;
+          this.glyphs.push(...Array( space ).fill( 588 ));
+          for( let i = 0, code; code = word.charCodeAt( i ); i++ ){
+            this.glyphs.push(Text.glyphMap.get( code ));
           }
-        } else if (cur + 1 + w.length > lineLength) {
-          cur = 0;
-          newList.push('\n');
-          this.numberOfLines++;
-        } else if (index) {
-          newList.push('\n');
-          this.numberOfLines++;
-          cur = 0;
+
+          cur+= word.length;
+          this.minLength = Math.max( cur, this.minLength );
+          space = 1;
+          cur++;
         } else {
-          newList.push(' ');
+          space++;
           cur++;
         }
-        newList.push(w);
-        cur += w.length;
-        this.minLength = Math.max(cur,this.minLength);
+
       });
 
-    }
+      if( index != parts.length -1 )
+        this.glyphs.push(-10);
 
-    messageStr = newList.join('');
-
-    this.glyphs = [...messageStr.toUpperCase()].map(ch => {
-      let code = ch.charCodeAt(0);
-      if (code >= 65 && code <= 90) {
-        return 140 + (code - 65) * 14;
-      }
-      if (code >= 48 && code <= 57) {
-        return (code - 48) * 14;
-      }
-
-      switch( code ){
-        case 0xe000: return 784;
-        case 0xe001: return 630;
-        case 0xe002: return 770;
-        case 0xe003: return 812;
-        case 0xe004: return 826;
-        case 0xe00a: return 882;
-        case 0xe00b: return 896;
-        case 0xe00c: return 938;
-        case 0xe00d: return 798;
-        case 0xe00e: return 854;
-        case 0xe00f: return 644;
-        case 0xe010: return 868;
-        case 0xe011: return 616;
-        case 0xe012: return 602;
-        case 0xe013: return 756;
-        case 0xe014: return 966;
-        case 0xe015: return 980;
-        case 0xe016: return 994;
-        case 0xe017: return 1008;
-        case 0xe018: return 1022;
-        case 0xe019: return 1036;
-      }
-
-      switch( ch ){
-        case '.': return 504;
-        case '?': return 518;
-        case '!': return 532;
-        case '▻': return 546;
-        case '/': return 560;
-        case '-': return 574;
-        case '_':
-        case ' ': return 588;
-        case '♬': return 602;
-        case '◅': return 658;
-        case '"': return 672;
-        case "'": return 686;
-        case "☼": return 700;
-        case ',': return 714;
-        case ';': return 728;
-        case ':': return 742;
-        case '⚽': return 756;
-        case '+': return 840;
-        case '(':
-        case '[': return 910;
-        case ')':
-        case ']': return 924;
-        case '%': return 952;
-        default: return -code;
-      }
     });
+
     if( this.cache ) this.cache.splice(0);
 
     return this;
@@ -3016,7 +3006,6 @@ class Text {
           cur++;
         }
     }
-
   }
 
   drawString( messageStr, canvasCtx, offsetX, offsetY, glyphW, glyphH, image) {
@@ -3025,6 +3014,7 @@ class Text {
   }
 }
 Text.generateSymbolMap();
+
 
 /**
  * TODO
@@ -3530,9 +3520,9 @@ The Thai Redcross Society #redcross
       new Text(600/14,0).drawString("loading:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
     } else {
       if( this.timer < 15000 ){
-        new Text(600/14,0).drawString(`Amandarine Frontier: On Da Run [V.${VERSION}]`, this.canvasCtx,0,180-Math.min(0,runout));
+        new Text(600/14,0).drawString(`Amandarine Frontier: On Da Run [Ver.${VERSION}]`, this.canvasCtx, 0, 180 -Math.min( 0, runout ));
       } else {
-        new Text(600/14,0).drawString("press a button to continue.", this.canvasCtx,0,180-Math.min(0,runout));
+        new Text(600/14,0).drawString("press a button to continue.", this.canvasCtx, 0, 180 -Math.min( 0, runout ));
       }
 
       if (!this.dataReadyTime) {
@@ -4081,7 +4071,7 @@ class GameOver extends Panel {
       let t = 2000;
       let showNewHi = Math.min( 1, ( this.timer - t )/t );
 
-      new Text(300/14).drawString('_' + Math.round( ODR.score*showScore )
+      new Text(300/14).drawString(' ' + Math.round( ODR.score*showScore )
         + (showNewHi == 1 ? newHigh :'' )
         , this.canvasCtx, 300, lineY );
 
@@ -4093,7 +4083,7 @@ class GameOver extends Panel {
 
         lineY += 20;
         new Text(300/14, 1).drawString('HIGH SCORE:',this.canvasCtx, 6, lineY );
-        new Text(300/14).drawString('_' + ( showNewHi == 1 ? ODR.gameRecord.hiscore + ~~(diff * (this.newHighTimer || 0)/1000) : ODR.gameRecord.hiscore ), this.canvasCtx, 300, lineY );
+        new Text(300/14).drawString(' ' + ( showNewHi == 1 ? ODR.gameRecord.hiscore + ~~(diff * (this.newHighTimer || 0)/1000) : ODR.gameRecord.hiscore ), this.canvasCtx, 300, lineY );
 
         if( showNewHi == 1 ){
           if( newHigh ){
@@ -4121,7 +4111,7 @@ class GameOver extends Panel {
             let showDaily = Math.min( 1, ( this.timer - t )/t );
             let gotT = ( showDaily == 1 ? `[${ODR.dailyTangerines}/${Math.floor( ODR.gameModeTotalScore/100)}]` : '');
             new Text(300/14, 1).drawString('#tangerine:',this.canvasCtx, 6, lineY );
-            new Text(300/14).drawString(`_${gotO}${gotT}`, this.canvasCtx, 300, lineY );
+            new Text(300/14).drawString(` ${gotO}${gotT}`, this.canvasCtx, 300, lineY );
 
             if( !this.playedGotO && gotO ){
               Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
