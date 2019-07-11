@@ -33,7 +33,7 @@
 • iOS supports are limited.
 </div> </div>
 
-<a href="https://www.redcross.or.th/donate/"><div style="font-family:sans-serif;font-size:13px;line-height:16px;padding:20px;text-align:center;background-color:#fee;left:calc(50% + 140px);top:calc(50% + 290px);position:absolute;width:200px;border-radius:5px;height 30px;transform:rotate(15deg);">You can support this project by <br><font style="text-decoration:none;color:red;">Making donations to<br><font style="font-weight:bold">The Thai Red Cross Society</font> <div style="display:inline-block;vertical-align:top"> <div style="display:grid;width:15px;height:15px;grid-template-columns:auto auto auto"><div></div><div style="background-color:red"></div><div></div><div style="background-color:red"></div><div style="background-color:red"></div><div style="background-color:red"></div><div></div><div style="background-color:red"></div><div></div></div></div></font>.</div></a>
+<a href="https://www.redcross.or.th/donate/" target="_blank"><div style="font-family:sans-serif;font-size:13px;line-height:16px;padding:20px;text-align:center;background-color:#fee;left:calc(50% + 140px);top:calc(50% + 290px);position:absolute;width:200px;border-radius:5px;height 30px;transform:rotate(15deg);">You can support this project by <br><font style="text-decoration:none;color:red;">Making donations to<br><font style="font-weight:bold">The Thai Red Cross Society</font> <div style="display:inline-block;vertical-align:top"> <div style="display:grid;width:15px;height:15px;grid-template-columns:auto auto auto"><div></div><div style="background-color:red"></div><div></div><div style="background-color:red"></div><div style="background-color:red"></div><div style="background-color:red"></div><div></div><div style="background-color:red"></div><div></div></div></div></font>.</div></a>
 
 <n7e-ondarun></n7e-ondarun>
 <noscript>
@@ -86,22 +86,21 @@ Please enable JavaScript to view this website.
     };
 */
 </script>
-
-
 <script src="https://www.gstatic.com/firebasejs/5.8.5/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/5.8.5/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/5.8.5/firebase-database.js"></script>
 <script>
   // Initialize Firebase
-  var config = {
+  var firebaseConfig = {
     apiKey: "AIzaSyCXwJ5c05Er7-fvrCBYTDpOHasmyjO8Z5E",
     authDomain: "amandarine-frontier.firebaseapp.com",
     databaseURL: "https://amandarine-frontier.firebaseio.com",
     projectId: "amandarine-frontier",
     storageBucket: "amandarine-frontier.appspot.com",
-    messagingSenderId: "419071206734"
+    messagingSenderId: "419071206734",
+    appId: "1:419071206734:web:f2eaa52611832c39"
   };
-  firebase.initializeApp(config);
+  firebase.initializeApp( firebaseConfig );
 </script>
 
 <script src="node_modules/@webcomponents/webcomponentsjs/webcomponents-loader.js"></script>
