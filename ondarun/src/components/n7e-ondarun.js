@@ -18,7 +18,7 @@
 
 import { LitElement, html, css } from 'lit-element';
 
-var VERSION = "1.1"
+var VERSION = "1.1a"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;
@@ -189,7 +189,7 @@ class CollisionBox {
 
 class User {
   constructor( providerName = null) {
-    let redirect = false;
+    let redirect = IS_MOBILE;
     let provider;
     if( providerName ){
       N7e.userSignedIn = false;
@@ -2571,7 +2571,7 @@ class Scoreboard {
   constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
-    this.glyphs = new Text( 600/20, 1, '0123456789').glyphs;
+    this.glyphs = new Text( 1,'0123456789').glyphs;
 
     this.reset();
   }
@@ -2659,12 +2659,11 @@ class Scoreboard {
     }
 
     if( !this.text ){
-      this.text = new Text( 600/18, 1, this._template, true );
-      this.text.draw( null, 0, 5, 18, 16 ); //Just build the cache.
+      this.text = new Text( 1, this._template );
     }
 
-    for( let i = this.text.cache.length - 3, j = 0; j < 5; i-=3, j++ ){
-      this.text.cache[ i ] = this.glyphs[ newScore % 10 ];
+    for( let i = this.text.glyphs.length - 1, j = 0; j < 5; i--, j++ ){
+      this.text.glyphs[ i ] = this.glyphs[ newScore % 10 ];
       newScore = Math.floor( newScore /10 );
     }
 
@@ -2676,13 +2675,13 @@ class Scoreboard {
     if( this.flashAchievementTimer ){
       if( this.flashAchievementTimer % 800 > 300 ){
         let flashingScore = this._playAchievement;
-        for( let i = this.text.cache.length - 3, j = 0; j < 5; i-=3, j++ ){
-          this.text.cache[ i ] = this.glyphs[ flashingScore % 10 ];
+        for( let i = this.text.glyphs.length - 1, j = 0; j < 5; i--, j++ ){
+          this.text.glyphs[ i ] = this.glyphs[ flashingScore % 10 ];
           flashingScore = Math.floor( flashingScore /10 );
         }
       } else {
-        for( let i = this.text.cache.length - 3, j = 0; j < 5; i-=3, j++ ){
-          this.text.cache[ i ] = 588;
+        for( let i = this.text.glyphs.length - 1, j = 0; j < 5; i--, j++ ){
+          this.text.glyphs[ i ] = 588;
         }
       }
 
@@ -2708,10 +2707,10 @@ class Scoreboard {
     if( this.opacity != 1 ){
       this.canvasCtx.save();
       this.canvasCtx.globalAlpha = this.opacity;
-      this.text.draw(this.canvasCtx, this.existence ? 50*( 1 - this.opacity ) : 0, 10, 18, 16 );
+      this.text.draw( this.canvasCtx, this.existence ? 590 : 0, 10, 10+ 8*this.opacity );
       this.canvasCtx.restore();
     } else {
-      this.text.draw(this.canvasCtx, 0, 10, 18, 16 );
+      this.text.draw( this.canvasCtx, 590, 10, 18, 16 );
     }
   }
 
@@ -2720,16 +2719,14 @@ class Scoreboard {
 Scoreboard.achievementScore = 100;
 
 class Text {
-  constructor( maxLength = 20, alignment = -1, string, useCache = false ){
-    this.glyphs = null;
+  constructor( alignment = -1, string, maxLength ){
+    this.glyphs = [];
     this._alignment = alignment;
-    this.maxLength = ~~maxLength;
     this.minLength = 0;
-    this.numberOfLines = 0;
+    this.lineLengths = [];
     this.alignment = alignment;
-    this.cache = useCache ? [] : null;
     if( string ){
-      this.setString( string );
+      this.setString( string, maxLength );
     }
   }
 
@@ -2842,45 +2839,48 @@ class Text {
     return messageStr;
   }
 
-  setString( messageStr ){
-    return this.setSubstitutedString( Text.substituteString( messageStr ));
+  setString( messageStr, maxLength = 10000 ){
+    return this.setSubstitutedString( Text.substituteString( messageStr ), maxLength );
   }
 
-  setSubstitutedString( messageStr ){
+  setSubstitutedString( messageStr, maxLength ){
 
     if( !messageStr ){
-      this.glyphs = null;
-      this.numberOfLines = 0;
+      this.glyphs = [];
+      this.lineLengths.splice( 0 );
       this.minLength = 0;
       return this;
     }
 
     this.glyphs = [];
+    this.lineLengths = [];
+    let lineNo = 0;
+    this.minLength = 0;
 
     let parts = messageStr.split('\n');
-    this.minLength = 0;
-    this.numberOfLines = 0;
     parts.forEach(( part, index ) => {
 
       let cur = 0;
       let space = 0;
       part.split(' ').forEach( word => {
-        if( cur != 0 && cur + word.length > this.maxLength ){
-          this.numberOfLines++;
-          this.glyphs.push(-10);
+        if( cur != 0 && cur + word.length > maxLength ){
+          this.lineLengths[ lineNo ] = this.glyphs.length;
+          this.minLength = Math.max( this.minLength, this.glyphs.length );
+          lineNo++;
           cur = 0;
           space = 0;
         }
 
         if( word.length ){
 
+          //Fill leading spaces
           this.glyphs.push(...Array( space ).fill( 588 ));
+          //Fill converted glyphs from word
           for( let i = 0, code; code = word.charCodeAt( i ); i++ ){
             this.glyphs.push(Text.glyphMap.get( code ));
           }
 
           cur+= word.length;
-          this.minLength = Math.max( cur, this.minLength );
           space = 1;
           cur++;
         } else {
@@ -2890,129 +2890,40 @@ class Text {
 
       });
 
-      if( index < parts.length - 1 ){
-        this.numberOfLines++;
-        this.glyphs.push(-10);
-      }
+      this.lineLengths[ lineNo ] = this.glyphs.length;
+      this.minLength = Math.max( this.minLength, this.glyphs.length );
+      lineNo++;
     });
-
-    if( this.cache ) this.cache.splice(0);
 
     return this;
   }
 
-  _drawCache( canvasCtx, offsetX, offsetY, image ){
-    let gw = this.cache[ 0 ];
-    let gh = this.cache[ 1 ];
+  draw( canvasCtx, offsetX, offsetY, charW = 14, lineH = 20, image = ODR.spriteGUI ){
+    let lastIndex = 0;
+    for( let line = 0, y = offsetY; line < this.lineLengths.length; line++, y+=lineH ){
+      let nextLineIndex = this.lineLengths[ line ];
+      let glyphIndex = this.lineLengths[ line - 1 ] || 0;
+      let x = offsetX;
+      if( this.alignment == 1 ){
+          x = offsetX- ( nextLineIndex - glyphIndex )*charW;
+      } else if( this.alignment == 0 ){
+          x = offsetX- ( nextLineIndex - glyphIndex )*charW/2;
+      }
 
-    for( let i = 2; i < this.cache.length; i+=3 ){
-      if( -10 == this.cache[ i ] ) continue;
-      let y = this.cache[ i + 2 ] + offsetY;
-      if( y + gh < 0 ) continue;
-      if( y > DEFAULT_HEIGHT ) break;
+      while( glyphIndex < nextLineIndex ){
+        if( canvasCtx)
+          canvasCtx.drawImage( image,
+            this.glyphs[ glyphIndex ], 0, 14, 16,
+            ~~x, ~~y, 14, 16 );
 
-      canvasCtx.drawImage( image,
-        this.cache[ i ], 0, 14, 16,
-        this.cache[ i + 1 ] + offsetX, y, 14, 16 );
-    }
-  }
-
-  draw( canvasCtx, offsetX, offsetY, glyphW = 14, glyphH = 20, image = ODR.spriteGUI ){
-    offsetX = ~~offsetX;
-    offsetY = ~~offsetY;
-
-    if( this.cache ){
-      if( this.cache.length ){
-        if( this.cache[ 0 ] != glyphW || this.cache[ 1 ] != glyphH ){
-          // Cache is broken, convert back to original and rebuild the cache.
-          this.glyphs = this.cache.filter(( g, index ) => index >= 3 && index%3 == 0 );
-          this.cache.splice(0);
-        } else {
-          this._drawCache( canvasCtx, offsetX, offsetY, image);
-          this.glyphs = null;
-          return;
-        }
-      } else {
-        this.cache.push( glyphW, glyphH );
+        x+= charW;
+        glyphIndex++;
       }
     }
-
-    if( !this.glyphs ) return;
-
-    let paraX = 0;
-    switch( this.alignment ){
-      case 0:
-        paraX = glyphW*( this.maxLength - this.minLength )/2;
-      case 1:
-        for( let i = 0, cur = 0, l = 0; i <= this.glyphs.length; i++ ){
-          if (i != this.glyphs.length && this.glyphs[i] != -10 ){
-            continue;
-          }
-
-          let len = i - cur;
-          let lineStart = cur;
-          let lineOffset = this.alignment
-            ? this.maxLength - len
-            : (this.minLength - len >>> 1);
-          while( cur < this.glyphs.length && cur <= i ){
-            let g = this.glyphs[cur];
-            if( g == -10 ) {
-              if( this.cache ){
-                this.cache.push( g, 0, 0 );
-              }
-              cur++;
-              break;
-            }
-
-            let x = paraX + ( cur - lineStart + lineOffset )*glyphW;
-            let y = l*glyphH;
-
-            if( canvasCtx)
-              canvasCtx.drawImage( image,
-                g, 0, 14, 16,
-                x + offsetX, y + offsetY, 14, 16 );
-
-            if( this.cache ){
-              this.cache.push( g, x, y );
-            }
-
-            cur++;
-          }
-          l++;
-        }
-        break;
-
-      case -1:
-      default:
-        for( let i = 0, cur = 0, l = 0; i < this.glyphs.length; i++ ){
-          let g = this.glyphs[i];
-          if( g == -10 ){
-            if( this.cache ){
-              this.cache.push( g, 0, 0 );
-            }
-            cur = 0;
-            l++;
-            continue;
-          }
-
-          let x = cur*glyphW;
-          let y = l*glyphH;
-
-          if( canvasCtx)
-            canvasCtx.drawImage( image,
-              g, 0, 14, 16,
-              x + offsetX, y + offsetY, 14, 16 );
-          if( this.cache ){
-            this.cache.push( g, x, y );
-          }
-
-          cur++;
-        }
-    }
   }
 
-  drawString( messageStr, canvasCtx, offsetX, offsetY, glyphW, glyphH, image) {
-    this.setString( messageStr );
+  drawString( messageStr, canvasCtx, offsetX, offsetY, glyphW, glyphH, image, maxLength) {
+    this.setString( messageStr, maxLength );
     this.draw( canvasCtx, offsetX, offsetY, glyphW, glyphH, image );
   }
 }
@@ -3056,7 +2967,7 @@ class Terminal {
     this.messages = [];
     this.timer = 0;
     //TODO make width configurable
-    this.text = new Text( 600 /14, 0 );
+    this.text = new Text( 0 );
     this.endTime = Infinity;
     this.minX = minX;
     this.minY = minY;
@@ -3145,13 +3056,13 @@ class Notifier {
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
     this.timer = 0;
-    this.text = new Text(20);
+    this.text = new Text( -1 );
     this.opacity = 0;
   }
 
   notify( messageStr, timer, opt_lineWidth ){
     this.timer = timer || 2000;
-    this.text.setString( messageStr );
+    this.text.setString( messageStr, 20 );
   }
 
   forward( deltaTime ) {
@@ -3171,7 +3082,9 @@ class Notifier {
 
       this.canvasCtx.save();
       this.canvasCtx.globalAlpha = this.opacity;
-      this.text.draw(this.canvasCtx, 14 - 20*(1 - this.opacity), 10, Math.ceil(14*this.opacity), Math.ceil(16*this.opacity));
+      this.text.draw( this.canvasCtx,
+        14 - 20*(1 - this.opacity), 10,
+        Math.ceil( 14*this.opacity ), Math.ceil( 16*this.opacity ));
       this.canvasCtx.restore();
       this.timer -= deltaTime;
     }
@@ -3297,19 +3210,19 @@ class TitlePanel extends Panel {
     });
 
     this.story = [
-      new Text( 600/14 - 3,-1,
+      new Text( -1,
 `Friends, allow me to tell you a story, A tale of a young maiden named Amandarine, who was born in a small village called Mandarina.
 
 In the unfortunate beginning, Amandarine was unhealthy from birth. Her family had been trying all kinds of treatments, but her condition didn't improve. She had to endure suffering from the cruel birth defect throughout her childhood. The doctor had warned that her condition would be life-threatening by anytime.
 
-But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...`, true ),
+But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...`, 39 ),
 
-      new Text( 600/14 - 3,-1,
+      new Text( -1,
 `That morning, Amandarine was having her custard bread. She then heard the sound of someone playing the ukulele while singing a song she had never heard before. She looked out the window and saw a man, a street performer, maybe; who was walking pass by until suddenly stumbled upon the rock and fell abjectly.
 
-She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...`, true ),
+She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...`, 39 ),
 
-      new Text( 600/14 - 3,-1,
+      new Text( -1,
 `Warm sunlight was teasing the cold breeze that was blowing gently. The birds chirping in the morning reminded her that this man must definitely be hungry. She, therefore, gave him the remaining bread. He smiled with gratitude and started eating the bread happily.
 
 Once finished, that was very soon after, he looked at Amandarine and said that telling from her facial skin and eye reflections, he could notice many signs of her dreadful health in which she nodded affirmatively.
@@ -3318,16 +3231,16 @@ Once finished, that was very soon after, he looked at Amandarine and said that t
 
 After learning the pulses for a few breathes, Lu Ji told her that her disease, though very serious, had a cure.
 
-That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.`, true ),
+That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.`, 39 ),
 
-      new Text( 600/14 - 3,-1,
+      new Text( -1,
 `Saying that he must have fled his hometown, for he had stolen this very tangerine from a noble. The dried brownish fruit was called "The 8th Heaven Supremacy"; it could cure her illness, he explained and asked her to accept it.
 
 He said that she should boil it in ginger juice to create one adequate medicine for living longer but for her to be fully recovered its seeds must be planted in eight continents and she should have kept eating each kind of them afterwards until cured.
 
-Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.`, true ),
+Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.`, 39 ),
 
-      new Text( 600/14 - 3,-1,
+      new Text( -1,
 `♬ Natherine ♬
 she is all they claim
 With her eyes of night
@@ -3343,9 +3256,9 @@ across the Argentine
 Yes, she has them all on da run
 And their hearts belong to just one
 Their hearts belong to
-♬ Natherine ♬`, true ),
+♬ Natherine ♬`, 39 ),
 
-      new Text( 600/14 - 3,0,
+      new Text( 0,
 `Credits
 
 -Music-
@@ -3377,18 +3290,18 @@ Which also doesn't exist.
 
 -Special Thanks-
 
-Dusita Kitisarakulchai
+#<3 Dusita Kitisarakulchai #<3
 ..as the inspiration..
 
 and some of her particular
 supporters / fanpages
 for buzzing about it.
 
-You can also support this project by making a donation to
+You can also support this project
+by making a donation to
 The Thai Redcross Society #redcross
 
-`
-        , true ),
+`),
     ];
 
     this.imgLoadCounter = 0;
@@ -3408,11 +3321,18 @@ The Thai Redcross Society #redcross
       [ 0,0, 100,237, 1, 100,237, 1.0 ],
     ];
     for( let i = 0; i < this.story.length; i++) {
-      //this.story[i] = new Text(600/14 - 3,-1).setString(this.story[i]);
       this.photoTiming[i][0] = clock;
-      clock += 20000 + this.story[i].numberOfLines * this.msPerLine;
+      clock += 20000 + this.story[i].lineLengths.length * this.msPerLine;
       this.photoTiming[i][1] = clock;
     }
+
+    this.playedAFTitleSong = false;
+    Sound.inst.loadEffect('amandarine-frontier').then( audio => {
+      this.titleAmandarineFrontierAudio = audio;
+    });
+
+
+
   }
 
   loadImages() {
@@ -3445,6 +3365,9 @@ The Thai Redcross Society #redcross
           if( !this.__donateOnce && e.detail.consoleButton.id === 'console-left'){
             this.__donateOnce = true;
             window.open( "https://www.redcross.or.th/donate/", '_blank');
+            //FIXME should just force PAUSE
+            //FIXME impelmenet pause() toggler
+            this.titleAmandarineFrontierAudio = null;
           }
           this.waitingForButtonUp = false;
         } else if( !this.waitingForContext
@@ -3477,7 +3400,7 @@ The Thai Redcross Society #redcross
     if( this.waitingForContext ){
       this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
       if( !this.__donationString ){
-        this.__donationString = new Text(600/14,0).setString(
+        this.__donationString = new Text( 0 ).setString(
 `#redcross
 
 Please support this project
@@ -3488,7 +3411,7 @@ the thai redcross society
 ◅ to donate #slide                #jump to sprint ▻
 `);
       }
-      this.__donationString.draw(this.canvasCtx, 6, 30);
+      this.__donationString.draw(this.canvasCtx, 300, 30);
 
       return this;
     }
@@ -3497,12 +3420,9 @@ the thai redcross society
       this.consoleOpacity = 1 - Math.min(1, this.timer / 800);
     } else {
       this.consoleOpacity = 0;
-      if( !this.__playedAFTitleAudio && !this.waitingForButtonUp ){
-        this.__playedAFTitleAudio = true;
-        //Sound.inst.loadMusic('amandarine-frontier', true );
-        Sound.inst.loadEffect('amandarine-frontier').then( audio => {
-          audio.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-        });
+      if( this.titleAmandarineFrontierAudio && !this.waitingForButtonUp ){
+        this.titleAmandarineFrontierAudio.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        this.titleAmandarineFrontierAudio = null;
       }
     }
 
@@ -3578,9 +3498,9 @@ the thai redcross society
 
     if( total >= 100 ){
       if( this.timer < 15000 ){
-        new Text(600/14,0).drawString(`Amandarine Frontier: On Da Run [Ver.${VERSION}]`, this.canvasCtx, 0, 180 -Math.min( 0, runout ));
+        new Text( 0 ).drawString(`Amandarine Frontier: On Da Run [Ver.${VERSION}]`, this.canvasCtx, 300, 180 -Math.min( 0, runout ));
       } else {
-        new Text(600/14,0).drawString("press a button to continue.", this.canvasCtx, 0, 180 -Math.min( 0, runout ));
+        new Text( 0 ).drawString("press a button to continue.", this.canvasCtx, 300, 180 -Math.min( 0, runout ));
       }
       if( this.imgLoadCounter == this.story.length
           && this.timer - this.dataReadyTime > storyStartOffset ){
@@ -3599,7 +3519,7 @@ the thai redcross society
     }
 
     if( total < 100 ){
-      new Text(600/14,0).drawString("loading:"+total.toFixed(0)+"%", this.canvasCtx,0,180);
+      new Text( 0 ).drawString("loading:"+total.toFixed(0)+"%", this.canvasCtx, 300, 180 );
     } else {
 
       if( !this.storyPhotos.length ){
@@ -3620,8 +3540,8 @@ the thai redcross society
         this.photoTiming.forEach(([ beginTime, endTime, beginX, beginY, beginSize, endX, endY, endSize ], index ) => {
           if (storyTimer > beginTime && storyTimer < endTime) {
 
-            if( index == 4 && !this.__playedAFTitleSong ){
-              this.__playedAFTitleSong = true;
+            if( index == 4 && !this.playedAFTitleSong ){
+              this.playedAFTitleSong = true;
               Sound.inst.loadMusic('offline-intro-music', true );
             }
 
@@ -3640,15 +3560,25 @@ the thai redcross society
               this.canvasCtx.globalAlpha = 0.70 * topacity
                 * Math.max(0,Math.min(1, beginTime/fadingTime))
                 * Math.max(0,Math.min(1, endTime/fadingTime));
-              this.canvasCtx.drawImage(this.storyPhotos[index],0,0);
+              this.canvasCtx.drawImage(this.storyPhotos[index], 0, 0);
 
             } this.canvasCtx.restore();
 
             this.canvasCtx.globalAlpha =
-              Math.max(0,Math.min(1, beginTime/fadingTime))
-              * Math.max(0,Math.min(1, endTime/fadingTime))
-              * topacity;
-            this.story[index].draw(this.canvasCtx,25,~~(200-beginTime/(this.msPerLine/20))); //20 is the default glyph height.
+              Math.max( 0, Math.min( 1, beginTime /fadingTime ))
+              *Math.max( 0, Math.min( 1, endTime /fadingTime ))
+              *topacity;
+
+            //20 is the default glyph height.
+            let y = ~~( 200- 20*beginTime /this.msPerLine );
+            if( index == this.story.length- 1 ){
+              let g = y % 4 ? 616 : 588;
+              this.story[index].glyphs[341] = g;
+              this.story[index].glyphs[366] = g;
+              this.story[ index ].draw( this.canvasCtx, 300, y);
+            } else {
+              this.story[ index ].draw( this.canvasCtx, 25, y);
+            }
           }
         });
         this.canvasCtx.restore();
@@ -3659,24 +3589,34 @@ the thai redcross society
 }
 
 class Pause extends Panel {
-  constructor( canvas, previousPanel = null ) {
+  constructor( canvas, previousPanel = null , silent = false ){
     super( canvas, previousPanel );
     this.screenOpacity = ODR.canvas.style.opacity;
-    ODR.canvas.style.opacity /= 2;
+    this.isPaused = false;
+    this.silent = silent;
   }
 
   repaint(){
-    if( 0 == this.timer ){
+    if( !this.isPaused ){
       console.log('PAUSED');
-      this.canvasCtx.save();
-      for( let i = 4; i >= 0; i -= 4 ){
-        this.canvasCtx.fillStyle = i ? "#0003" : "#fffd";
-        this.canvasCtx.filter =  i ? `blur(4px)` : 'blur(0px)';
-        this.canvasCtx.fillRect( 270+i, 70+i, 20, 60 );
-        this.canvasCtx.fillRect( 310+i, 70+i, 20, 60 );
+      this.isPaused = true;
+
+      if( !this.silent ){
+        this.screenOpacity = ODR.canvas.style.opacity;
+        ODR.canvas.style.opacity /= 2;
+
+        this.canvasCtx.save();
+        for( let i = 4; i >= 0; i -= 4 ){
+          this.canvasCtx.fillStyle = i ? "#0003" : "#fffd";
+          this.canvasCtx.filter =  i ? `blur(4px)` : 'blur(0px)';
+          this.canvasCtx.fillRect( 270+i, 70+i, 20, 60 );
+          this.canvasCtx.fillRect( 310+i, 70+i, 20, 60 );
+        }
+        this.canvasCtx.restore();
+
       }
-      this.canvasCtx.restore();
     }
+
     return this;
   }
 
@@ -3685,8 +3625,12 @@ class Pause extends Panel {
   }
 
   exit( panel ){
-    ODR.canvas.style.opacity = this.screenOpacity;
-    console.log('UNPAUSED');
+    if( !this.silent && this.isPaused){
+      ODR.canvas.style.opacity = this.screenOpacity;
+      console.log('UNPAUSED');
+    }
+
+    this.isPaused = false;
     super.exit( panel );
   }
 }
@@ -3697,15 +3641,15 @@ class Wait extends Panel {
     this.progressingCallback = progressingCallback;
     this.timer = 0;
     this.ticker = 0;
-    this.bottomText = new Text(600/14,0).setString( bottomMessage );
+    this.bottomText = new Text( 0, bottomMessage );
     this.isWaiting = true;
   }
 
   repaint( deltaTime ){
 
     if( this.timer == 0 ){
-      this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
-      this.bottomText.draw(this.canvasCtx,0,180);
+      this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
+      this.bottomText.draw( this.canvasCtx, 300, 180 );
       this.canvasCtx.drawImage( ODR.spriteGUI,
         38 + ~~(this.timer/100)%4 * 22, 73, 22, 22,
         300 -11, 100 -11, 22, 22 );
@@ -3737,8 +3681,8 @@ class Menu extends Panel {
     this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
     this.xOffset = 0;
     this.yOffset = 0;
-    this.bottomText = new Text(600/14,0).setString('press both #slide+#jump to select');
-    this.text = new Text(100);
+    this.bottomText = new Text( 0,'press both #slide+#jump to select');
+    this.text = new Text();
     this.timer = 0;
     this.muted = muted;
   }
@@ -3754,7 +3698,7 @@ class Menu extends Panel {
 
   forward( deltaTime, depth ){
     this.timer += deltaTime;
-    this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
+    this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
 
     if( this.offset ){
 
@@ -3913,17 +3857,17 @@ class Menu extends Panel {
     if (this.submenu) {
       this.canvasCtx.save();
       this.canvasCtx.globalAlpha = 0.9;
-      this.canvasCtx.drawImage( ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600, 200 );
+      this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
       this.canvasCtx.restore();
       this.submenu.forward(deltaTime, depth + 1 );
     }
 
     if (this.model.title){
-      new Text(600/14,0).drawString(this.model.title,this.canvasCtx,0,10 + depth * 20);
+      new Text( 0 ).drawString( this.model.title, this.canvasCtx, 300, 10+ 20*depth);
     }
 
     if( this.bottomText ){
-      this.bottomText.draw(this.canvasCtx,0,180);
+      this.bottomText.draw( this.canvasCtx, 300, 180 );
     }
 
     return this;
@@ -3937,7 +3881,7 @@ class TextEditor extends Panel {
     this.xOffset = 0;
     this.yOffset = 0;
     this.submenu = null;
-    this.bottomText = new Text(600/14,0).setString('press both #slide+#jump to select');
+    this.bottomText = new Text( 0,'press both #slide+#jump to select');
 
     this.text = text;
     this.curX = 0;
@@ -4022,24 +3966,26 @@ class TextEditor extends Panel {
     this.canvasCtx.fillStyle = "#000d";
     this.canvasCtx.fillRect(0,0,this.canvas.width,this.canvas.height);
     */
-    this.canvasCtx.drawImage(ODR.consoleImage, 100, 237, 600, 200, 0, 0, 600,200);
+    this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
 
     this.canvasCtx.fillStyle = "#a60"
-    this.canvasCtx.fillRect(this.xOffset+295-(7*25/2) + this.curX*25,this.yOffset + 2 + (1 + this.curY)*25,23,23);
-    for (let u = 0; u < 7; u++) {
-      new Text( 600/25,0, this.pattern.slice( u*7, u*7+7 )).draw(
+    this.canvasCtx.fillRect( this.xOffset+ 295- ( 7*25/2 ) + 25*this.curX,
+      this.yOffset+ 2+ ( 1+ this.curY )*25, 23, 23 );
+    for( let u = 0; u < 7; u++ ){
+      new Text( 0, this.pattern.slice( u*7, u*7+7 )).draw(
         this.canvasCtx,
-        0,
-        this.yOffset + 7 + (u + 1) * 25,
-        25,25);
+        300, this.yOffset+ 7+ 25*( u + 1 ),
+        25, 25 );
     }
 
-    if (this.text.length)
-      this.canvasCtx.fillRect(this.xOffset+300-(this.text.length*14/2),this.yOffset+1,this.text.length*14+9,23);
+    if( this.text.length )
+      this.canvasCtx.fillRect(
+        this.xOffset+ 300- 7*this.text.length, this.yOffset+ 1,
+        14*this.text.length+ 9, 23 );
 
-    new Text(600/14,0,this.text).draw(
+    new Text( 0, this.text ).draw(
       this.canvasCtx,
-      this.xOffset + 7,
+      this.xOffset + 300 + 7,
       this.yOffset + 7);
 
     this.canvasCtx.restore();
@@ -4135,17 +4081,17 @@ class GameOver extends Panel {
     if( d == 0 ){
       let newHigh = ODR.gameRecord.hiscore < ODR.score ? ' a new high!':'';
 
-      new Text(600/14, 0).drawString( ODR.gameMode.title, this.canvasCtx, 6, lineY );
+      new Text( 0 ).drawString( ODR.gameMode.title, this.canvasCtx, 300, lineY );
 
       lineY+=20;
-      new Text(300/14, 1).drawString('SCORE:',this.canvasCtx,6,lineY);
+      new Text( 1 ).drawString('SCORE:',this.canvasCtx, 300, lineY );
       //FIXME leading space won't appear,
       let showScore = Math.min( 1, ( this.timer - 1000 )/1000 );
       let showHi = Math.min( 1, ( this.timer - 1500 )/1500 );
       let t = 2000;
       let showNewHi = Math.min( 1, ( this.timer - t )/t );
 
-      new Text(300/14).drawString(' ' + Math.round( ODR.score*showScore )
+      new Text().drawString(' ' + Math.round( ODR.score*showScore )
         + (showNewHi == 1 ? newHigh :'' )
         , this.canvasCtx, 300, lineY );
 
@@ -4156,8 +4102,8 @@ class GameOver extends Panel {
         let diff = ODR.gameModeScore - ODR.gameRecord.hiscore;
 
         lineY += 20;
-        new Text(300/14, 1).drawString('HIGH SCORE:',this.canvasCtx, 6, lineY );
-        new Text(300/14).drawString(' ' + ( showNewHi == 1 ? ODR.gameRecord.hiscore + ~~(diff * (this.newHighTimer || 0)/1000) : ODR.gameRecord.hiscore ), this.canvasCtx, 300, lineY );
+        new Text( 1 ).drawString('HIGH SCORE:',this.canvasCtx, 300, lineY );
+        new Text().drawString(' ' + ( showNewHi == 1 ? ODR.gameRecord.hiscore + ~~(diff * (this.newHighTimer || 0)/1000) : ODR.gameRecord.hiscore ), this.canvasCtx, 300, lineY );
 
         if( showNewHi == 1 ){
           if( newHigh ){
@@ -4184,8 +4130,8 @@ class GameOver extends Panel {
             t+= gotO ? 500 : 0;
             let showDaily = Math.min( 1, ( this.timer - t )/t );
             let gotT = ( showDaily == 1 ? `[${ODR.dailyTangerines}/${Math.floor( ODR.gameModeTotalScore/100)}]` : '');
-            new Text(300/14, 1).drawString('#tangerine:',this.canvasCtx, 6, lineY );
-            new Text(300/14).drawString(` ${gotO}${gotT}`, this.canvasCtx, 300, lineY );
+            new Text( 1 ).drawString('#tangerine:',this.canvasCtx, 300, lineY );
+            new Text().drawString(` ${gotO}${gotT}`, this.canvasCtx, 300, lineY );
 
             if( !this.playedGotO && gotO ){
               Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
@@ -5759,7 +5705,7 @@ https://www.redcross.or.th/donate/
     ];
 
     this.notifier = new Notifier( this.canvas );
-    this.cc = new Terminal( this.canvas, 0, 180 ); //Closed Caption
+    this.cc = new Terminal( this.canvas, 300, 180 ); //Closed Caption
 
     this.actionIndex = 0;
 
@@ -6313,9 +6259,7 @@ https://www.redcross.or.th/donate/
   }
 
   createResetMenu(){
-
     Sound.inst.currentSong = null;
-
     return new Menu( this.canvas, {
       title: 'WHOA...DEJA VU?',
       entries: [
@@ -6427,27 +6371,32 @@ https://www.redcross.or.th/donate/
             }
           } else {
             if( this.sequencer.numberOfEntities == 0 ){
+             [["  ##   ##",
+               "#    #    #",
+               "#         #",
+               " #       #",
+               "   #   #",
+               "     #"],
+              ["#    #",
+               "##   #",
+               "# #  #",
+               "#  # #",
+               "#   ##",
+               "#    #"]].forEach(( kind, isRubber ) => kind.reverse().forEach(( line, elev ) => {
 
-              ["@    @  ##   ##",
-               "@@   @#    #    #",
-               "@ @  @#         #",
-               "@  @ @ #       #",
-               "@   @@   #   #",
-               "@    @     #",].reverse().forEach(( line, elev ) => {
                    line.split('').forEach(( c, x ) => {
-                     if( c == '@'){
-                       let rubber = new Rubber( this.canvasCtx,
-                         this.currentSpeed * Rubber.speedFactor, DuckType.elevationList[ elev ]);
-                       rubber.minX = DEFAULT_WIDTH + 20*x;
-                       this.sequencer.addEntity( rubber );
-                     } else if( c == '#'){
-                       let liver = new Liver( this.canvasCtx,
-                         this.currentSpeed * Liver.speedFactor, DuckType.elevationList[ elev ]);
-                       liver.minX = DEFAULT_WIDTH + 20*(x-3);
-                       this.sequencer.addEntity( liver );
+                     if( c == '#'){
+                       let duckType = [ Liver , Rubber ][ isRubber ];
+                       let duck = new duckType( this.canvasCtx,
+                         this.currentSpeed * duckType.speedFactor, DuckType.elevationList[ elev ]);
+                       duck.minX = DEFAULT_WIDTH + 50 + 20*x;
+                       if( !isRubber ){
+                         duck.minX += 300*(( 1- Liver.speedFactor )/( 1- Rubber.speedFactor )- 2);
+                       }
+                       this.sequencer.addEntity( duck );
                      }
                    });
-                 });
+                 }));
             }
           }
 
@@ -6590,12 +6539,13 @@ https://www.redcross.or.th/donate/
       case OnDaRun.events.VISIBILITY:
       case OnDaRun.events.FOCUS:
       case OnDaRun.events.BLUR:
+      //FIXME impelmenet pause() toggler
         if( this.panel.isWaiting ) break;
         if( !this._handleEvent_Pause
             && ( e.type == OnDaRun.events.BLUR
                 || document.hiddden || document.webkitHidden
                 || document.visibilityState != 'visible')){
-          this.panel = new Pause ( this.canvas, this.panel, "PAUSED");
+          this.panel = new Pause ( this.canvas, this.panel );
           this._handleEvent_Pause = this.panel;
         } else if( this._handleEvent_Pause ){
           this._handleEvent_Pause.exit();
