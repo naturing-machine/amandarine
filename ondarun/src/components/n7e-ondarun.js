@@ -84,7 +84,7 @@ ODRConstants.defaultDimensions = {
 */
 
 class CollisionBox {
-  constructor(x, y, w, h) {
+  constructor( x = 0, y = 0, w = 0, h = 0 ){
     this.minX = x;
     this.minY = y;
     this.width = w;
@@ -100,6 +100,11 @@ class CollisionBox {
     this.minY = copyMe.minY;
     this.width = copyMe.width;
     this.height = copyMe.height;
+  }
+
+  translate( x, y ){
+    this.minX += x;
+    this.minY += y;
   }
 
   grow( width, height ) {
@@ -136,15 +141,18 @@ class CollisionBox {
       0,0 );
   }
 
-  intersects(aBox) {
-    return ( this.maxX() <= aBox.minX || aBox.maxX() <= this.minX ||
-        this.maxY() <= aBox.minY || aBox.maxY() <= this.minY)
+  intersects( aBox ){
+    return ( this.maxX() <= aBox.minX
+      || aBox.maxX() <= this.minX
+      || this.maxY() <= aBox.minY
+      || aBox.maxY() <= this.minY
+      || this.void
+      || aBox.void )
       ? false
       : true;
   }
 
-  intersection(aBox) {
-
+  intersection( aBox ){
     let ret = new CollisionBox(0, 0, 0, 0);
 
     ret.minX = aBox.minX <= this.minX
@@ -166,16 +174,16 @@ class CollisionBox {
     return ret;
   }
 
-  isEmpty() {
+  get void(){
     return this.width > 0 && this.height > 0 ? false : true;
   }
 
-  union(aBox) {
-    if (this.isEmpty()) {
-      if (aBox.isEmpty()) return new CollisionBox(0,0,0,0);
+  union( aBox ){
+    if( this.void ){
+      if( aBox.void ) return new CollisionBox(0,0,0,0);
       return aBox;
     }
-    if (aBox.isEmpty()) return this;
+    if( aBox.void ) return this;
 
     let xx = Math.min( this.minX, aBox.minX );
     let yy = Math.min( this.minY, aBox.minY );
@@ -2130,10 +2138,12 @@ class A8e {
     switch ( ODR.activeAction.type ){
       case A8e.status.SLIDING:
         return A8e.collisionBoxes.SLIDING
-
       case A8e.status.RUNNING:
-      default:
         return A8e.collisionBoxes.RUNNING;
+      case A8e.status.JUMPING:
+        return A8e.collisionBoxes.JUMPING;
+      default:
+        return [];
     }
   }
 
@@ -2153,7 +2163,7 @@ class A8e {
     retB.height = entity.height;
 
     // Simple outer bounds check.
-    if (retA.intersects(retB)) {
+    if( retA.intersects( retB )){
       let boxesA = this.collisionBoxes;
       let boxesB = entity.collisionBoxes;
 
@@ -2461,7 +2471,7 @@ class A8e {
 
     this.canvasCtx.save();
 
-    // Draw future body shadows
+    // Draw future destination body ghosts.
     for( let i = 0, len = ODR.config.GRAPHICS_SLIDE_STEPS, s = 0, sd = Math.abs( now/100 %4 -2 );
         i < len; i++, s+=sd) {
       this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/( 1<<i );
@@ -2511,15 +2521,24 @@ A8e.config.GRAVITY_FACTOR = 0.0000005 * A8e.config.GRAVITY * A8e.config.SCALE_FA
 
 A8e.collisionBoxes = {
   SLIDING: [
-    new CollisionBox(13, 12, 15, 19),
-    new CollisionBox(11, 25, 17, 12),
-    new CollisionBox(28, 32, 5, 5)
+    new CollisionBox( 13, 12, 15, 19 ),
+    new CollisionBox( 11, 25, 17, 12 ),
+    new CollisionBox( 28, 32, 5, 5 )
   ],
   RUNNING: [
-    new CollisionBox(18, 4, 15, 19),
-    new CollisionBox(12, 16, 16, 19)
-  ]
+    new CollisionBox( 16, 6, 17, 7 ),
+    new CollisionBox( 16, 16, 16, 10 ),
+    new CollisionBox( 12, 23, 14, 14 ),
+  ],
+  JUMPING: [
+    new CollisionBox( 12, 19, 15, 19 ),
+    new CollisionBox( 18, 7, 15, 19 ),
+  ],
 };
+
+Object.values( A8e.collisionBoxes ).forEach( boxes => {
+  boxes.UNION = boxes.reduce(( a, b ) => a.union( b ), new CollisionBox());
+});
 
 A8e.status = {
   CEASING: 'CEASING',
