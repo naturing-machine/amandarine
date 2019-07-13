@@ -263,10 +263,10 @@ class User {
 
 class Entity {
 
-  constructor( ctx, speed, elevation ){
+  constructor( ctx, speed, elevation, minX = DEFAULT_WIDTH ){
     this.canvasCtx = ctx;
     this.speed = speed;
-    this.minX = DEFAULT_WIDTH;
+    this.minX = minX;
     this.yOrigin = this.minY = DEFAULT_HEIGHT - elevation;
     this.removed = false;
   }
@@ -361,7 +361,10 @@ class Entity {
  * @param {Object} follower - custom information.
  * @return {Object} - handy for the follower.
  */
-  muster( interval, currentSpeed, follower ){
+  muster( interval, currentSpeed, follower, ...newParameters ){
+    if( typeof follower === 'function'){
+      follower = new follower(...newParameters );
+    }
 
     //Don't think it needs to consider the acceleration.
     //May also consider by the length of the interval.
@@ -483,7 +486,8 @@ class Tangerine extends Entity {
 
 }
 
-  Tangerine.collisionBoxes = [new CollisionBox( -5, -5, 24, 24)];
+  Tangerine.collisionBoxes = [ new CollisionBox( -5, -5, 24, 24 )];
+  Tangerine.collisionBoxes.UNION = Tangerine.collisionBoxes[ 0 ];
 
 class Obstacle extends Entity {
 
@@ -687,11 +691,10 @@ class DynamicObstacle extends Obstacle {
 }
 
 class DuckType extends DynamicObstacle {
-  /*
   constructor( ctx, speed, elevation ) {
     super( ctx, speed, elevation );
+    this.currentFrame = this.initialFrameCycle;
   }
-  */
 
   collide( collision ) {
     Sound.inst.effects.SOUND_QUACK.play( 0.8 * ODR.config.SOUND_EFFECTS_VOLUME/10, 0.1 );
@@ -711,11 +714,17 @@ class DuckType extends DynamicObstacle {
   }
 
   static getRandomObstacle( ctx, speed ) {
-    return new this( ctx, speed * this.speedFactor, DuckType.elevationList[getRandomNum(0,5)]);
+    return new this( ctx, speed * this.speedFactor, DuckType.elevationList[N7e.randomInt(0,5)]);
+  }
+
+  static get initialFrameCycle(){
+    DuckType.wingCycle = ( DuckType.wingCycle + 3.7 )%6;
+    return ~~DuckType.wingCycle;
   }
 }
 DuckType.elevationList = [ 50, 75, 100, 125, 150, 175 ];
 DuckType.yFrames = [0, -1, 0, 1, 1, 0];
+DuckType.wingCycle = 0; // 0 - 5
 
 class Liver extends DuckType {
   forward( deltaTime, currentSpeed ) {
@@ -908,6 +917,8 @@ class Sequencer {
     //clearZone.debugCtx = this.canvasCtx;
     clearZone.minX = 65;
     this.entities = [ clearZone ];
+
+    DuckType.wingCycle = 0;
   }
 
   // Change to addEntities to allow adding a group
@@ -1093,6 +1104,12 @@ class Sequencer {
 
           let velota = new Velota( this.canvasCtx, currentSpeed * Velota.speedFactor *( 0.8 + 0.2*Math.random()));
           this.addEntity( lastEntity.muster( 1500, currentSpeed, velota ));
+
+          /* You can also let the muster new the class this way.
+          let velota = lastEntity.muster( 1500, currentSpeed,
+            Velota, this.canvasCtx, currentSpeed * Velota.speedFactor *( 0.8 + 0.2*Math.random()))
+          this.addEntity( velota );
+          */
 
           this.addEntity( velota.muster( 600, currentSpeed,
             Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
@@ -6406,18 +6423,20 @@ https://www.redcross.or.th/donate/
             }
           } else {
             if( this.sequencer.numberOfEntities == 0 ){
-             [["  ##   ##",
-               "#    #    #",
-               "#         #",
-               " #       #",
-               "   #   #",
-               "     #"],
-              ["#    #",
-               "##   #",
-               "# #  #",
-               "#  # #",
-               "#   ##",
-               "#    #"]].forEach(( kind, isRubber ) => kind.reverse().forEach(( line, elev ) => {
+              let liverOffset = 300*(( 1- Liver.speedFactor )/( 1- Rubber.speedFactor )- 2);
+              
+              [ ["  ##   ##",
+                 "#    #    #",
+                 "#         #",
+                 " #       #",
+                 "   #   #",
+                 "     #"],
+                ["#    #",
+                 "##   #",
+                 "# #  #",
+                 "#  # #",
+                 "#   ##",
+                 "#    #"]].forEach(( kind, isRubber ) => kind.reverse().forEach(( line, elev ) => {
 
                    line.split('').forEach(( c, x ) => {
                      if( c == '#'){
@@ -6426,11 +6445,12 @@ https://www.redcross.or.th/donate/
                          this.currentSpeed * duckType.speedFactor, DuckType.elevationList[ elev ]);
                        duck.minX = DEFAULT_WIDTH + 50 + 20*x;
                        if( !isRubber ){
-                         duck.minX += 300*(( 1- Liver.speedFactor )/( 1- Rubber.speedFactor )- 2);
+                         duck.minX += liverOffset;
                        }
                        this.sequencer.addEntity( duck );
                      }
                    });
+
                  }));
             }
           }
