@@ -3246,17 +3246,41 @@ class TitlePanel extends Panel {
     super( canvas );
     this.timer = 0;
     this.endTime = 0;
-    this.dataReadyTime = Infinity;
-    this.waitingForContext = true;
-    this.waitingForButtonUp = Sound.inst.audioContext.state === "suspended" ? true : false;
-    this.consoleOpacity = 1;
-    Sound.inst.contextReady().then( actx => {
-      this.waitingForContext = false;
-      this.dataReadyTime -= this.timer;
-      this.timer = 0;
 
+    this.waitingForAudioContext = true;
+
+    //Set this true enforce the Donation page to always appear.
+    this.waitingForButtonUp = true;
+    //this.waitingForButtonUp = Sound.inst.audioContext.state === "suspended" ? true : false;
+
+    // buttonBlockStopTime wlll automatically be set to the timer by a successful
+    // user authentication and that will fade the donation messages out.
+    this.buttonBlockStopTime = 15000;
+
+    this.blackoutOpacity = 1;
+    Sound.inst.contextReady().then( actx => {
+      this.waitingForAudioContext = false;
+      this.imagesLoadedTime -= this.timer;
+      this.timer = 0;
     });
 
+    // These 2 used for fast-forwarding the story while holdig both control buttons simultaneously.
+    this.storyStartOffset = 18000;
+    this.fastForwarding = false;
+
+    // The Redcross Donation Message.
+    this.donationText = new Text( 0 ).setString(
+`#redcross
+
+Please support this project
+by making a donation to
+the thai redcross society
+
+
+◅ to donate #slide                #jump to sprint ▻
+`);
+
+    // Main Amandarine story
     this.story = [
       new Text( -1,
 `Friends, allow me to tell you a story, A tale of a young maiden named Amandarine, who was born in a small village called Mandarina.
@@ -3352,20 +3376,22 @@ The Thai Redcross Society #redcross
 `),
     ];
 
-    this.imgLoadCounter = 0;
     this.storyPhotos = [];
+    this.imagesLoadedTime = Infinity;
 
     this.msPerLine = 2250;
 
     let clock = 3000;
 
     this.photoTiming = [
-    // beginTime, endTime, beginX,beginY, beginSize, endX,endY, endSize
-      [ 0,0, 30,33, 1, 215,411, 1.5 ],
-      [ 0,0, 27,355, 1, 73,151, 1.2 ],
-      [ 0,0, 29,26, 1, 26,358, 1.2 ],
-      [ 0,0, 23,350, 1, 27,24, 1 ],
-      [ 0,0, 62,244, 1, 12,160, 0.5 ],
+    //  beginTime, endTime, will be calculated from number of lines.
+    //  |    beginX,beginY, beginSize,
+    //  |    |           endX,endY, endSize
+      [ 0,0, 30,33, 1,   215,411, 1.5 ],
+      [ 0,0, 27,355, 1,  73,151, 1.2 ],
+      [ 0,0, 29,26, 1,   26,358, 1.2 ],
+      [ 0,0, 23,350, 1,  27,24, 1 ],
+      [ 0,0, 62,244, 1,  12,160, 0.5 ],
       [ 0,0, 100,237, 1, 100,237, 1.0 ],
     ];
     for( let i = 0; i < this.story.length; i++) {
@@ -3373,31 +3399,33 @@ The Thai Redcross Society #redcross
       clock += 20000 + this.story[i].lineLengths.length * this.msPerLine;
       this.photoTiming[i][1] = clock;
     }
+    this.storyEndTime = this.photoTiming[ this.story.length- 1][ 1 ];
 
-    this.playedAFTitleSong = false;
     Sound.inst.loadEffect('amandarine-frontier').then( audio => {
       this.titleAmandarineFrontierAudio = audio;
     });
 
-
-
   }
 
-  loadImages() {
-    for( let i = 0; i < this.story.length; i++  ) {
+  loadImages(a,...theArgs){
+    // Don't load last image.
+    let imageLoadedCounter = this.story.length - 1;
+    for( let i = 0; i < this.story.length - 1; i++  ) {
       this.storyPhotos[i] = new Image();
-
-      if (i == this.story.length - 1)
-        this.storyPhotos[i].src = `assets/console/console.png`;
-      else this.storyPhotos[i].src = `assets/story/amandarine-story-${i+1}.jpg`;
-
-      this.storyPhotos[i].addEventListener('load', () => {
-        this.imgLoadCounter++;
-        if (this.imgLoadCounter == this.story.length) {
-          this.dataReadyTime = this.timer;
+      this.storyPhotos[i].addEventListener('load', (e) => {
+        imageLoadedCounter--;
+        if( imageLoadedCounter == 0 ){
+          this.imagesLoadedTime = this.timer;
         }
       });
+      this.storyPhotos[i].src = `assets/story/amandarine-story-${i+1}.jpg`;
     }
+  }
+
+  stopWaitingForButtonUp(){
+    this.imagesLoadedTime -= this.timer;
+    this.timer = 0;
+    this.waitingForButtonUp = false;
   }
 
   handleEvent( e ){
@@ -3417,15 +3445,15 @@ The Thai Redcross Society #redcross
             //FIXME impelmenet pause() toggler
             this.titleAmandarineFrontierAudio = null;
           }
-          this.waitingForButtonUp = false;
-        } else if( !this.waitingForContext
+          this.stopWaitingForButtonUp();
+        } else if( !this.waitingForAudioContext
             && 0 == this.buttonTime[ 0 ]
             && 0 == this.buttonTime[ 1 ]
-            && this.dataReadyTime < this.timer
+            && this.imagesLoadedTime < this.timer
             && !this.endTime ){
 
-          if( this.scrolling ){
-            this.scrolling = false;
+          if( this.fastForwarding ){
+            this.fastForwarding = false;
             return true;
           }
 
@@ -3445,139 +3473,148 @@ The Thai Redcross Society #redcross
  * @return {Panel} - a subsitute or null.
  */
   repaint( deltaTime ) {
-    if( this.waitingForContext ){
+
+    //====== The Thai Redcross Society Advertisement ======//
+    if( this.waitingForAudioContext || this.waitingForButtonUp ){
       this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
-      if( !this.__donationString ){
-        this.__donationString = new Text( 0 ).setString(
-`#redcross
-
-Please support this project
-by making a donation to
-the thai redcross society
-
-
-◅ to donate #slide                #jump to sprint ▻
-`);
+      if( !this.waitingForAudioContext && this.timer > this.buttonBlockStopTime ){
+        let opacity = 1 - Math.min( 2000, this.timer- this.buttonBlockStopTime )/2000;
+        this.canvasCtx.save();
+        this.canvasCtx.globalAlpha = opacity;
+        this.donationText.draw( this.canvasCtx, 300, 30 );
+        this.canvasCtx.restore();
+        if( this.timer > this.buttonBlockStopTime + 2500 ) this.stopWaitingForButtonUp();
+      } else {
+        this.donationText.draw(this.canvasCtx, 300, 30);
       }
-      this.__donationString.draw(this.canvasCtx, 300, 30);
 
       return this;
     }
 
+    //====== Logo Display ======//
+    let endingTimer = 0;
+    let endingOffset = 0;
+    let endingOpacity = 1;
+
+    if( this.endTime && Sound.inst.effectsLoadingProgress == 1 ){
+      endingTimer = this.timer - this.endTime;
+
+      if ( endingTimer > 863) { // -endingOffset > ~200
+        return ODR.start();
+      }
+      endingOffset = ( 40000- ( 0.8*endingTimer - 200 )**2 )/1000 ;
+      endingOpacity = 1 - Math.min( endingTimer, 400 )/400;
+    }
+
+    let dataDownloaded = IS_SOUND_DISABLED ? 100 : Sound.inst.musicLoadingProgress * 100;
+
     if( this.timer <= 800 ){
-      this.consoleOpacity = 1 - Math.min(1, this.timer / 800);
+      this.blackoutOpacity = 1 - Math.min(1, this.timer / 800);
     } else {
-      this.consoleOpacity = 0;
+      this.blackoutOpacity = 0;
       if( this.titleAmandarineFrontierAudio && !this.waitingForButtonUp ){
         this.titleAmandarineFrontierAudio.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        /*
+        for( let i = 0, j = 1.5 ; i <= 1 ; i+=0.5,j+=0.1){
+          Sound.inst.effects.SOUND_SCORE.play( ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
+          Sound.inst.effects.SOUND_SCORE.play( ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
+        }
+        */
         this.titleAmandarineFrontierAudio = null;
       }
     }
 
+    let storyTimer = 0;
+    let fadingDuration = 2000;
+
+    //Fast-forward the story
     if( this.buttonTime[ 0 ] && this.buttonTime[ 1 ] ){
-      this.scrolling = true;
-      this.timer += 300;
+      this.fastForwarding = true;
+      this.storyStartOffset -= 300;
     }
 
-    ODR.sky.forward( deltaTime, this.canvasCtx );
-
-    let factorA = Math.sin(this.timer / 400);
-    let factorB = Math.sin(this.timer / 300);
-    let factorC = Math.sin(this.timer / 400);
-    let factorD = Math.sin(this.timer / 200);
-
-    let runout = 0;
-    let tfactor = 0;
-    if( this.endTime && Sound.inst.effectsLoadingProgress == 1 ){
-      tfactor = this.timer - this.endTime;
-      runout = 0.8*tfactor - 200;
-      //200*200
-      runout = ( 40000 - runout*runout ) / 1000 ;
-
-      this.canvasCtx.save();
-      this.canvasCtx.translate( 0, ~~( 40+runout/5 ));
-      this.canvasCtx.restore();
-
-      if ( runout < -200) {
-        return ODR.start();
-      }
-
+    // Find the opaqueness of the dark screen to fake no display.
+    if( this.timer - this.imagesLoadedTime > this.storyStartOffset ){
+      storyTimer = this.timer - this.imagesLoadedTime - this.storyStartOffset;
+      this.blackoutOpacity = N7e.clamp( storyTimer/2000, 0, 1 )
+        * N7e.clamp(( this.storyEndTime+ 2000- storyTimer )/2000, 0, 1)
+        * endingOpacity;
     }
 
-    if( this.consoleOpacity != 1 ){
+    if( this.blackoutOpacity != 1 ){
+      let factorA = Math.sin( this.timer/400 );
+      let factorB = Math.sin( this.timer/300 );
+      let factorC = Math.sin( this.timer/200 );
+
+      ODR.sky.forward( deltaTime, this.canvasCtx );
 
       /* A AMANDARINE FRONTIER */
       this.canvasCtx.drawImage(ODR.spriteGUI,
         148,15,208,85,
         300-120 + 21,
-        ~~(3 + runout * 1.1),
+        ~~(3 + endingOffset * 1.1),
         208,85);
       /* BB REDHAND */
       this.canvasCtx.drawImage(ODR.spriteGUI,
         125,100,37,30,
         300-120 + 41 + Math.round(factorB),
-        ~~(80 + 6 * factorB + runout * 1.2),
+        ~~(80 + 6 * factorB + endingOffset * 1.2),
         37,30);
       /* B AMANDARINE */
       this.canvasCtx.drawImage(ODR.spriteGUI,
         368,115,162,133,
-        300-120 + 37 + Math.round(factorC),
-        ~~(20 + 3 * factorB + runout * 1.35),
+        300-120 + 37 + Math.round(factorA),
+        ~~(20 + 3 * factorB + endingOffset * 1.35),
         162,133);
       /* C ONDARUN */
       this.canvasCtx.drawImage(ODR.spriteGUI,
         127,175,241,75,
         300-120 + 0,
-        Math.round(100 + runout * 1.38),
+        Math.round(100 + endingOffset * 1.38),
         241,75);
       /* D TANGERINE */
       this.canvasCtx.drawImage(ODR.spriteGUI,
         368,16,99,97,
-        300-120 + 121 - Math.round(2 * factorC),
-        ~~(30 + 2 * factorD + runout * 1.4),
+        300-120 + 121 - Math.round(2 * factorA),
+        ~~(30 + 2 * factorC + endingOffset * 1.4),
         99,97);
     }
 
-    let storyStartOffset = 18000;
-    let fadingTime = 2000;
-    let storyTimer = this.timer - this.dataReadyTime - storyStartOffset;
-    let topacity = ( tfactor > 0 ? 1 - Math.min( tfactor, 400 )/400 : 1 );
-    let total = IS_SOUND_DISABLED ? 100 : Sound.inst.musicLoadingProgress * 100;
-
-    if( total >= 100 ){
+    if( dataDownloaded >= 100 ){
       if( this.timer < 15000 ){
-        new Text( 0 ).drawString(`Amandarine Frontier: On Da Run [Ver.${VERSION}]`, this.canvasCtx, 300, 180 -Math.min( 0, runout ));
+        new Text( 0 ).drawString(`Amandarine Frontier: On Da Run [Ver.${VERSION}]`,
+          this.canvasCtx, 300, 180 -Math.min( 0, endingOffset ));
       } else {
-        new Text( 0 ).drawString("press a button to continue.", this.canvasCtx, 300, 180 -Math.min( 0, runout ));
-      }
-      if( this.imgLoadCounter == this.story.length
-          && this.timer - this.dataReadyTime > storyStartOffset ){
-
-          this.consoleOpacity = Math.max( 0, Math.min( 1, storyTimer/2000 ))
-            * Math.max(0, Math.min(1, (this.photoTiming[this.story.length-1][1] + 2000 - storyTimer)/2000))
-            * topacity;
+        new Text( 0 ).drawString("press a button to continue.",
+          this.canvasCtx, 300, 180 -Math.min( 0, endingOffset ));
       }
     }
 
-    if( this.consoleOpacity !==0 ){
+    //====== Story Scene ======//
+
+    // Dark out the logo scene.
+    if( this.blackoutOpacity !==0 ){
       this.canvasCtx.save();
-      this.canvasCtx.globalAlpha = this.consoleOpacity;
+      this.canvasCtx.globalAlpha = this.blackoutOpacity;
       this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
       this.canvasCtx.restore();
     }
 
-    if( total < 100 ){
-      new Text( 0 ).drawString("loading:"+total.toFixed(0)+"%", this.canvasCtx, 300, 180 );
+    if( dataDownloaded < 100 ){
+      if( !this.__dataDownloadedText ){
+        this.__dataDownloadedText = new Text( 0 );
+      }
+      this.__dataDownloadedText.drawString(`loading: ${dataDownloaded|0}%`, this.canvasCtx, 300, 180 );
     } else {
 
+      // Prepare images for the story
       if( !this.storyPhotos.length ){
         this.loadImages();
       }
 
       // Begin the story mode.
 
-      if( this.imgLoadCounter == this.story.length
-          && this.timer - this.dataReadyTime > storyStartOffset ){
+      if( this.timer - this.imagesLoadedTime > this.storyStartOffset ){
         this.canvasCtx.save();
 
         //Providing smooth-out during story mode.
@@ -3586,10 +3623,9 @@ the thai redcross society
           * endingOpacity;
 
         this.photoTiming.forEach(([ beginTime, endTime, beginX, beginY, beginSize, endX, endY, endSize ], index ) => {
-          if (storyTimer > beginTime && storyTimer < endTime) {
+          if( storyTimer > beginTime && storyTimer < endTime ){
 
-            if( index == 4 && !this.playedAFTitleSong ){
-              this.playedAFTitleSong = true;
+            if( index == 4 ){
               Sound.inst.loadMusic('offline-intro-music', true );
             }
 
@@ -3633,7 +3669,15 @@ the thai redcross society
             }
           }
         });
+
         this.canvasCtx.restore();
+        if( this.fastForwarding && this.timer%600 > 300 && this.storyEndTime > storyTimer ){
+
+          if( !this.__fastForwardingText ){
+            this.__fastForwardingText = new Text( 1, "▻▻" );
+          }
+          this.__fastForwardingText.draw( this.canvasCtx, 600, 185, 10 );
+        }
       }
     }
     return this;
@@ -5897,10 +5941,14 @@ https://www.redcross.or.th/donate/
             let nname = ["Add", "Bat", "Cat", "Dad", "Hat", "Has", "Jaz", "Kat", "Lad", "Mat", "Mad", "Mas", "Nat", "Pat", "Rat", "Ras", "Sat", "Saz", "Sad", "Tat", "Vat", "Wad", "Yas", "Zat"];
             let hname = ["ber", "cur", "der", "eer", "fur", "ger", "her", "hur", "jer", "kur", "kir", "ler", "mer", "mur", "ner", "ser", "tur", "ver", "wer", "yer", "zur", "bar", "car", "dar", "ear", "far", "gal", "har", "hor", "jul", "kel", "ker", "lur", "mir", "mor", "nir", "sur", "tar","ter", "val", "war", "you", "zir"];
             let rname = ["been", "cine", "dine", "dean", "deen", "fine", "gene", "hine", "jene", "kine", "line", "mean", "nene", "pine", "rine", "sene", "tine", "wine", "zine"];
-            authUser.nickname = nname[getRandomNum(0,nname.length-1)] + hname[getRandomNum(0,hname.length-1)] + rname[getRandomNum(0,rname.length-1)];
+            authUser.nickname = nname[N7e.randomInt(0,nname.length-1)] + hname[N7e.randomInt(0,hname.length-1)] + rname[N7e.randomInt(0,rname.length-1)];
             authUser.ref.child('nickname').set( authUser.nickname );
             this.notifier.notify( `Welcome, ${authUser.nickname}.\n[autogenerated_name]\nYou dont\'t like it, do you?\nchange in #trophy`, 20000 );
+          } else if( ODR.panel.waitingForButtonUp ){
+            //Hack FIXME use or make a notification system
+            ODR.panel.buttonBlockStopTime = ODR.panel.timer + 1500;
           }
+
 
           N7e.userSigningInfo('nickname', true );
         });
