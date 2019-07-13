@@ -49,6 +49,25 @@ var N7e = class {
       ODR.checkShouldDropTangerines();
     }
   }
+
+  static clamp( x, lower, upper ){
+    return x > upper ? upper : x < lower ? lower : x;
+  }
+
+  static randomInt( min, max ){
+    return min+ (Math.random()*( max- min+ 1 ))|0;
+  }
+
+  static getTimeStamp() {
+    return IS_IOS ? new Date().getTime() : performance.now();
+  }
+
+  static vibrate(duration) {
+    if( IS_MOBILE && window.navigator.vibrate ){
+      window.navigator.vibrate(duration);
+    }
+  }
+
 };
 
 N7e.signing = {
@@ -60,20 +79,6 @@ N7e.signing = {
 };
 
 N7e.user = null;
-
-function getRandomNum( min, max ){
-  return ~~(Math.random() * (max - min + 1)) + min;
-}
-
-function getTimeStamp() {
-  return IS_IOS ? new Date().getTime() : performance.now();
-}
-
-function vibrate(duration) {
-  if (IS_MOBILE && window.navigator.vibrate) {
-    window.navigator.vibrate(duration);
-  }
-}
 
 /*
 class ODRConstants {}
@@ -489,7 +494,7 @@ class Obstacle extends Entity {
       && type.replicaCount < ODR.config.MAX_OBSTACLE_DUPLICATION
     );
 
-    return filtered[ getRandomNum( 0, filtered.length - 1 )];
+    return filtered[ N7e.randomInt( 0, filtered.length - 1 )];
   }
   */
 
@@ -590,7 +595,7 @@ class Cactus extends MultiWidth {
     switch( this ){
       case SmallCactus:
       case LargeCactus:
-        return new this( ctx, getRandomNum( 1,
+        return new this( ctx, N7e.randomInt( 1,
           currentSpeed < 6.5
           ? 2
           : currentSpeed < 7.5
@@ -598,7 +603,7 @@ class Cactus extends MultiWidth {
             : MultiWidth.MAX_OBSTACLE_LENGTH ));
       case Cactus:
       default:
-        return [ SmallCactus, LargeCactus ][ getRandomNum( 0, 1 )].getRandomObstacle( ctx, currentSpeed );
+        return [ SmallCactus, LargeCactus ][ N7e.randomInt( 0, 1 )].getRandomObstacle( ctx, currentSpeed );
     }
   }
 }
@@ -662,7 +667,7 @@ class DynamicObstacle extends Obstacle {
   constructor( ctx, speed, elevation ) {
     super( ctx, speed, elevation );
     this.currentFrame = 0;
-    this.frameOffset = getRandomNum(0,this.constructor.animation.length - 1);
+    this.frameOffset = N7e.randomInt(0,this.constructor.animation.length - 1);
     this.timer = 0;
     this.spriteY = this.constructor.spriteYOffset;
     this.spriteX = this.constructor.spriteXList[0];
@@ -733,7 +738,7 @@ class Liver extends DuckType {
       // Calculate the location that match the sound at time for setting the panner
       // 300 == center
       let s = this.minX - t * ( currentSpeed - this.speed )*FPS - 300;
-      Sound.inst.effects.SOUND_QUACK.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, Math.max(-600, Math.min( s, 600 ))/600 );
+      Sound.inst.effects.SOUND_QUACK.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, N7e.clamp( s, -600, 600)/600 );
 
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
         ODR.cc.append('quack', 1000, t*1000 );
@@ -809,7 +814,7 @@ class Velota extends BicycleType {
       // Calculate the location that match the sound at time for setting the panner
       // 300 == center
       let s = this.minX - t * ( currentSpeed - this.speed )*FPS - 300;
-      Sound.inst.effects.SOUND_BICYCLE.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, Math.max(-600, Math.min( s, 600 ))/600 );
+      Sound.inst.effects.SOUND_BICYCLE.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, N7e.clamp( s, -600, 600 )/600 );
 
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
         ODR.cc.append('ring#bell', 1000, t *1000 );
@@ -989,7 +994,7 @@ class Sequencer {
       return [
         Sequencer.situation.SituationA,
         Sequencer.situation.SituationB,
-        Sequencer.situation.SituationC ][ getRandomNum( 0, 2 )];
+        Sequencer.situation.SituationC ][ N7e.randomInt( 0, 2 )];
     }
 
     let x = ( currentSpeed - 6 )/7;
@@ -1004,12 +1009,12 @@ class Sequencer {
     if( !lastEntity || lastEntity.maxX < 600 ){
 
       // Tangerine
-      if( ODR.shouldDropTangerines && N7e.user && !getRandomNum(0,10)){
+      if( ODR.shouldDropTangerines && N7e.user && !N7e.randomInt(0,10)){
         ODR.shouldDropTangerines = false;
         ODR.tangerineTimer = 0;
-        let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[ getRandomNum( 1, 4 )]);
+        let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[ N7e.randomInt( 1, 4 )]);
         let minGap = Math.round( 50*currentSpeed + 72 );
-        let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
+        let space = new Space( N7e.randomInt( minGap, Math.round( minGap * 1.5 )));
         space.ctx = this.canvasCtx;
         tangerine.minX = space.minX + space.width/2 - 25;
         this.addEntity( space, tangerine );
@@ -1055,7 +1060,7 @@ class Sequencer {
         case Sequencer.situation.LiverSweeper: {
 
           this.addEntity( new Space( 100*currentSpeed ));
-          for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
+          for( let i = 0; i < 5; i += N7e.randomInt( 1, 2 )) {
             this.addEntity( lastEntity.muster( situation.glider[i], currentSpeed,
               new Liver( this.canvasCtx,
                 currentSpeed * Liver.speedFactor *( 0.9 + 0.1*Math.random()),
@@ -1066,7 +1071,7 @@ class Sequencer {
         case Sequencer.situation.RubberSweeper: {
 
           this.addEntity( new Space( 100*currentSpeed ));
-          for( let i = 0; i < 5; i += getRandomNum( 1, 2 )) {
+          for( let i = 0; i < 5; i += N7e.randomInt( 1, 2 )) {
             this.addEntity( lastEntity.muster( situation.glider[i], currentSpeed,
               new Rubber( this.canvasCtx,
                 currentSpeed * Rubber.speedFactor *( 0.9 + 0.1*Math.random()),
@@ -1110,7 +1115,7 @@ class Sequencer {
           this.addEntity( cactusA.muster( 400, currentSpeed, liver ));
 
           liver = new Liver( this.canvasCtx, currentSpeed * Liver.speedFactor *(0.9 + 0.1*Math.random()),
-            DuckType.elevationList[ getRandomNum( 0, 1 )<<1 ]);
+            DuckType.elevationList[ N7e.randomInt( 0, 1 )<<1 ]);
           this.addEntity( cactusA.muster( 430, currentSpeed, liver ));
 
           this.addEntity( liver.muster( 0, currentSpeed,
@@ -1123,7 +1128,7 @@ class Sequencer {
         case Sequencer.situation.SituationC: {
           let i,cactus;
           for( i = 0; i < 8; i++) {
-            cactus = new SmallCactus( this.canvasCtx, getRandomNum( 1, 3 ));
+            cactus = new SmallCactus( this.canvasCtx, N7e.randomInt( 1, 3 ));
             this.addEntity( lastEntity.muster( i * 550 , currentSpeed, cactus ));
           }
 
@@ -1135,7 +1140,7 @@ class Sequencer {
         case Sequencer.situation.Cactus: {
           let cactus = Cactus.getRandomObstacle( this.canvasCtx, currentSpeed );
           let minGap = Math.round( cactus.width * currentSpeed + 72 );
-          let space = new Space( getRandomNum( minGap, Math.round( minGap * 1.5 )));
+          let space = new Space( N7e.randomInt( minGap, Math.round( minGap * 1.5 )));
           space.ctx = this.canvasCtx;
           cactus.minX = space.minX + space.width/2 - cactus.width/2;
           this.addEntity( space, cactus );
@@ -1301,12 +1306,19 @@ class Particles {
   }
 }
 
+class Figure {
+  constructor( canvasOrImage, width, height ){
+
+  }
+
+}
+
 class Cloud {
   constructor( canvas, type, minX, minY ) {
     this.canvas = canvas;
     this.canvasCtx = this.canvas.getContext('2d');
     this.type = type;
-    this.spriteX = Cloud.spriteXList[ getRandomNum( 0, 1 )];
+    this.spriteX = Cloud.spriteXList[ N7e.randomInt( 0, 1 )];
     this.spriteY = Cloud.spriteYList[ type ];
     this.minX = minX;
     this.minY = minY;
@@ -1344,17 +1356,17 @@ class Cloud {
   }
 
   static get randomCloudGap(){
-    return getRandomNum( Cloud.config.MIN_CLOUD_GAP, Cloud.config.MAX_CLOUD_GAP );
+    return N7e.randomInt( Cloud.config.MIN_CLOUD_GAP, Cloud.config.MAX_CLOUD_GAP );
   }
 
   static get randomCloudHeight(){
-    return getRandomNum( Cloud.config.MAX_SKY_LEVEL, Cloud.config.MIN_SKY_LEVEL );
+    return N7e.randomInt( Cloud.config.MAX_SKY_LEVEL, Cloud.config.MIN_SKY_LEVEL );
   }
 
   static get randomCloudType(){
-    this.cycleType = (this.cycleType + getRandomNum(1,3))%6;
+    this.cycleType = (this.cycleType + N7e.randomInt(1,3))%6;
     return this.cycleType;
-    //return getRandomNum( 0, OnDaRun.spriteDefinition.CLOUD.y.length - 1 );
+    //return N7e.randomInt( 0, OnDaRun.spriteDefinition.CLOUD.y.length - 1 );
   }
 
 }
@@ -1411,20 +1423,20 @@ class Mountain {
     this.minX = minX;
     this.removed = false;
 
-    let type = getRandomNum( 0, 2 );
+    let type = N7e.randomInt( 0, 2 );
     this.spriteMinX = 200 * this.constructor.cycleType;
-    this.constructor.cycleType = (this.constructor.cycleType + getRandomNum(1,3))%6;
+    this.constructor.cycleType = (this.constructor.cycleType + N7e.randomInt(1,3))%6;
     switch( type ){
       case 0:
-        this.height = getRandomNum( 75, 100 );
+        this.height = N7e.randomInt( 75, 100 );
         this.spriteMinY = 0;
         break;
       case 1:
-        this.height = getRandomNum( 50, 75 );
+        this.height = N7e.randomInt( 50, 75 );
         this.spriteMinY = 100;
         break;
       case 2:
-        this.height = getRandomNum( 25, 50 );
+        this.height = N7e.randomInt( 25, 50 );
         this.spriteMinY = 175;
         break;
     }
@@ -1462,7 +1474,7 @@ class NightMode {
     this.minX = DEFAULT_WIDTH - 200;
     this.minY = 50;
 //      this.nextPhase = NightMode.phases.length - 1;
-    this.nextPhase = getRandomNum(0,6);
+    this.nextPhase = N7e.randomInt(0,6);
     this.currentPhase = this.nextPhase;
     this.opacity = 0;
     this.stars = [];
@@ -1669,8 +1681,8 @@ class NightMode {
 
     for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
       this.stars[i] = {
-        minX: getRandomNum(segmentSize * i, segmentSize * (i + 1)),
-        minY: getRandomNum(0, NightMode.config.STAR_MAX_Y),
+        minX: N7e.randomInt(segmentSize * i, segmentSize * (i + 1)),
+        minY: N7e.randomInt(0, NightMode.config.STAR_MAX_Y),
         opacity: 0.5 + 0.5 * Math.random(),
         sourceY: NightMode.spriteStarY + NightMode.spriteStarSize * (i%4),
         //hue: Math.floor(Math.random() * 360),
@@ -1783,12 +1795,12 @@ class HorizonLine {
             let l = [];
             let sum;
             let n;
-            this.grassMapOffset.push(getRandomNum(0,4));
+            this.grassMapOffset.push(N7e.randomInt(0,4));
             let gr = false;
 
             sum = HorizonLine.dimensions.GROUND_WIDTH/2;
             do {
-              n = gr ? getRandomNum(3,5) : getRandomNum(0,1);
+              n = gr ? N7e.randomInt(3,5) : N7e.randomInt(0,1);
               gr = !gr;
               if (sum < n) {
                 n = sum;
@@ -1799,7 +1811,7 @@ class HorizonLine {
 
             sum = HorizonLine.dimensions.GROUND_WIDTH/2;
             do {
-              n = gr ? getRandomNum(2,8) : getRandomNum(1,2);
+              n = gr ? N7e.randomInt(2,8) : N7e.randomInt(1,2);
               gr = !gr;
               if (sum < n) {
                 n = sum;
@@ -1909,7 +1921,7 @@ class Scenery {
       this.layers[i] = []; // At some points each layer will be a dedicated object.
     }
 
-    //this.treX = !getRandomNum(0,3) ? 2800 : -20;
+    //this.treX = !N7e.randomInt(0,3) ? 2800 : -20;
 
     // Scenery
     this.horizonLine = null;
@@ -1928,8 +1940,8 @@ class Scenery {
     // Every 2-layer will be lightly tinted with an atmosphere (sky).
 
     for( let i = 0; i < this.cloudFrequency * 10; i++ ){
-      let x = getRandomNum(-50, 2*DEFAULT_WIDTH );
-      this.layers[[ 0, 2, 4 ][ getRandomNum( 0, 2 )]].push( new Cloud( this.canvas, Cloud.randomCloudType,
+      let x = N7e.randomInt(-50, 2*DEFAULT_WIDTH );
+      this.layers[[ 0, 2, 4 ][ N7e.randomInt( 0, 2 )]].push( new Cloud( this.canvas, Cloud.randomCloudType,
         x, Cloud.randomCloudHeight ));
     }
   }
@@ -1939,11 +1951,11 @@ class Scenery {
       generator.energy--;
 
       let distance = parent
-        ? parent.minX + getRandomNum( -parent.width, parent.width )
-        : DEFAULT_WIDTH + getRandomNum( -250, 250 );
+        ? parent.minX + N7e.randomInt( -parent.width, parent.width )
+        : DEFAULT_WIDTH + N7e.randomInt( -250, 250 );
 
       let mountain = new Mountain( this.canvas, distance );
-      let li = 1 + ( getRandomNum( 0, 1 )<<1 );
+      let li = 1 + ( N7e.randomInt( 0, 1 )<<1 );
       this.layers[ li ].push( mountain );
       generator.mountains.push([ mountain, li ]);
       if( generator.minX > mountain.minX ){
@@ -2025,8 +2037,8 @@ class Scenery {
     // Too few cloud, create one.
     if( numClouds < (ODR.config.GRAPHICS_CLOUDS || 0) * this.cloudFrequency ){
       //HACK FIXME
-      let x = DEFAULT_WIDTH + getRandomNum(0,600);
-      this.layers[[0,2,2,4,4,4][getRandomNum(0,5)]].push( new Cloud( this.canvas, Cloud.randomCloudType,
+      let x = DEFAULT_WIDTH + N7e.randomInt(0,600);
+      this.layers[[0,2,2,4,4,4][N7e.randomInt(0,5)]].push( new Cloud( this.canvas, Cloud.randomCloudType,
         x, Cloud.randomCloudHeight ));
     }
 
@@ -2034,7 +2046,7 @@ class Scenery {
       let generator = { energy: 7, mountains: [], minX: DEFAULT_WIDTH };
       this.growMountain( generator );
       if( generator.minX < DEFAULT_WIDTH ){
-        let shift = getRandomNum( 0, 400 ) + DEFAULT_WIDTH - generator.minX;
+        let shift = N7e.randomInt( 0, 400 ) + DEFAULT_WIDTH - generator.minX;
         generator.mountains.forEach( mountain => {
           mountain[0].minX += shift;
           if( mountain[1] == 3 ) mountain[0].minX *= 1.2;
@@ -2714,7 +2726,7 @@ class Scoreboard {
     if( this.existence != this.opacity ){
 
       this.opacity += deltaTime/300 * Math.sign( this.existence - this.opacity );
-      this.opacity = Math.max( 0, Math.min( 1, this.opacity ));
+      this.opacity = N7e.clamp( this.opacity, 0, 1 );
 
     }
 
@@ -3552,9 +3564,9 @@ the thai redcross society
         this.canvasCtx.save();
 
         //Providing smooth-out during story mode.
-        this.canvasCtx.globalAlpha = Math.max( 0, Math.min( 1, storyTimer/2000 ))
-          * Math.max(0, Math.min(1, (this.photoTiming[this.story.length-1][1] + 2000 - storyTimer)/2000))
-          * topacity;
+        this.canvasCtx.globalAlpha = N7e.clamp( storyTimer/2000, 0, 1 )
+          * N7e.clamp(( this.storyEndTime+ 2000- storyTimer )/2000, 0, 1)
+          * endingOpacity;
 
         this.photoTiming.forEach(([ beginTime, endTime, beginX, beginY, beginSize, endX, endY, endSize ], index ) => {
           if (storyTimer > beginTime && storyTimer < endTime) {
@@ -3574,24 +3586,28 @@ the thai redcross society
 
             this.canvasCtx.save(); {
 
-              this.canvasCtx.scale(size,size);
-              this.canvasCtx.translate(-offsetX,-offsetY);
-              this.canvasCtx.globalAlpha = 0.70 * topacity
-                * Math.max(0,Math.min(1, beginTime/fadingTime))
-                * Math.max(0,Math.min(1, endTime/fadingTime));
-              this.canvasCtx.drawImage(this.storyPhotos[index], 0, 0);
+              if( this.storyPhotos[ index ]){
+                this.canvasCtx.scale( size, size );
+                this.canvasCtx.translate( -offsetX, -offsetY );
+                this.canvasCtx.globalAlpha = 0.70 * endingOpacity
+                  * N7e.clamp( beginTime/fadingDuration, 0, 1 )
+                  * N7e.clamp( endTime/fadingDuration, 0, 1 );
+                this.canvasCtx.drawImage(this.storyPhotos[ index ], 0, 0);
+              }
 
             } this.canvasCtx.restore();
 
-            this.canvasCtx.globalAlpha =
-              Math.max( 0, Math.min( 1, beginTime /fadingTime ))
-              *Math.max( 0, Math.min( 1, endTime /fadingTime ))
-              *topacity;
+            this.canvasCtx.globalAlpha = endingOpacity
+                * N7e.clamp( beginTime/fadingDuration, 0, 1 )
+                * N7e.clamp( endTime/fadingDuration, 0, 1 );
 
             //20 is the default glyph height.
             let y = ~~( 200- 20*beginTime /this.msPerLine );
             if( index == this.story.length- 1 ){
-              let g = y % 4 ? 616 : 588;
+              let g = this.timer%400 > 200 ? 616 : 588;
+              // They are hard-coded but it's planned to allow
+              // a special glyph that will invoke a callback.
+              // See 0xe000 784
               this.story[index].glyphs[341] = g;
               this.story[index].glyphs[366] = g;
               this.story[ index ].draw( this.canvasCtx, 300, y);
@@ -3838,13 +3854,13 @@ class Menu extends Panel {
 
 
       if( N7e.user.nickname ) {
-          this.text.setString( N7e.user.nickname + {
-              ['google.com']:' #google',
-              ['facebook.com']:' #facebook',
-              ['twitter.com']:' #twitter',
-            }[this.model.provider]).draw(
-            this.canvasCtx,
-            562 - 14 * N7e.user.nickname.length, 100);
+        this.text.setString( N7e.user.nickname + {
+            ['google.com']:' #google',
+            ['facebook.com']:' #facebook',
+            ['twitter.com']:' #twitter',
+          }[this.model.provider]).draw(
+          this.canvasCtx,
+          562 - 14 * N7e.user.nickname.length, 100);
       }
 
     }
@@ -5511,7 +5527,7 @@ class OnDaRun extends LitElement {
       this.updateScore();
 
     this.panel = null;
-    vibrate(200);
+    N7e.vibrate(200);
     Sound.inst.currentSong = null;
     Sound.inst.effects.SOUND_OGGG.play( ODR.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2 );
     this.sky.setShade( Sky.config.SUNSET, 3000 );
@@ -6690,7 +6706,7 @@ https://www.redcross.or.th/donate/
                 { name: 'FACEBOOK', url: 'https://www.facebook.com/bnk48official.natherine'},
               ];
             }
-            window.open( this.n7eUrlList.splice( getRandomNum( 0, this.n7eUrlList.length - 1 ), 1)[ 0 ].url, '_blank');
+            window.open( this.n7eUrlList.splice( N7e.randomInt( 0, this.n7eUrlList.length - 1 ), 1)[ 0 ].url, '_blank');
           } break;
         }
 
