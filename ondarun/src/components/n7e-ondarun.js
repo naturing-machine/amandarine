@@ -428,7 +428,7 @@ class Tangerine extends Entity {
       this.timer = 0;
       this.collectedY = this.minY;
       ODR.dailyTangerines++;
-      ODR.gameRecord.tangerines++;
+      ODR.runRecord.tangerines++;
       Tangerine.increaseTangerine( 1 );
     }
     return null;
@@ -4098,7 +4098,7 @@ class GameOver extends Panel {
     this.passthrough = true;
     this.willRestart = false;
 
-    if( ODR.gameRecord.hiscore < ODR.score)
+    if( ODR.runRecord.hiscore < ODR.score)
       this.clearTime = ODR.config.GAMEOVER_CLEAR_TIME + 4000;
     else this.clearTime = ODR.config.GAMEOVER_CLEAR_TIME;
   }
@@ -4173,10 +4173,11 @@ class GameOver extends Panel {
 
     }
 
-    let d = Math.max(0, 100 - this.timer/10);
+    let d = Math.max( 0, 100 - this.timer/10);
     let lineY = 90;
     if( d == 0 ){
-      let newHigh = ODR.gameRecord.hiscore < ODR.score ? ' a new high!':'';
+      let newHigh = ODR.runRecord.hiscore < ODR.score ? ' a new high!':'';
+      if( !newHigh ) this.playMusicIfNeeded();
 
       new Text( 0 ).drawString( ODR.gameMode.title, this.canvasCtx, 300, lineY );
 
@@ -4196,11 +4197,11 @@ class GameOver extends Panel {
 
 
       if( showHi == 1 ){
-        let diff = ODR.gameModeScore - ODR.gameRecord.hiscore;
+        let diff = ODR.gameModeScore - ODR.runRecord.hiscore;
 
         lineY += 20;
         new Text( 1 ).drawString('HIGH SCORE:',this.canvasCtx, 300, lineY );
-        new Text().drawString(' ' + ( showNewHi == 1 ? ODR.gameRecord.hiscore + ~~(diff * (this.newHighTimer || 0)/1000) : ODR.gameRecord.hiscore ), this.canvasCtx, 300, lineY );
+        new Text().drawString(' ' + ( showNewHi == 1 ? ODR.runRecord.hiscore + ~~(diff * (this.newHighTimer || 0)/1000) : ODR.runRecord.hiscore ), this.canvasCtx, 300, lineY );
 
         if( showNewHi == 1 ){
           if( newHigh ){
@@ -4216,6 +4217,8 @@ class GameOver extends Panel {
                 Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
                 Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
               }
+
+              this.playMusicIfNeeded( 1 );
             }
             this.newHighTimer = Math.min( 1000 , ( this.newHighTimer || 0 ) + deltaTime );
           }
@@ -4223,7 +4226,7 @@ class GameOver extends Panel {
           lineY += 20;
           let showTang = Math.min( 1, ( this.timer - t )/t );
           if( showTang == 1 && N7e.user ){
-            let gotO = ODR.gameRecord.tangerines ? `${ODR.gameRecord.tangerines} ` : "";
+            let gotO = ODR.runRecord.tangerines ? `${ODR.runRecord.tangerines} ` : "";
             t+= gotO ? 500 : 0;
             let showDaily = Math.min( 1, ( this.timer - t )/t );
             let gotT = ( showDaily == 1 ? `[${ODR.dailyTangerines}/${Math.floor( ODR.gameModeTotalScore/100)}]` : '');
@@ -4237,6 +4240,7 @@ class GameOver extends Panel {
           }
 
         }
+
       }
     }
 
@@ -4849,6 +4853,7 @@ class Song {
 
     this.delayStart = 0; // For resuming calculation.
     this.startTime = Infinity;
+    this.trueStartTime = 0;
     this.loadingProgress = null;
     this._volume = ODR.config.SOUND_MUSIC_VOLUME/10;
 
@@ -5075,12 +5080,15 @@ class Sound {
     }
   }
 
-  updateLyricsIfNeeded( terminal ){
+  updateLyricsIfNeeded( callback ){
     if( IS_SOUND_DISABLED ) return;
-    if( this.currentSong && this.currentSong.lyrics && this.currentSong.lyrics.length ){
-      let time = ODR.audioContext.currentTime - this.currentSong.startTime - this.currentSong.delay/1000;
+    if( this.currentSong
+        && this.currentSong.lyrics
+        && this.currentSong.lyrics.length
+        && this.currentSong.controller ){
+      let time = this.audioContext.currentTime- this.currentSong.controller.startTime;
       while( this.currentSong.lyrics.length && time >= this.currentSong.lyrics[0].info ){
-        terminal.appendMessage( this.currentSong.lyrics.shift());
+        callback( this.currentSong.lyrics.shift());
       }
     }
   }
@@ -5117,6 +5125,7 @@ class Sound {
   loadMusic( name, autoplay, delayStart = 0, lyrics = null ){
     if( IS_SOUND_DISABLED ) return;
     let song = this.songs[ name ] || ( this.songs[ name ] = new Song( name, lyrics, true ));
+    song.lyrics = lyrics;
 
     if( this.currentSong == song ) return;
 
@@ -5436,6 +5445,7 @@ class OnDaRun extends LitElement {
     this.time = 0;
     this.totalTangerines = 0;
     this.dailyTangerines = 0;
+    this.maxSpeed = null;
 
     this.gameModeList = [];
     this.gameMode = null;
@@ -5450,6 +5460,37 @@ class OnDaRun extends LitElement {
     this.gameState = 0;
 
     this._passthroughPanel = new NoPanel();
+  }
+
+  get maxSpeed(){
+    return this._maxSpeed || { value: 0, time: 0 };
+  }
+
+  set maxSpeed( newMaxSpeed ){
+    if( !newMaxSpeed ){
+      this._maxSpeed = { value: 0, time: 0 };
+    } else if( newMaxSpeed.value > this.maxSpeed.value
+      || newMaxSpeed.time > this.maxSpeed.time
+         && newMaxSpeed.value == this.maxSpeed.value ){
+
+      this._maxSpeed = newMaxSpeed;
+      if( N7e.user ){
+        N7e.user.odrRef.child('maxSpeed')
+        .transaction(( maxSpeed = newMaxSpeed ) => {
+
+          if( newMaxSpeed.value > maxSpeed.value ){
+            maxSpeed = newMaxSpeed;
+          } else if( maxSpeed.value == newMaxSpeed.value ){
+            maxSpeed.time = Math.max( newMaxSpeed.time, maxSpeed.time ) || 0;
+          }
+
+          this._maxSpeed = maxSpeed;
+
+          return maxSpeed;
+        });
+      }
+
+    }
   }
 
   get dailyTangerines(){
@@ -5532,11 +5573,11 @@ class OnDaRun extends LitElement {
 
     if( newState == 0 ){
 
-      this._HACC = this.config.ACCELERATION * FPS/1000 * 0.5;
-      this._HSPD = this.config.SPEED * FPS / 1000;
+      this._HACC = 0.5*this.config.ACCELERATION *FPS/1000;
+      this._HSPD = this.config.SPEED *FPS/1000;
 
     } else if( newState == 1 ){
-      ODR.gameRecord = {
+      ODR.runRecord = {
         tangerines: 0,
         hiscore: this.gameModeScore,
       };
@@ -5594,15 +5635,6 @@ class OnDaRun extends LitElement {
     Sound.inst.effects.SOUND_OGGG.play( ODR.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2 );
     this.sky.setShade( Sky.config.SUNSET, 3000 );
 
-    // Load lyrics, FIXME if needed.
-    let lyrics = [];
-    for( let i = 0, l = this.config.NATHERINE_LYRICS; i < l.length; i+= 2 ){
-      let string = l[ i + 1 ];
-      let duration = (l[ i + 2 ] || 5)*1000;
-      lyrics.push( new Message( string, 10000, 0, l[ i ]));
-    }
-
-    Sound.inst.loadMusic('offline-intro-music', this.config.PLAY_MUSIC, 3, lyrics );
   }
 
   stateRestart(){
@@ -5993,6 +6025,17 @@ https://www.redcross.or.th/donate/
               if( serverDistance > mode.distance ){
                 mode.distance = serverDistance;
               }
+
+              let a = mode.ACCELERATION * FPS/1000 * 0.5;
+              let b = this.config.SPEED * FPS/1000;
+              let s = distances[ mode.key ] || 0;
+              let t = ( Math.sqrt( b**2 - 4*a*-s )- b )/( 2*a );
+
+              this.maxSpeed = {
+                value: Math.min( this.config.MAX_SPEED, this.config.SPEED + t * mode.ACCELERATION ),
+                time: 0
+              };
+
             });
 
             this.scoreboard.maxTangerines = ~~(this.gameModeTotalScore/100);
@@ -6595,7 +6638,7 @@ https://www.redcross.or.th/donate/
     this.notifier.forward( deltaTime );
 
     if( this.playLyrics ){
-      Sound.inst.updateLyricsIfNeeded( this.cc );
+      Sound.inst.updateLyricsIfNeeded( m => this.cc.appendMessage( m ));
     }
     this.cc.forward( deltaTime );
 
@@ -6875,14 +6918,18 @@ https://www.redcross.or.th/donate/
   */
 
   updateScore(){
+    this.maxSpeed = { value: this.runRecord.crashSpeed, time: new Date().getTime()};
+
     let d = this.score;
 
     // Only play lyrics if reaching a half of hiscore and more than 1000.
     // FIXME Rethink for different difficulties.
-    if( d > 1000 && this.distance > this.gameMode.distance / 2 )
+    if( this.runRecord.crashSpeed > 8 && this.distance > this.gameMode.distance / 2 ){
       this.playLyrics = true;
+    }
 
-    if( d < 600 ){
+    if( this.runRecord.crashSpeed < 8 ){
+      let skipping;
       this.achievements = [
         200, 'KEEP RUNNING!#natB',
         400, 'GOOD JOB!#natB',
@@ -7138,6 +7185,7 @@ GOOD JOB! #natB`, 15000 );
                 //Start the crash animation.
                 if( 2 != this.gameState ){
                   //TOOD this.dispatchEvent(new CustomEvent('odr-crash', { bubbles: false, detail: { action: action } }));
+                  this.runRecord.crashSpeed = speed;
                   this.gameState = 2;
 
                   if( action.crash ){
