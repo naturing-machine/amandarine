@@ -6396,10 +6396,7 @@ https://www.redcross.or.th/donate/`);
 
     this.gameModeList.forEach( mode => {
       entries.push({
-        title: (this.gameMode === mode
-          ? `${mode.title} #natB `
-          : `${mode.title} `)
-          + `[${Math.round(mode.distance * this.config.TO_SCORE)}]`,
+        title: `${mode.title} [${Math.round(mode.distance * this.config.TO_SCORE)}]${this.gameMode === mode ? ' #true' : ''}`,
         mode: mode,
       });
     });
@@ -6442,7 +6439,11 @@ https://www.redcross.or.th/donate/`);
       /* User has signed in */
       N7e.user
       ? new Menu( this.canvas, {
-        title: 'USER PROFILE',
+        title: `${{
+          ['google.com']:' #google',
+          ['facebook.com']:' #facebook',
+          ['twitter.com']:' #twitter',
+        }[ N7e.user.auth.providerData[0].providerId ]} ${N7e.user.nickname}`,
         entries: [
           "SET NAME",
           /*"SET AVATAR : NYI",*/
