@@ -5006,7 +5006,7 @@ class Song {
   set volume( newVolume ){
     this._volume = newVolume;
     if( this.controller ){
-      this.controller.gainNode.gain.exponentialRampToValueAtTime( Math.max( 0.00001, newVolume ), Sound.inst.audioContext.currentTime+3);
+      this.controller.gainNode.gain.exponentialRampToValueAtTime( Math.max( 0.00001, newVolume ), Sound.inst.audioContext.currentTime+1.5);
     }
   }
 
