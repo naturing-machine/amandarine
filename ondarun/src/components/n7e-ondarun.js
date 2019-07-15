@@ -2745,7 +2745,7 @@ class Scoreboard {
         }
       } else {
         for( let i = this.text.glyphs.length - 1, j = 0; j < 5; i--, j++ ){
-          this.text.glyphs[ i ] = 588;
+          this.text.glyphs[ i ] = 0;
         }
       }
 
