@@ -6490,6 +6490,7 @@ https://www.redcross.or.th/donate/`);
                   ODR.totalTangerines = 0;
                   ODR.dailyTangerines = 0;
                   ODR.runTime = 0;
+                  ODR.maxSpeed = null;
 
                   // Reset game score.
                   ODR.gameModeList.forEach( mode => mode.distance = 0 );
