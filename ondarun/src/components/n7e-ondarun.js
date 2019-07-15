@@ -1485,6 +1485,37 @@ class Mountain {
 
 Mountain.cycleType = 0;
 
+class TREX extends Cloud {
+  constructor( canvas, minX ){
+    super( canvas, 0, minX, 155 );
+    this.speedModifier = 10;
+    this.spriteX = 0;
+    this.spriteY = 0;
+
+  }
+
+  draw(){
+    let a8ey = ODR.amandarine.minY;
+    if( a8ey != 150 ){
+      this.canvasCtx.drawImage(ODR.spriteScene, 0, 22, 20, 22,
+        ~~this.minX, 158 + ( a8ey - 150 )/3,
+        20, 22);
+    } else {
+      this.canvasCtx.drawImage(ODR.spriteScene, 0, 22, 20, 22,
+        ~~this.minX, 158 - 3*Math.abs(Math.sin(this.minX/10)),
+        20, 22);
+    }
+  }
+
+  get maxX(){
+    return this.minX + 20;
+  }
+
+  get maxY(){
+    return this.minY + 22;
+  }
+}
+
 class NightMode {
   constructor( canvas ){
     this.canvas = canvas;
@@ -1939,23 +1970,10 @@ class Scenery {
       this.layers[i] = []; // At some points each layer will be a dedicated object.
     }
 
-    //this.treX = !N7e.randomInt(0,3) ? 2800 : -20;
-
     // Scenery
     this.horizonLine = null;
-    this.init();
-  }
-
-/** Class Scenery
- * Initialize the starting scenery.
- */
-  init(){
-
     this.horizonLine = new HorizonLine( this.canvas );
     this.nightMode = new NightMode( this.canvas );
-
-    // We will only initialize clouds.
-    // Every 2-layer will be lightly tinted with an atmosphere (sky).
 
     for( let i = 0; i < this.cloudFrequency * 10; i++ ){
       let x = N7e.randomInt(-50, 2*DEFAULT_WIDTH );
@@ -1963,6 +1981,15 @@ class Scenery {
         x, Cloud.randomCloudHeight ));
     }
   }
+
+  addTREX(){
+    if( N7e.user && this.layers[ this.layerCount -1 ].length == 0)
+      this.layers[ this.layerCount -1 ].push( new TREX( this.canvas, 1500));
+  }
+
+/** Class Scenery
+ * Recursively append mountains.
+ */
 
   growMountain( generator, parent, layer ){
     if( generator.energy > 0 ){
@@ -2071,18 +2098,6 @@ class Scenery {
         });
       }
     }
-
-
-    //Hack sky tint
-
-    /*
-    if (this.treX > -20) {
-      this.treX += 0.6 * decrement - 3;
-      this.canvasCtx.drawImage(ODR.spriteScene, 0, 22, 20, 22,
-        ~~this.treX, 155 + Math.abs(((~~this.treX)>>4)%4 - 2),
-        20, 22);
-    }
-    */
 
     // Fill atmosphere
     this.canvasCtx.save();
@@ -5610,6 +5625,7 @@ class OnDaRun extends LitElement {
   statePlay(){
     Sound.inst.loadMusic('offline-play-music', this.config.PLAY_MUSIC, 1 );
     this.sky.setShade( Sky.config.DAY, 3000 );
+    //this.scenery.addTREX();
     this.scoreboard.reset();
 
     this.currentSpeed = this.config.SPEED;
@@ -5647,6 +5663,7 @@ class OnDaRun extends LitElement {
     }
 
     this.sky.setShade( Sky.config.DAY,  3000 );
+    //this.scenery.addTREX();
     this.invert( true );
 
     Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
@@ -6062,6 +6079,7 @@ https://www.redcross.or.th/donate/
           }
         });
 
+        ODR.scenery.addTREX();
       } else {
         N7e.user = null;
         N7e.userSignedIn = false;
