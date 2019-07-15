@@ -3820,18 +3820,20 @@ class Wait extends Panel {
 }
 
 class Menu extends Panel {
-  constructor( canvas, model, associatedButton, muted = false ){
-    super( canvas, null, associatedButton );
+  constructor( canvas, model, associatedButton, previousPanel, muted = false ){
+    super( canvas, previousPanel, associatedButton );
     this.model = model;
     this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
     this.xOffset = 0;
     this.yOffset = 0;
     this.bottomText = new Text( 0,'press both #slide+#jump to select');
     this.text = new Text();
+    this.scoreText = new Text( 1 );
     this.timer = 0;
     this.muted = muted;
   }
 
+  /*
   handleEvent( e ){
     if( this.submenu && this.submenu.handleEvent ){
       return this.submenu.handleEvent( e );
@@ -3840,9 +3842,9 @@ class Menu extends Panel {
     // Only handle known event types, default to passing the event back to the parent.
     return super.handleEvent( e );
   }
+  */
 
-  forward( deltaTime, depth ){
-    this.timer += deltaTime;
+  repaint( deltaTime ){
     this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
 
     if( this.offset ){
@@ -3878,7 +3880,7 @@ class Menu extends Panel {
           this.model.enter(this.model.currentIndex, entry);
 
           let subEntries;
-          if (entry.options.hasOwnProperty('min')) {
+          if( entry.options.hasOwnProperty('min')){
             subEntries = [];
             for (let i = entry.options.min; i <= entry.options.max; i+= entry.options.step) {
               subEntries.push(i);
@@ -3894,9 +3896,9 @@ class Menu extends Panel {
           }
           subEntries.push({ title:'CANCEL', exit:true });
 
-          this.submenu = new Menu( this.canvas, {
+          let submenu = new Menu( this.canvas, {
             name: entry.name,
-            title: entry.title,
+            title: `${this.model.title}\n${entry.title}`,
             _currentIndex: currentIndex,
             select: this.model.select,
             get currentIndex() {
@@ -3910,7 +3912,7 @@ class Menu extends Panel {
             },
             entries: subEntries,
             enter: ( select, selectedItem ) => {
-              if (!selectedItem.exit) {
+              if( !selectedItem.exit ){
                 entry.value = selectedItem;
                 this.model.enter( select, entry );
                 /*
@@ -3924,13 +3926,18 @@ class Menu extends Panel {
               if( this.associatedButton == ODR.consoleButtons.CONSOLE_A ){
                 Sound.inst.currentSong = null;
               }
-              this.submenu = null;
+              submenu.exit();
+              return submenu;
+              //this.submenu = null;
             },
-          }, this.associatedButton, entry.muted  );
+          }, this.associatedButton, this, entry.muted  );
+          return submenu;
 
+          /*
           this.submenu.xOffset = this.xOffset + 25;
           this.submenu.yOffset = this.yOffset + 8;
           this.submenu.bottomText = null;
+          */
 
         } else return this.model.enter( this.model.currentIndex, entry );
       }
@@ -3974,6 +3981,7 @@ class Menu extends Panel {
           this.canvasCtx,
           562 - 14 * N7e.user.nickname.length, 100);
       }
+      */
 
     }
 
@@ -3995,12 +4003,12 @@ class Menu extends Panel {
 
       this.text.setString((i == this.model.currentIndex ? (entry.exit ? '#left ' : ' #right'):'  ') +title +(entry.disabled ? ' #noentry' : '')).draw(
         this.canvasCtx,
-        this.xOffset + 20 + 2 * 3 * Math.round(Math.sqrt(100*xxx) / 3),
-        this.yOffset + 90 + 5 * Math.round(4 * (i-this.displayEntry)));
+        this.xOffset + 20 + 2 * 3 * Math.round( Math.sqrt( 100*xxx )/3 ),
+        this.yOffset + 90 + 5 * Math.round( 4 * ( i - this.displayEntry )));
     }
     this.canvasCtx.restore();
 
-    depth = depth || 0;
+    /*
     if (this.submenu) {
       this.canvasCtx.save();
       this.canvasCtx.globalAlpha = 0.9;
@@ -4008,6 +4016,7 @@ class Menu extends Panel {
       this.canvasCtx.restore();
       this.submenu.forward(deltaTime, depth + 1 );
     }
+    */
 
     if( this.model.title ){
       new Text( 0 ).drawString( this.model.title, this.canvasCtx, 300, 10);
