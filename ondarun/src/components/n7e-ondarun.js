@@ -4140,10 +4140,27 @@ class GameOver extends Panel {
     this.timer = 0;
     this.passthrough = true;
     this.willRestart = false;
+    this.playedMusic = false;
 
     if( ODR.runRecord.hiscore < ODR.score)
       this.clearTime = ODR.config.GAMEOVER_CLEAR_TIME + 4000;
     else this.clearTime = ODR.config.GAMEOVER_CLEAR_TIME;
+  }
+
+  playMusicIfNeeded( d = 0 ){
+    if( !this.playedMusic ){
+      this.playedMusic = true;
+
+      // Load lyrics, FIXME if needed.
+      let lyrics = [];
+      for( let i = 0, l = ODR.config.NATHERINE_LYRICS; i < l.length; i+= 2 ){
+        let string = l[ i + 1 ];
+        let duration = (l[ i + 2 ] || 5)*1000;
+        lyrics.push( new Message( string, 10000, 0, l[ i ]));
+      }
+
+      Sound.inst.loadMusic('offline-intro-music', ODR.config.PLAY_MUSIC, d, lyrics );
+    }
   }
 
   handleEvent( e ){
