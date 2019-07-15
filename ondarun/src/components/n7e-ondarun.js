@@ -2711,7 +2711,7 @@ class Scoreboard {
       }
 
       if( this._playAchievement != 0 ){
-        if( this._playAchievement > ODR.achievements[ 0 ]){
+        if( this._playAchievement >= ODR.achievements[ 0 ]){
           ODR.achievements.shift();
           ODR.notifier.notify( ODR.achievements.shift(), 6000 );
         }
