@@ -4032,21 +4032,34 @@ class Menu extends Panel {
 }
 
 class TextEditor extends Panel {
-  constructor( canvas, text, callback ){
-    super( canvas );
+  constructor( canvas, value, callback, previousPanel ){
+    super( canvas, previousPanel );
     this.xOffset = 0;
     this.yOffset = 0;
     this.submenu = null;
     this.bottomText = new Text( 0,'press both #slide+#jump to select');
 
-    this.text = text;
+    this.value = value;
     this.curX = 0;
     this.curY = 0;
     this.callback = callback;
     this.pattern = "etnsh ◅aiouc.'rdlmf,\"wygpb!?vkqjxz#01234+/56789-▻";
+    this.pattern2 = `etnsh#natA#natB#football
+aiouc.'#bell
+rdlmf,"#<3
+wygpb!?#redcross
+vkqjxz #trophy#noentry
+01234+/#left#false
+56789-%#right#true`;
+
+    this.supporteChars = Text.substituteString( this.pattern2 ).split('\n').join('').split('');
+
   }
 
   handleEvent( e ){
+    if( e.ctrlKey ) return false;
+
+    e.preventDefault();
     switch( e.type ){
       case OnDaRun.events.KEYDOWN:
         return ( e.key == 'Delete'
@@ -4254,7 +4267,7 @@ class GameOver extends Panel {
       let t = this.timer - bt[b]**2;
       let d = Math.max(0, 100 - t/10);
       let a = t%300 / 300;
-      let y = Math.min(50, 50 - d*a + d*a**2 );
+      let y = Math.min( 50, 50- d *a+ d *a**2 );
 
       this.canvasCtx.drawImage(ODR.spriteGUI,
           x, 159, bw[b], 17,
@@ -4265,7 +4278,7 @@ class GameOver extends Panel {
         t = this.timer - 8**2;
         d = Math.max(0, 100 - t/10);
         a = t%300 / 300;
-        y = Math.min(50, 50 - d*a + d*a**2 );
+        y = Math.min( 50, 50- d *a+ d *a**2 );
 
         this.canvasCtx.drawImage(ODR.spriteGUI,
             x, 150, 15, 9,
