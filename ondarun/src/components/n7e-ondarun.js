@@ -3938,24 +3938,26 @@ class Menu extends Panel {
           510, 10,  80, 80 );
       }
 
+      let scoreString = "";
+
       let tt = ODR.gameModeTotalScore;
       if( tt ){
-        let totalScore = tt.toString() + ' #trophy' ;
-        this.text.setString( totalScore ).draw(
-          this.canvasCtx,
-          590 - 14 * (totalScore.length - 6), 120);
+        scoreString+= `#gameA+#gameB+#gameS ${tt.toString()} #trophy\n`;
+      }
 
+      if( ODR.maxSpeed ){
+        scoreString+= `${(40*ODR.maxSpeed.value/ODR.config.MAX_SPEED).toFixed(2)} mi/h #speed\n`;
       }
 
       if( ODR.totalTangerines ){
         let maxPerDay = Math.max( 1, ~~(tt/100));
-        let totalTangerines = ODR.totalTangerines + `[${ODR.dailyTangerines}/${maxPerDay}]` + ' #tangerine';
-        this.text.setString( totalTangerines ).draw(
-          this.canvasCtx,
-          590 - 14 * (totalTangerines.length - 9), 140);
+        scoreString += ODR.totalTangerines + `[${ODR.dailyTangerines}/${maxPerDay}]` + ' #tangerine\n';
       }
 
+      this.scoreText.setString( scoreString ).draw( this.canvasCtx, 590, 100);
 
+
+      /*
       if( N7e.user.nickname ) {
         this.text.setString( N7e.user.nickname + {
             ['google.com']:' #google',
@@ -5724,11 +5726,9 @@ Made for Natherine BNK48 (Dusita Kitisarakulchai) with ❤❤❤❤.
 ░░░░░░░░░░ The goal of the project
 ░░░░██░░░░ is to support The
 ░░██████░░ Thai Red Cross Society.
-░░░░██░░░░ Please support this
-░░░░░░░░░░ project only by making
-a donation to the society.
-https://www.redcross.or.th/donate/
-`);
+░░░░██░░░░ Please help by making
+░░░░░░░░░░ a donation to them.
+https://www.redcross.or.th/donate/`);
 
     document.querySelector('title').textContent += ` ${VERSION}`;
     document.getElementById('version-banner').textContent = `Version ${VERSION}`;
@@ -5870,11 +5870,30 @@ https://www.redcross.or.th/donate/
 
     this.scoreboard = new Scoreboard( this.canvas );
 
+    this.achievementPhrases = [
+      "Keep running!",
+      "There you go!",
+      "Don't give up!",
+      "Keep it up!",
+      "Looking good!",
+      "Good Job!",
+      "I'm so proud of you!",
+      "Great Job!",
+      "Believe in yourself!",
+      "Stay Strong!",
+      "Just don't die!",
+      "Do the impossible!",
+    ].map( p => p+ '#natB');
+
+    let skipping;
     this.achievements = [
-      200, 'KEEP RUNNING!#natB',
-      400, 'GOOD JOB!#natB',
-      800, 'JUST DONT DIE!#natB',
+      200, this.achievementPhrases[ skipping = N7e.randomInt( 0, 2 )],
+      400, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
+      800, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
+      1600, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
     ];
+
+
 
     this.notifier = new Notifier( this.canvas );
     this.cc = new Terminal( this.canvas, 300, 180 ); //Closed Caption
@@ -6975,9 +6994,10 @@ https://www.redcross.or.th/donate/
     if( this.runRecord.crashSpeed < 8 ){
       let skipping;
       this.achievements = [
-        200, 'KEEP RUNNING!#natB',
-        400, 'GOOD JOB!#natB',
-        800, 'JUST DONT DIE!#natB',
+        200, this.achievementPhrases[ skipping = N7e.randomInt( 0, 2 )],
+        400, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
+        800, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
+        1600, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 ) ],
       ];
     } else {
 
@@ -6988,12 +7008,13 @@ ${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_S
 GOOD JOB! #natB`, 15000 );
 */
 
+      let skipping;
       d = d/2 - d/2%100;
       this.achievements = [
-        d, 'KEEP RUNNING!#natB',
-        2*d, 'GOOD JOB!#natB',
-        3*d, 'JUST DONT DIE!#natB',
-        4*d, '...#natB',
+        d, this.achievementPhrases[ skipping = N7e.randomInt( 0, 2 )],
+        2*d, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
+        3*d, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
+        4*d, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 ) ],
       ];
     }
 
