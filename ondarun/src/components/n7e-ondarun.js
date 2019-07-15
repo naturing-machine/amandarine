@@ -18,7 +18,7 @@
 
 import { LitElement, html, css } from 'lit-element';
 
-var VERSION = "1.1a"
+var VERSION = "1.14"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;
@@ -232,6 +232,7 @@ class User {
         ODR.panel.exit();
         Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
         ODR.cc.append('Error Linking; details in the console.', 5000 );
+        N7e.user = null;
       });
     }
   }
