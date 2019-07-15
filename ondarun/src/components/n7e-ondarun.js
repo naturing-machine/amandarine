@@ -3000,10 +3000,14 @@ class Text {
       }
 
       while( glyphIndex < nextLineIndex ){
-        if( canvasCtx)
-          canvasCtx.drawImage( image,
-            this.glyphs[ glyphIndex ], 0, 14, 16,
-            ~~x, ~~y, 14, 16 );
+        if( canvasCtx){
+          let g = this.glyphs[ glyphIndex ];
+          if( g ){ // Don't draw a space.
+            canvasCtx.drawImage( image,
+              g, 0, 14, 16,
+              ~~x, ~~y, 14, 16 );
+          }
+        }
 
         x+= charW;
         glyphIndex++;
@@ -3344,28 +3348,31 @@ Once finished, that was very soon after, he looked at Amandarine and said that t
 
 After learning the pulses for a few breathes, Lu Ji told her that her disease, though very serious, had a cure.
 
-That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.`, 39 ),
+That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.`, 39, 37 ),
 
       new Text( -1,
 `Saying that he must have fled his hometown, for he had stolen this very tangerine from a noble. The dried brownish fruit was called "The 8th Heaven Supremacy"; it could cure her illness, he explained and asked her to accept it.
 
 He said that she should boil it in ginger juice to create one adequate medicine for living longer but for her to be fully recovered its seeds must be planted in eight continents and she should have kept eating each kind of them afterwards until cured.
 
-Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.`, 39 ),
+Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.`, 39, 37 ),
 
       new Text( -1,
 `♬ Natherine ♬
 she is all they claim
 With her eyes of night
 and lips as bright as flame
+
 Natherine
 when she dances by
 Senoritas stare
 and caballeros sigh
+
 And I've seen
 toasts to Natherine
 Raised in every bar
 across the Argentine
+
 Yes, she has them all on da run
 And their hearts belong to just one
 Their hearts belong to
@@ -4038,15 +4045,23 @@ class TextEditor extends Panel {
           || this.pattern.indexOf( e.key ) != -1 );
       case OnDaRun.events.KEYUP:
         if( e.key == 'Delete' ){
-          this.text = this.text.slice(0,this.text.length-1);
+          Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          this.value = this.value.slice( 0, this.value.length- 1 );
           return true;
         } else if (e.key == 'Enter') {
-          this.curX = 6;
+          Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          this.curX = 7;
           this.curY = 6;
           this.double = true;
           return true;
         } else if (this.pattern.indexOf(e.key) != -1) {
-          this.text += e.key;
+          if( this.value.length >= 25 ){
+            this.value = this.value.slice( 0, 25 );
+            Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          } else {
+            this.value += e.key;
+            Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          }
           return true;
         }
         return false;
@@ -4056,13 +4071,13 @@ class TextEditor extends Panel {
     return super.handleEvent( e );
   }
 
-  forward( deltaTime ) {
+  repaint( deltaTime ) {
     this.timer += deltaTime;
 
     if( this.offset && !this.muted )
       Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
     if( this.offset > 0 ){
-      this.curX = (this.curX + this.offset)%7;
+      this.curX = (this.curX + this.offset)%8;
       this.offset = 0;
     } else if ( this.offset < 0 ){
       this.curY = (this.curY - this.offset)%7;
@@ -4076,29 +4091,32 @@ class TextEditor extends Panel {
         this.submenu = null;
       }
       */
-      if( this.curX == 6 && this.curY == 6 ){
+      if( this.curX == 7 && this.curY == 6 ){
         Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-        return this.callback( this.text );
-      } else if( this.curX == 6 && this.curY == 0 ){
-        this.text = this.text.slice( 0, this.text.length - 1 );
+        return this.callback( this.value );
+      } else if( this.curX == 7 && this.curY == 5 ){
+        Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        this.value = this.value.slice( 0, this.value.length - 1 );
       } else {
-        let slicePos = this.curY*7+this.curX;
-        this.text += this.pattern.slice( slicePos, slicePos + 1 );
-        if( slicePos >= 35 && slicePos <= 39 || slicePos >= 42 && slicePos <= 46 ){
+        let slicePos = this.curY*8+this.curX;
+        let newChar = this.supporteChars[ this.curY * 8 + this.curX ]
+        this.value += newChar;
+        if( "0123456789".includes( newChar )){
           this.curX = 0;
           this.curY = 5;
-        } else {
+        } else if( "abcdefghijklmnopqrstuvwxyz".includes( newChar )){
           this.curX = 0;
           this.curY = 0;
         }
+
+        if( this.value.length > 25 ){
+          this.value = this.value.slice( 0, 25 );
+          Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        } else {
+          Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        }
       }
 
-      if( this.text.length > 25 ){
-        this.text = this.text.slice(0,25);
-        Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-      } else {
-        Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-      }
     }
 
     this.canvasCtx.save();
@@ -4108,25 +4126,40 @@ class TextEditor extends Panel {
     */
     this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
 
-    this.canvasCtx.fillStyle = "#a60"
-    this.canvasCtx.fillRect( this.xOffset+ 295- ( 7*25/2 ) + 25*this.curX,
+    this.canvasCtx.fillStyle = "#a60";
+    this.canvasCtx.fillRect( this.xOffset+ 25*this.curX,
       this.yOffset+ 2+ ( 1+ this.curY )*25, 23, 23 );
+      /*
     for( let u = 0; u < 7; u++ ){
-      new Text( 0, this.pattern.slice( u*7, u*7+7 )).draw(
+      new Text( -1, this.pattern.slice( u*7, u*7+7 )).draw(
         this.canvasCtx,
-        300, this.yOffset+ 7+ 25*( u + 1 ),
+        5, this.yOffset+ 7+ 25*( u + 1 ),
         25, 25 );
     }
+    */
+    new Text( -1, this.pattern2 ).draw( this.canvasCtx, 5, this.yOffset+ 7+ 25, 25, 25 );
 
-    if( this.text.length )
+    if( this.value.length )
       this.canvasCtx.fillRect(
-        this.xOffset+ 300- 7*this.text.length, this.yOffset+ 1,
-        14*this.text.length+ 9, 23 );
+        this.xOffset, this.yOffset+ 1,
+        14*25 + 10, 23 );
+    this.canvasCtx.fillStyle = "#840";
+    if( this.value.length )
+      this.canvasCtx.fillRect(
+        this.xOffset, this.yOffset+ 1,
+        14*this.value.length+ 10, 23 );
 
-    new Text( 0, this.text ).draw(
+    new Text( -1, this.value ).draw(
       this.canvasCtx,
-      this.xOffset + 300 + 7,
+      this.xOffset + 5,
       this.yOffset + 7);
+
+      /*
+    new Text( 1, "up to 25 chars.\n...delete_____________________\n\nyou can use keyboard on pc.\nand touch screen on mobile.\nactually, I lied. Oh c'mon.\nit's fun!\n...enter______________________"  ).draw(
+      this.canvasCtx,
+      this.xOffset + 600 - 5,
+      this.yOffset + 7, 14, 25);
+      */
 
     this.canvasCtx.restore();
 
@@ -6401,15 +6434,15 @@ https://www.redcross.or.th/donate/`);
         enter: (entryIndex,choice) => {
           if (choice.exit) return null;
 
-          if (choice == "SET NAME")
-            return new TextEditor(this.canvas, N7e.user.nickname?N7e.user.nickname:'', (text) => {
-              N7e.user.ref.child('nickname').set(text);
-              N7e.user.nickname = text;
-              this.notifier.notify('all hail '+text+'.', 5000 );
-              mainMenu.model.nickname = text;
+          if( choice == "SET NAME"){
+            return new TextEditor( this.canvas, N7e.user.nickname ? N7e.user.nickname: '', newNickname => {
+              N7e.user.ref.child('nickname').set( newNickname );
+              N7e.user.nickname = newNickname;
+              this.notifier.notify(`all hail ${newNickname}.`, 5000 );
+              mainMenu.model.title = newNickname;
               return mainMenu;
-            });
-          else if (choice == "SIGN OUT")
+            }, mainMenu );
+          } else if( choice == "SIGN OUT"){
             return new Menu( this.canvas, {
               title: 'DO YOU WANT TO SIGN OUT?',
               profile: true,
@@ -6441,9 +6474,7 @@ https://www.redcross.or.th/donate/`);
                   ODR.setGameMode( OnDaRun.gameModes.GAME_A );
                 }
               },
-            }, this.consoleButtons.CONSOLE_D )
-          else if( choice = "set name" ){
-            return null; //NYI
+            }, this.consoleButtons.CONSOLE_D, mainMenu );
           }
         }
       }, this.consoleButtons.CONSOLE_D )
@@ -6475,7 +6506,7 @@ https://www.redcross.or.th/donate/`);
                   waiter => N7e.signing.progress ? waiter : null );
               }
             },
-          }, this.consoleButtons.CONSOLE_D );
+          }, this.consoleButtons.CONSOLE_D, mainMenu );
         },
       }, this.consoleButtons.CONSOLE_D );
 
@@ -6596,7 +6627,7 @@ https://www.redcross.or.th/donate/`);
           } else {
             if( this.sequencer.numberOfEntities == 0 ){
               let liverOffset = 300*(( 1- Liver.speedFactor )/( 1- Rubber.speedFactor )- 2);
-              
+
               [ ["  ##   ##",
                  "#    #    #",
                  "#         #",
@@ -6780,28 +6811,27 @@ https://www.redcross.or.th/donate/`);
         }
         break;
       case OnDaRun.events.KEYDOWN:{
-        let button = this.consoleButtonForKeyboardCodes[ e.code ];
-        if( button ){
-          e.preventDefault();
-          if( !e.repeat ){
+        if( !this.panel.handleEvent || !this.panel.handleEvent( e )){
+          let button = this.consoleButtonForKeyboardCodes[ e.code ];
+          if( button ){
             button.handleEvent( e );
+          } else {
+            this.onKeyDown( e );
           }
-        } else if( !this.panel.handleEvent || !this.panel.handleEvent( e )){
-          this.onKeyDown( e );
         }
 
       } break;
 
-      case OnDaRun.events.KEYUP:{
-        let button = this.consoleButtonForKeyboardCodes[ e.code ];
-        if ( button) {
-          if( !e.repeat ){
-            button.handleEvent( e );
+      case OnDaRun.events.KEYUP:
+        if( !this.panel.handleEvent || !this.panel.handleEvent( e )){
+          let button = this.consoleButtonForKeyboardCodes[ e.code ];
+          if( button ){
+              button.handleEvent( e );
+          } else {
+            this.onKeyUp( e );
           }
-        } else if( !this.panel.handleEvent || !this.panel.handleEvent( e )){
-          this.onKeyUp( e );
         }
-      } break;
+        break;
 
       case OnDaRun.events.CONSOLEDOWN: {
         if( this.panel.handleEvent && this.panel.handleEvent( e )){
@@ -6963,7 +6993,7 @@ https://www.redcross.or.th/donate/`);
     }
 
     if( e.code == 'Escape' ){
-      this.panel = null;
+      this.panel.exit();
     }
   }
 
