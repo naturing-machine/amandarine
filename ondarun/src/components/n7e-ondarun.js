@@ -2783,14 +2783,14 @@ class Scoreboard {
 Scoreboard.achievementScore = 100;
 
 class Text {
-  constructor( alignment = -1, string, maxLength ){
+  constructor( alignment = -1, string, maxLength, softLength ){
     this.glyphs = [];
     this._alignment = alignment;
-    this.minLength = 0;
+    //this.minLength = 0;
     this.lineLengths = [];
     this.alignment = alignment;
     if( string ){
-      this.setString( string, maxLength );
+      this.setString( string, maxLength, softLength );
     }
   }
 
@@ -2804,6 +2804,8 @@ class Text {
 
     // #substitutions
     this.glyphMap = new Map([
+       // this will be the special glyph that can invoke a callback
+       // during the rendering time, default will be printing #
       [ 0xe000, 784 ],
       [ 0xe001, 630 ],
       [ 0xe002, 770 ],
@@ -2814,7 +2816,7 @@ class Text {
       [ 0xe00c, 938 ],
       [ 0xe00d, 798 ],
       [ 0xe00e, 854 ],
-      [ 0xe00f, 644 ],
+      [ 0xe00f, 560 ],
       [ 0xe010, 868 ],
       [ 0xe011, 616 ],
       [ 0xe012, 602 ],
@@ -2825,26 +2827,29 @@ class Text {
       [ 0xe017, 1008 ],
       [ 0xe018, 1022 ],
       [ 0xe019, 1036 ],
+      [ 0xe020, 1050 ],
+      [ 0xe021, 644 ],
+      [ 0xe022, 658 ],
+      [ 0xe023, 1064 ],
+      [ 0xe024, 1078 ],
     ]);
 
     // Alphanumerics
-    [[ 140, 97, 122 ], [ 140, 65, 90 ], [ 0, 48, 57 ]].forEach(([ a, b, c ]) => {
+    [[ 154, 97, 122 ], [ 154, 65, 90 ], [ 14, 48, 57 ]].forEach(([ a, b, c ]) => {
       for( let code = b; code <= c; code++ ){
         this.glyphMap.set( code, a + ( code - b ) * 14 );
       }
     });
 
     // Unicode Symbols
-    [['.', 504 ],
-     ['?', 518 ],
-     ['!', 532 ],
-     ['▻', 546 ],
-     ['/', 560 ],
-     ['-', 574 ],
-     ['_', 588 ],
-     [' ', 588 ],
+    [['.', 518 ],
+     ['?', 532 ],
+     ['!', 546 ],
+     ['/', 574 ],
+     ['-', 588 ],
+     ['_', 0 ],
+     [' ', 0 ],
      ['♬', 602 ],
-     ['◅', 658 ],
      ['"', 672 ],
      ["'", 686 ],
      ["☼", 700 ],
@@ -2881,6 +2886,11 @@ class Text {
       [ '#gameB', 0xe017 ],
       [ '#gameS', 0xe018 ],
       [ '#gameR', 0xe019 ],
+      [ '#speed', 0xe020 ],
+      [ '#right', 0xe021 ],
+      [ '#left', 0xe022 ],
+      [ '#true', 0xe023 ],
+      [ '#false', 0xe024 ],
     ].forEach( sym =>
       this.symbolMap.push({
         char: String.fromCharCode( sym[ 1 ]),
@@ -2903,59 +2913,74 @@ class Text {
     return messageStr;
   }
 
-  setString( messageStr, maxLength = 10000 ){
-    return this.setSubstitutedString( Text.substituteString( messageStr ), maxLength );
+  setString( messageStr, maxLength, softLength ){
+    return this.setSubstitutedString( Text.substituteString( messageStr ), maxLength, softLength );
   }
 
-  setSubstitutedString( messageStr, maxLength ){
+  setSubstitutedString( messageStr, maxLength = 10000, softLength = maxLength ){
 
     if( !messageStr ){
       this.glyphs = [];
       this.lineLengths.splice( 0 );
-      this.minLength = 0;
+      //this.minLength = 0;
       return this;
     }
 
     this.glyphs = [];
     this.lineLengths = [];
     let lineNo = 0;
-    this.minLength = 0;
+    //this.minLength = 0;
 
     let parts = messageStr.split('\n');
     parts.forEach(( part, index ) => {
 
       let cur = 0;
-      let space = 0;
+      let breaker = false;
       part.split(' ').forEach( word => {
         if( cur != 0 && cur + word.length > maxLength ){
           this.lineLengths[ lineNo ] = this.glyphs.length;
-          this.minLength = Math.max( this.minLength, this.glyphs.length );
+          //this.minLength = Math.max( this.minLength, this.glyphs.length );
           lineNo++;
           cur = 0;
-          space = 0;
+          breaker = false;
         }
 
         if( word.length ){
 
           //Fill leading spaces
-          this.glyphs.push(...Array( space ).fill( 588 ));
+          //this.glyphs.push(...Array( space ).fill( 0 ));
           //Fill converted glyphs from word
+          if( breaker ){
+            this.glyphs.push(0);
+            cur++;
+          }
+
           for( let i = 0, code; code = word.charCodeAt( i ); i++ ){
             this.glyphs.push(Text.glyphMap.get( code ));
           }
-
           cur+= word.length;
-          space = 1;
-          cur++;
+
+          if( cur > softLength ){
+            this.lineLengths[ lineNo ] = this.glyphs.length;
+            lineNo++;
+            cur = 0;
+            breaker = false;
+            //this.minLength = Math.max( this.minLength, this.glyphs.length );
+          } else breaker = true;
         } else {
-          space++;
+          if( breaker ){
+            this.glyphs.push(0);
+            cur++;
+          }
+          this.glyphs.push(0);
+          breaker = false;
           cur++;
         }
 
       });
 
       this.lineLengths[ lineNo ] = this.glyphs.length;
-      this.minLength = Math.max( this.minLength, this.glyphs.length );
+      //this.minLength = Math.max( this.minLength, this.glyphs.length );
       lineNo++;
     });
 
@@ -3293,7 +3318,7 @@ by making a donation to
 the thai redcross society
 
 
-◅ to donate #slide                #jump to sprint ▻
+#left to donate #slide                #jump to sprint #right
 `);
 
     // Main Amandarine story
@@ -3303,12 +3328,12 @@ the thai redcross society
 
 In the unfortunate beginning, Amandarine was unhealthy from birth. Her family had been trying all kinds of treatments, but her condition didn't improve. She had to endure suffering from the cruel birth defect throughout her childhood. The doctor had warned that her condition would be life-threatening by anytime.
 
-But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...`, 39 ),
+But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...`, 39, 37 ),
 
       new Text( -1,
 `That morning, Amandarine was having her custard bread. She then heard the sound of someone playing the ukulele while singing a song she had never heard before. She looked out the window and saw a man, a street performer, maybe; who was walking pass by until suddenly stumbled upon the rock and fell abjectly.
 
-She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...`, 39 ),
+She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...`, 39, 37 ),
 
       new Text( -1,
 `Warm sunlight was teasing the cold breeze that was blowing gently. The birds chirping in the morning reminded her that this man must definitely be hungry. She, therefore, gave him the remaining bread. He smiled with gratitude and started eating the bread happily.
@@ -3378,6 +3403,7 @@ Which also doesn't exist.
 
 -Special Thanks-
 
+#natA
 #<3 Dusita Kitisarakulchai #<3
 ..as the inspiration..
 
@@ -3395,7 +3421,7 @@ The Thai Redcross Society #redcross
     this.storyPhotos = [];
     this.imagesLoadedTime = Infinity;
 
-    this.msPerLine = 2250;
+    this.msPerLine = 2150;
 
     let clock = 3000;
 
@@ -3673,12 +3699,12 @@ The Thai Redcross Society #redcross
             //20 is the default glyph height.
             let y = ~~( 200- 20*beginTime /this.msPerLine );
             if( index == this.story.length- 1 ){
-              let g = this.timer%400 > 200 ? 616 : 588;
+              let g = this.timer%400 > 200 ? 616 : 0;
               // They are hard-coded but it's planned to allow
               // a special glyph that will invoke a callback.
               // See 0xe000 784
-              this.story[index].glyphs[341] = g;
-              this.story[index].glyphs[366] = g;
+              this.story[index].glyphs[342] = g;
+              this.story[index].glyphs[367] = g;
               this.story[ index ].draw( this.canvasCtx, 300, y);
             } else {
               this.story[ index ].draw( this.canvasCtx, 25, y);
@@ -3690,7 +3716,7 @@ The Thai Redcross Society #redcross
         if( this.fastForwarding && this.timer%600 > 300 && this.storyEndTime > storyTimer ){
 
           if( !this.__fastForwardingText ){
-            this.__fastForwardingText = new Text( 1, "▻▻" );
+            this.__fastForwardingText = new Text( 1, "#right#right" );
           }
           this.__fastForwardingText.draw( this.canvasCtx, 600, 185, 10 );
         }
@@ -3958,7 +3984,7 @@ class Menu extends Panel {
       this.canvasCtx.globalAlpha = (entry.disabled ? 0.5 : 1)*Math.max(0.1,(4 - xxx)/4);
       if (entry.hasOwnProperty('value')) title += '.'.repeat(32-title.length-(entry.value+'').length)+'[ '+entry.value+' ]';
 
-      this.text.setString((i == this.model.currentIndex ? (entry.exit ? '◅ ' : ' ▻'):'  ') +title +(entry.disabled ? ' #noentry' : '')).draw(
+      this.text.setString((i == this.model.currentIndex ? (entry.exit ? '#left ' : ' #right'):'  ') +title +(entry.disabled ? ' #noentry' : '')).draw(
         this.canvasCtx,
         this.xOffset + 20 + 2 * 3 * Math.round(Math.sqrt(100*xxx) / 3),
         this.yOffset + 90 + 5 * Math.round(4 * (i-this.displayEntry)));
@@ -3974,8 +4000,8 @@ class Menu extends Panel {
       this.submenu.forward(deltaTime, depth + 1 );
     }
 
-    if (this.model.title){
-      new Text( 0 ).drawString( this.model.title, this.canvasCtx, 300, 10+ 20*depth);
+    if( this.model.title ){
+      new Text( 0 ).drawString( this.model.title, this.canvasCtx, 300, 10);
     }
 
     if( this.bottomText ){
