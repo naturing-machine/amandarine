@@ -18,7 +18,7 @@
 
 import { LitElement, html, css } from 'lit-element';
 
-var VERSION = "1.14"
+var VERSION = "1.15"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;
@@ -827,7 +827,7 @@ class Velota extends BicycleType {
       Sound.inst.effects.SOUND_BICYCLE.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, N7e.clamp( s, -600, 600 )/600 );
 
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
-        ODR.cc.append('ring#bell', 1000, t *1000 );
+        ODR.cc.append( `ring${Text.c.bell}`, 1000, t *1000 );
       this.alarmed = true;
     }
   }
@@ -2635,7 +2635,7 @@ class Scoreboard {
   constructor( canvas ){
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
-    this.glyphs = new Text( 1,'0123456789').glyphs;
+    this.glyphs = new Text().set`0123456789`.glyphs;
 
     this.reset();
   }
@@ -2647,7 +2647,7 @@ class Scoreboard {
     this.text = null;
     this.opacity = 0;
     this.existence = 0;
-    this.template = `${ODR.gameMode.icon||''}00000`;
+    this.template = `${Text.c[ODR.gameMode.icon]}00000`;
     this._minTang = null;
     this._maxTang = null;
     this.replay = false;
@@ -2656,11 +2656,11 @@ class Scoreboard {
   set replay( willReplay ){
     this._replay = willReplay;
     if( willReplay ){
-      this.template = `replay #gameR00000`;
+      this.template = `replay ${Text.c.gameR}00000`;
       this.score = 0;
       this.replayBlink = [];
       this.replayBlink[0] = this.text;
-      this.template = `${ODR.gameMode.icon||''}00000`;
+      this.template = `${Text.c[ODR.gameMode.icon]}00000`;
       this.score = 0;
       this.replayBlink[1] = this.text;
       this.replayTimer = 0;
@@ -2677,14 +2677,14 @@ class Scoreboard {
     if( this.replay ) return;
     if( newMaxTang != this._maxTang ){
       this._maxTang = newMaxTang;
-      this.template = `#tangerine${this._minTang}/${this._maxTang} ${ODR.gameMode.icon||'#trophy'}00000`;
+      this.template = `${Text.c.tangerine}${this._maxTang}:${this._minTang} ${Text.c[ODR.gameMode.icon]||'trophy'}00000`;
     }
   }
   set minTangerines( newMinTang ){
     if( this.replay ) return;
     if( newMinTang != this._minTang ){
       this._minTang = newMinTang;
-      this.template = `#tangerine${this._minTang}/${this._maxTang} ${ODR.gameMode.icon||'#trophy'}00000`;
+      this.template = `${Text.c.tangerine}${this._maxTang}:${this._minTang} ${Text.c[ODR.gameMode.icon]||'trophy'}00000`;
     }
   }
 
@@ -2723,7 +2723,7 @@ class Scoreboard {
     }
 
     if( !this.text ){
-      this.text = new Text( 1, this._template );
+      this.text = new Text().set`${this._template}`;
     }
 
     for( let i = this.text.glyphs.length - 1, j = 0; j < 5; i--, j++ ){
@@ -2771,10 +2771,10 @@ class Scoreboard {
     if( this.opacity != 1 ){
       this.canvasCtx.save();
       this.canvasCtx.globalAlpha = this.opacity;
-      this.text.draw( this.canvasCtx, this.existence ? 590 : 0, 10, 10+ 8*this.opacity );
+      this.text.draw( this.canvasCtx, this.existence ? 590 : 0, 10, 1, 10+ 8*this.opacity );
       this.canvasCtx.restore();
     } else {
-      this.text.draw( this.canvasCtx, 590, 10, 18, 16 );
+      this.text.draw( this.canvasCtx, 590, 10, 1, 18, 16 );
     }
   }
 
@@ -2783,16 +2783,180 @@ class Scoreboard {
 Scoreboard.achievementScore = 100;
 
 class Text {
-  constructor( alignment = -1, string, maxLength, softLength ){
-    this.glyphs = [];
-    this._alignment = alignment;
-    //this.minLength = 0;
+  constructor( maxLength = Text.defaultMaxLength, softLength = Text.defaultSoftLength ){
+    this.maxLength = maxLength;
+    this.softLength = softLength;
     this.lineLengths = [];
-    this.alignment = alignment;
-    if( string ){
-      this.setString( string, maxLength, softLength );
+  }
+
+  // Handy for wrapping anytihng into an object type.
+  // If do not want the template to substitute the string, convert it to object first.
+  // eg. Text.$`template will subtitutes ${'natA'} with the code and uses ${Text._('natA')} as is.`
+  static _( string ){
+    return {
+      toString: () => string.toString(),
     }
   }
+
+  static $( strings, ...keys ){
+    let callbacks = [];
+    let index = 0;
+    let string = "";
+    let ref = keys[ 0 ];
+
+    if( typeof ref === 'object'
+        && ref !== null
+        && strings[0].length === 0
+        && !strings[0].toString ){
+      index++;
+      callbacks = ref.callbacks || callbacks;
+      ref.callbacks = callbacks;
+      string = ref.string || string;
+      ref.string = string;
+      this.softLength = ref.softLength || this.softLength;
+      this.maxLength = ref.maxLength || this.maxLength;
+      console.log('use ref')
+    }
+
+    while( index < strings.length ){
+      string+= strings[ index ];
+      let key = keys.shift();
+      if( key ){
+        let ch = Text.subMap.get( key );
+        if( ch ){
+          string+= String.fromCharCode( ch );
+        } else if( typeof key === 'function'){
+          string+= String.fromCharCode( 0xe000 );
+          callbacks.push( key );
+        } else {
+          // if not want the string to be substituted as a symbol,
+          // use anythingButString.toString() to specify the value.
+          string+= key;
+        }
+      }
+      index++;
+    }
+
+    return string;
+  }
+
+  setString( str, callbacks = [] ){
+    return this.typeset( str, callbacks );
+  }
+
+  set( strings, ...keys ){
+    let callbacks = [];
+    let index = 0;
+    let string = "";
+    let ref = keys[ 0 ];
+
+    if( typeof ref === 'object'
+        && ref !== null
+        && strings[0].length === 0
+        && !strings[0].toString ){
+      index++;
+      callbacks = ref.callbacks || callbacks;
+      ref.callbacks = callbacks;
+      string = ref.string || string;
+      ref.string = string;
+      this.softLength = ref.softLength || this.softLength;
+      this.maxLength = ref.maxLength || this.maxLength;
+      console.log('use ref')
+    }
+
+    while( index < strings.length ){
+      string+= strings[ index ];
+      let key = keys.shift();
+      if( key ){
+        let ch = Text.subMap.get( key );
+        if( ch ){
+          string+= String.fromCharCode( ch );
+        } else if( typeof key === 'function'){
+          string+= String.fromCharCode( 0xe000 );
+          callbacks.push( key );
+        } else {
+          // if not want the string to be substituted as a symbol,
+          // use anythingButString.toString() to specify the value.
+          string+= key;
+        }
+      }
+      index++;
+    }
+
+    return this.typeset( string, callbacks );
+  }
+
+  get numberOfLines(){
+    return this.lineLengths.length;
+  }
+
+  typeset( string, callbacks ){
+    this.glyphs = [];
+    this.lineLengths = [];
+    if( ! string ) return;
+
+    let lineNo = 0;
+
+    let parts = string.split('\n');
+    parts.forEach(( part, index ) => {
+
+      let cur = 0;
+      let breaker = false;
+      if( part ) part.split(' ').forEach( word => {
+        if( cur != 0 && cur + word.length > this.maxLength ){
+          this.lineLengths[ lineNo ] = this.glyphs.length;
+          //this.minLength = Math.max( this.minLength, this.glyphs.length );
+          lineNo++;
+          cur = 0;
+          breaker = false;
+        }
+
+        if( word.length ){
+
+          //Fill leading spaces
+          //this.glyphs.push(...Array( space ).fill( 0 ));
+          //Fill converted glyphs from word
+          if( breaker ){
+            this.glyphs.push(0);
+            cur++;
+          }
+
+          for( let i = 0, code; code = word.charCodeAt( i ); i++ ){
+            if( code == 0xe000){
+              let ref = callbacks.shift();
+              this.glyphs.push( ref||0 );
+            } else {
+              this.glyphs.push( Text.glyphMap.get( code ));
+            }
+          }
+          cur+= word.length;
+
+          if( cur > this.softLength ){
+            this.lineLengths[ lineNo ] = this.glyphs.length;
+            lineNo++;
+            cur = 0;
+            breaker = false;
+            //this.minLength = Math.max( this.minLength, this.glyphs.length );
+          } else breaker = true;
+        } else {
+          if( breaker ){
+            this.glyphs.push(0);
+            cur++;
+          }
+          //this.glyphs.push(0);
+          breaker = true;
+        }
+
+      });
+
+      this.lineLengths[ lineNo ] = this.glyphs.length;
+      //this.minLength = Math.max( this.minLength, this.glyphs.length );
+      lineNo++;
+    });
+
+    return this;
+  }
+
 
  /**
   * Text
@@ -2818,9 +2982,8 @@ class Text {
       [ 0xe00e, 854 ],
       [ 0xe00f, 560 ],
       [ 0xe010, 868 ],
-      [ 0xe011, 616 ],
+      [ 0xe011, 1092 ],
       [ 0xe012, 602 ],
-      [ 0xe013, 756 ],
       [ 0xe014, 966 ],
       [ 0xe015, 980 ],
       [ 0xe016, 994 ],
@@ -2850,13 +3013,14 @@ class Text {
      ['_', 0 ],
      [' ', 0 ],
      ['♬', 602 ],
+     ['*', 616 ],
      ['"', 672 ],
      ["'", 686 ],
-     ["☼", 700 ],
+     ["", 700 ],
      [',', 714 ],
      [';', 728 ],
      [':', 742 ],
-     ['⚽', 756 ],
+     ['#', 784 ],
      ['+', 840 ],
      ['(', 910 ],
      ['[', 910 ],
@@ -2864,138 +3028,60 @@ class Text {
      [']', 924 ],
      ['%', 952 ]].forEach(([c, glyph]) => this.glyphMap.set( c.charCodeAt(0), glyph ));
 
-    this.symbolMap = [];
-    [ [ '##', 0xe000 ],
-      [ '#natA', 0xe001 ],
-      [ '#natB', 0xe002 ],
-      [ '#slide', 0xe003 ],
-      [ '#jump', 0xe004 ],
-      [ '#google', 0xe00a ],
-      [ '#facebook', 0xe00b ],
-      [ '#twitter', 0xe00c ],
-      [ '#redcross', 0xe00d ],
-      [ '#tangerine', 0xe00e ],
-      [ '#a', 0xe00f ],
-      [ '#trophy', 0xe010 ],
-      [ '#<3', 0xe011 ],
-      [ '#note', 0xe012 ],
-      [ '#football', 0xe013 ],
-      [ '#bell', 0xe014 ],
-      [ '#noentry', 0xe015 ],
-      [ '#gameA', 0xe016 ],
-      [ '#gameB', 0xe017 ],
-      [ '#gameS', 0xe018 ],
-      [ '#gameR', 0xe019 ],
-      [ '#speed', 0xe020 ],
-      [ '#right', 0xe021 ],
-      [ '#left', 0xe022 ],
-      [ '#true', 0xe023 ],
-      [ '#false', 0xe024 ],
-    ].forEach( sym =>
-      this.symbolMap.push({
-        char: String.fromCharCode( sym[ 1 ]),
-        regex: new RegExp( sym[ 0 ], 'g' ),
-      })
-    );
-  }
+    let code = ( str ) => str[0].charCodeAt( 0 );
+    this.subMap = new Map([
+      [ '#', 0xe000 ],
+      [ 'natA', 0xe001 ],
+      [ 'natB', 0xe002 ],
+      [ 'slide', 0xe003 ],
+      [ 'jump', 0xe004 ],
+      [ 'google', 0xe00a ],
+      [ 'facebook', 0xe00b ],
+      [ 'twitter', 0xe00c ],
+      [ 'redcross', 0xe00d ],
+      [ 'tangerine', 0xe00e ],
+      [ 'a', 0xe00f ],
+      [ 'trophy', 0xe010 ],
+      [ '<3', 0xe011 ],
+      [ 'note', 0xe012 ],
+      [ 'bell', 0xe014 ],
+      [ 'noentry', 0xe015 ],
+      [ 'gameA', 0xe016 ],
+      [ 'gameB', 0xe017 ],
+      [ 'gameS', 0xe018 ],
+      [ 'gameR', 0xe019 ],
+      [ 'speed', 0xe020 ],
+      [ 'right', 0xe021 ],
+      [ 'left', 0xe022 ],
+      [ 'true', 0xe023 ],
+      [ 'false', 0xe024 ],
+      [ '<3', code`❤`],
+      [ 'sun', code`☼`],
+      [ 'football', code`⚽`],
+    ]);
 
-  static substituteString( messageStr ){
-    if( !messageStr ){
-      return messageStr;
-    }
-
-    for( let i = 0; i < this.symbolMap.length; i++ ){
-      if( messageStr.includes('#')){
-        let symbol = Text.symbolMap[ i ];
-        messageStr = messageStr.replace( symbol.regex, symbol.char );
-      } else break;
-    }
-    return messageStr;
-  }
-
-  setString( messageStr, maxLength, softLength ){
-    return this.setSubstitutedString( Text.substituteString( messageStr ), maxLength, softLength );
-  }
-
-  setSubstitutedString( messageStr, maxLength = 10000, softLength = maxLength ){
-
-    if( !messageStr ){
-      this.glyphs = [];
-      this.lineLengths.splice( 0 );
-      //this.minLength = 0;
-      return this;
-    }
-
-    this.glyphs = [];
-    this.lineLengths = [];
-    let lineNo = 0;
-    //this.minLength = 0;
-
-    let parts = messageStr.split('\n');
-    parts.forEach(( part, index ) => {
-
-      let cur = 0;
-      let breaker = false;
-      part.split(' ').forEach( word => {
-        if( cur != 0 && cur + word.length > maxLength ){
-          this.lineLengths[ lineNo ] = this.glyphs.length;
-          //this.minLength = Math.max( this.minLength, this.glyphs.length );
-          lineNo++;
-          cur = 0;
-          breaker = false;
-        }
-
-        if( word.length ){
-
-          //Fill leading spaces
-          //this.glyphs.push(...Array( space ).fill( 0 ));
-          //Fill converted glyphs from word
-          if( breaker ){
-            this.glyphs.push(0);
-            cur++;
-          }
-
-          for( let i = 0, code; code = word.charCodeAt( i ); i++ ){
-            this.glyphs.push(Text.glyphMap.get( code ));
-          }
-          cur+= word.length;
-
-          if( cur > softLength ){
-            this.lineLengths[ lineNo ] = this.glyphs.length;
-            lineNo++;
-            cur = 0;
-            breaker = false;
-            //this.minLength = Math.max( this.minLength, this.glyphs.length );
-          } else breaker = true;
-        } else {
-          if( breaker ){
-            this.glyphs.push(0);
-            cur++;
-          }
-          this.glyphs.push(0);
-          breaker = false;
-          cur++;
-        }
-
-      });
-
-      this.lineLengths[ lineNo ] = this.glyphs.length;
-      //this.minLength = Math.max( this.minLength, this.glyphs.length );
-      lineNo++;
+    this.c = new Proxy( this, {
+      get: ( obj, prop ) => {
+        return String.fromCharCode( this.subMap.get( prop )) || '';
+      },
     });
 
-    return this;
+    this.glyphMap.set( this.subMap.get('<3'), 1092 );
+    this.glyphMap.set( this.subMap.get('sun'), 700 );
+    this.glyphMap.set( this.subMap.get('football'), 756 );
+
   }
 
-  draw( canvasCtx, offsetX, offsetY, charW = 14, lineH = 20, image = ODR.spriteGUI ){
-    let lastIndex = 0;
+  draw( canvasCtx, offsetX, offsetY, alignment = -1, charW = 14, lineH = 20, image = ODR.spriteGUI ){
     for( let line = 0, y = offsetY; line < this.lineLengths.length; line++, y+=lineH ){
+      if( y < -lineH || y > DEFAULT_HEIGHT ) continue;
+
       let nextLineIndex = this.lineLengths[ line ];
       let glyphIndex = this.lineLengths[ line - 1 ] || 0;
       let x = offsetX;
-      if( this.alignment == 1 ){
+      if( alignment == 1 ){
           x = offsetX- ( nextLineIndex - glyphIndex )*charW;
-      } else if( this.alignment == 0 ){
+      } else if( alignment == 0 ){
           x = offsetX- ( nextLineIndex - glyphIndex )*charW/2;
       }
 
@@ -3003,9 +3089,13 @@ class Text {
         if( canvasCtx){
           let g = this.glyphs[ glyphIndex ];
           if( g ){ // Don't draw a space.
-            canvasCtx.drawImage( image,
-              g, 0, 14, 16,
-              ~~x, ~~y, 14, 16 );
+            if( typeof g === 'function'){
+              g( ~~x, ~~y );
+            } else {
+              canvasCtx.drawImage( image,
+                g, 0, 14, 16,
+                ~~x, ~~y, 14, 16 );
+              }
           }
         }
 
@@ -3020,6 +3110,8 @@ class Text {
     this.draw( canvasCtx, offsetX, offsetY, glyphW, glyphH, image );
   }
 }
+Text.defaultMaxLength = 500;
+Text.defaultSoftLength = Text.defaultMaxLength;
 Text.generateSymbolMap();
 
 /**
@@ -3054,16 +3146,17 @@ class Message {
 }
 
 class Terminal {
-  constructor( canvas, minX, minY ){
+  constructor( canvas, minX, minY, alignment ){
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
     this.messages = [];
     this.timer = 0;
     //TODO make width configurable
-    this.text = new Text( 0 );
+    this.text = new Text();
     this.endTime = Infinity;
     this.minX = minX;
     this.minY = minY;
+    this.alignment = alignment;
   }
 
 /**
@@ -3073,7 +3166,7 @@ class Terminal {
   flush(){
     this.timer = 0;
     this.messages = [];
-    this.text.setString('');
+    this.text.set``;
     this.endTime = Infinity;
   }
 
@@ -3136,11 +3229,11 @@ class Terminal {
     }
 
     if( this.endTime < this.timer ){
-      this.text.setString('');
+      this.text.set``;
       this.endTime = Infinity;
     }
 
-    this.text.draw( this.canvasCtx, this.minX, this.minY );
+    this.text.draw( this.canvasCtx, this.minX, this.minY, this.alignment );
   }
 }
 
@@ -3149,7 +3242,7 @@ class Notifier {
     this.canvas = canvas;
     this.canvasCtx = canvas.getContext('2d');
     this.timer = 0;
-    this.text = new Text( -1 );
+    this.text = new Text( 20 );
     this.opacity = 0;
   }
 
@@ -3199,7 +3292,7 @@ class Panel {
     this.passthrough = false;
     this.associatedButton = associatedButton;
     this.buttonTime = [ 0, 0 ];
-    this.willEnter = false; //Indicate double-pressed.
+    this.doublePressed = false; //Indicate double-pressed.
     this.offset = 0;
     this.timer = 0;
     this.previousPanel = previousPanel;
@@ -3239,12 +3332,12 @@ class Panel {
         let button = e.detail.consoleButton;
         switch( button ){
           case ODR.consoleButtons.CONSOLE_LEFT:{
-            this.willEnter = this.buttonTime[ 1 ] ? true : false;
+            this.doublePressed = this.buttonTime[ 1 ] ? true : false;
             this.buttonTime[ 0 ] = this.timer;
           } break;
 
           case ODR.consoleButtons.CONSOLE_RIGHT:{
-            this.willEnter = this.buttonTime[ 0 ] ? true : false;
+            this.doublePressed = this.buttonTime[ 0 ] ? true : false;
             this.buttonTime[ 1 ] = this.timer;
           } break;
 
@@ -3259,7 +3352,7 @@ class Panel {
           case ODR.consoleButtons.CONSOLE_LEFT:{
             if( this.buttonTime[ 0 ]){
               this.buttonTime[ 0 ] = 0;
-              if( !this.willEnter )
+              if( !this.doublePressed )
                 this.offset--;
             }
           } break;
@@ -3267,7 +3360,7 @@ class Panel {
           case ODR.consoleButtons.CONSOLE_RIGHT:{
             if( this.buttonTime[ 1 ]){
               this.buttonTime[ 1 ] = 0;
-              if( !this.willEnter )
+              if( !this.doublePressed )
                 this.offset++;
             }
           } break;
@@ -3314,32 +3407,52 @@ class TitlePanel extends Panel {
     this.fastForwarding = false;
 
     // The Redcross Donation Message.
-    this.donationText = new Text( 0 ).setString(
-`#redcross
+    this.donationText = new Text().set
+`${'redcross'}
 
 Please support this project
 by making a donation to
 the thai redcross society
 
 
-#left to donate #slide                #jump to sprint #right
-`);
+${'left'} to donate ${'slide'}                ${'jump'} to sprint ${'right'}
+`;
+
+    let heartGlyph = new Text().set`${'<3'}`.glyphs[0];
+    let drawHeart = ( x, y ) => {
+
+      let g = this.timer%400 > 200 ? 1092 : 0;
+      this.canvasCtx.save();
+      this.canvasCtx.globalAlpha = Math.abs(Math.sin(this.timer/300));
+      this.canvasCtx.drawImage( ODR.spriteGUI,
+        heartGlyph, 0, 14, 16,
+        ~~x, ~~y, 14, 16 );
+      this.canvasCtx.restore();
+    };
+
+    let drawIdle = ( x, y ) => {
+      let l = A8e.animFrames.WAITING.frames.length;
+
+      this.canvasCtx.drawImage( A8e.animFrames.WAITING.sprite,
+        A8e.animFrames.WAITING.frames[ Math.floor(this.timer/1000*8)%l ], 0, 40, 40,
+        ~~x-20, ~~y-20, 40, 40 );
+    };
 
     // Main Amandarine story
     this.story = [
-      new Text( -1,
+      new Text( 38, 37 ).set
 `Friends, allow me to tell you a story, A tale of a young maiden named Amandarine, who was born in a small village called Mandarina.
 
 In the unfortunate beginning, Amandarine was unhealthy from birth. Her family had been trying all kinds of treatments, but her condition didn't improve. She had to endure suffering from the cruel birth defect throughout her childhood. The doctor had warned that her condition would be life-threatening by anytime.
 
-But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...`, 39, 37 ),
+But despite her illness, the baby had still been growing and growing up, until the day of her 18th birthday...`,
 
-      new Text( -1,
+      new Text( 38, 37 ).set
 `That morning, Amandarine was having her custard bread. She then heard the sound of someone playing the ukulele while singing a song she had never heard before. She looked out the window and saw a man, a street performer, maybe; who was walking pass by until suddenly stumbled upon the rock and fell abjectly.
 
-She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...`, 39, 37 ),
+She hurried out to see him and found him cringing, rubbing his little toe. He was still groaning faintly in pain as he looked back at her. Or he didn't look at her actually, he looked at the half-eaten loaf of bread she took with her...`,
 
-      new Text( -1,
+      new Text( 38, 37 ).set
 `Warm sunlight was teasing the cold breeze that was blowing gently. The birds chirping in the morning reminded her that this man must definitely be hungry. She, therefore, gave him the remaining bread. He smiled with gratitude and started eating the bread happily.
 
 Once finished, that was very soon after, he looked at Amandarine and said that telling from her facial skin and eye reflections, he could notice many signs of her dreadful health in which she nodded affirmatively.
@@ -3348,16 +3461,16 @@ Once finished, that was very soon after, he looked at Amandarine and said that t
 
 After learning the pulses for a few breathes, Lu Ji told her that her disease, though very serious, had a cure.
 
-That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.`, 39, 37 ),
+That got all of her attention and she started listening to him intensely. He didn't say any more word but picked up a dried orange from his ragged bag; a dried tangerine would be more precise.`,
 
-      new Text( -1,
+      new Text( 38, 37 ).set
 `Saying that he must have fled his hometown, for he had stolen this very tangerine from a noble. The dried brownish fruit was called "The 8th Heaven Supremacy"; it could cure her illness, he explained and asked her to accept it.
 
 He said that she should boil it in ginger juice to create one adequate medicine for living longer but for her to be fully recovered its seeds must be planted in eight continents and she should have kept eating each kind of them afterwards until cured.
 
-Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.`, 39, 37 ),
+Amandarine cried with tears of joy as she was thanking him. Lu Ji smiled, stood up and brushed the dust off his legs repeatedly. He didn't even say goodbye when he started playing the ukulele, singing this song, walking away.`,
 
-      new Text( -1,
+      new Text().set
 `♬ Natherine ♬
 she is all they claim
 With her eyes of night
@@ -3376,9 +3489,9 @@ across the Argentine
 Yes, she has them all on da run
 And their hearts belong to just one
 Their hearts belong to
-♬ Natherine ♬`, 39 ),
+♬ Natherine ♬`,
 
-      new Text( 0,
+      new Text().set
 `Credits
 
 -Music-
@@ -3395,7 +3508,7 @@ without permission.
 
 -Computer Graphics-
 
-#tangerine
+${'tangerine'}
 Orange Groove Sororite
 
 Which doesn't exist.
@@ -3403,15 +3516,15 @@ Which doesn't exist.
 
 -Software Developments-
 
-N#aturing M#achine
+N${'a'}turing M${'a'}chine
 
 Which also doesn't exist.
 
 
 -Special Thanks-
 
-#natA
-#<3 Dusita Kitisarakulchai #<3
+${drawIdle}
+${drawHeart} Dusita Kitisarakulchai ${drawHeart}
 ..as the inspiration..
 
 and some of her particular
@@ -3420,9 +3533,9 @@ for buzzing about it.
 
 You can also support this project
 by making a donation to
-The Thai Redcross Society #redcross
+The Thai Redcross Society ${'redcross'}
 
-`),
+`,
     ];
 
     this.storyPhotos = [];
@@ -3435,17 +3548,17 @@ The Thai Redcross Society #redcross
     this.photoTiming = [
     //  beginTime, endTime, will be calculated from number of lines.
     //  |    beginX,beginY, beginSize,
-    //  |    |           endX,endY, endSize
-      [ 0,0, 30,33, 1,   215,411, 1.5 ],
-      [ 0,0, 27,355, 1,  73,151, 1.2 ],
-      [ 0,0, 29,26, 1,   26,358, 1.2 ],
-      [ 0,0, 23,350, 1,  27,24, 1 ],
-      [ 0,0, 62,244, 1,  12,160, 0.5 ],
-      [ 0,0, 100,237, 1, 100,237, 1.0 ],
+    //  |    |           endX,endY, endSize, textCenter
+      [ 0,0, 30,33, 1,   215,411, 1.5, false ],
+      [ 0,0, 27,355, 1,  73,151, 1.2, false ],
+      [ 0,0, 29,26, 1,   26,358, 1.2, false ],
+      [ 0,0, 23,350, 1,  27,24, 1, false ],
+      [ 0,0, 62,244, 1,  12,160, 0.5, false ],
+      [ 0,0, 100,237, 1, 100,237, 1.0, true ],
     ];
     for( let i = 0; i < this.story.length; i++) {
       this.photoTiming[i][0] = clock;
-      clock += 20000 + this.story[i].lineLengths.length * this.msPerLine;
+      clock += 20000 + this.story[i].numberOfLines * this.msPerLine;
       this.photoTiming[i][1] = clock;
     }
     this.storyEndTime = this.photoTiming[ this.story.length- 1][ 1 ];
@@ -3526,15 +3639,18 @@ The Thai Redcross Society #redcross
     //====== The Thai Redcross Society Advertisement ======//
     if( this.waitingForAudioContext || this.waitingForButtonUp ){
       this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
+
+      let e = () => this.donationText.draw( this.canvasCtx, 300, 30, 0 );
+
       if( !this.waitingForAudioContext && this.timer > this.buttonBlockStopTime ){
         let opacity = 1 - Math.min( 2000, this.timer- this.buttonBlockStopTime )/2000;
         this.canvasCtx.save();
         this.canvasCtx.globalAlpha = opacity;
-        this.donationText.draw( this.canvasCtx, 300, 30 );
+        e();
         this.canvasCtx.restore();
         if( this.timer > this.buttonBlockStopTime + 2500 ) this.stopWaitingForButtonUp();
       } else {
-        this.donationText.draw(this.canvasCtx, 300, 30);
+        e();
       }
 
       return this;
@@ -3597,6 +3713,49 @@ The Thai Redcross Society #redcross
 
       ODR.sky.forward( deltaTime, this.canvasCtx );
 
+      // Falling tangerines on Thursday.
+      if( !this.__dayOfWeek ){
+        this.__dayOfWeek = new Date().getDay() + 1;
+      }
+      if( this.__dayOfWeek == 5 ){
+        let manyTangs = 40;
+        if( !this.__tangList ){
+          this.__tangList = [];
+          for( let i = 0 ; i < manyTangs; i++ ){
+            this.__tangList.push({
+              x: N7e.randomInt( -15, 595 ),
+              y: N7e.randomInt( -20, 195 ),
+              d: N7e.randomInt( 10000, 11000 ),
+              s: N7e.randomInt( 4, 9 )/10,
+              r: (Math.random()*0.5+0.5) * (N7e.randomInt(0,1)?1:-1),
+            });
+          }
+        }
+        if( this.__tangList.length < manyTangs && !endingTimer ){
+          for( let i = 0 ; i < 5; i++ ){
+            this.__tangList.push({
+              x: N7e.randomInt( -15, 595 ),
+              y: N7e.randomInt( -20, -200 ),
+              d: N7e.randomInt( 10000, 11000 ),
+              s: N7e.randomInt( 4, 9 )/10,
+              r: (Math.random()*0.5+0.5) * (N7e.randomInt(0,1)?1:-1),
+            });
+          }
+        }
+        this.canvasCtx.save();
+        this.canvasCtx.globalAlpha = endingOpacity;
+        this.__tangList.forEach( t => {
+          t.d += deltaTime * t.r;
+          t.y += deltaTime / 5 * t.s;
+
+          this.canvasCtx.drawImage(ODR.spriteGUI,
+            ~~Math.floor(t.d/1000*8)%6 * 20, 20, 20, 20,
+            ~~t.x, ~~t.y+endingOffset, 20, 20 );
+        });
+        this.canvasCtx.restore();
+        this.__tangList = this.__tangList.filter( t => t.y < 220 );
+      }
+
       /* A AMANDARINE FRONTIER */
       this.canvasCtx.drawImage(ODR.spriteGUI,
         148,15,208,85,
@@ -3630,13 +3789,10 @@ The Thai Redcross Society #redcross
     }
 
     if( dataDownloaded >= 100 ){
-      if( this.timer < 15000 ){
-        new Text( 0 ).drawString(`Amandarine Frontier: On Da Run [Ver.${VERSION}]`,
-          this.canvasCtx, 300, 180 -Math.min( 0, endingOffset ));
-      } else {
-        new Text( 0 ).drawString("press a button to continue.",
-          this.canvasCtx, 300, 180 -Math.min( 0, endingOffset ));
-      }
+      new Text().set( this.timer < 15000
+          ?`Amandarine Frontier: On Da Run [Ver.${VERSION}]`
+          :`press a button to continue.`
+        ).draw( this.canvasCtx, 300, Math.max( 180, 180 - endingOffset ), 0 );
     }
 
     //====== Story Scene ======//
@@ -3650,9 +3806,7 @@ The Thai Redcross Society #redcross
     }
 
     if( dataDownloaded < 100 ){
-      if( !this.__dataDownloadedText ){
-        this.__dataDownloadedText = new Text( 0 );
-      }
+      this.__dataDownloadedText = this.__dataDownloadedText || new Text( 0 );
       this.__dataDownloadedText.drawString(`loading: ${dataDownloaded|0}%`, this.canvasCtx, 300, 180 );
     } else {
 
@@ -3667,11 +3821,9 @@ The Thai Redcross Society #redcross
         this.canvasCtx.save();
 
         //Providing smooth-out during story mode.
-        this.canvasCtx.globalAlpha = N7e.clamp( storyTimer/2000, 0, 1 )
-          * N7e.clamp(( this.storyEndTime+ 2000- storyTimer )/2000, 0, 1)
-          * endingOpacity;
+        this.canvasCtx.globalAlpha = this.blackoutOpacity;
 
-        this.photoTiming.forEach(([ beginTime, endTime, beginX, beginY, beginSize, endX, endY, endSize ], index ) => {
+        this.photoTiming.forEach(([ beginTime, endTime, beginX, beginY, beginSize, endX, endY, endSize, textCenter ], index ) => {
           if( storyTimer > beginTime && storyTimer < endTime ){
 
             if( index == 4 ){
@@ -3686,6 +3838,7 @@ The Thai Redcross Society #redcross
             let offsetY = beginY + (endY - beginY) * ratio;
             let size = beginSize + (endSize - beginSize) * ratio;
 
+            // Zooming image.
             this.canvasCtx.save(); {
 
               if( this.storyPhotos[ index ]){
@@ -3705,14 +3858,8 @@ The Thai Redcross Society #redcross
 
             //20 is the default glyph height.
             let y = ~~( 200- 20*beginTime /this.msPerLine );
-            if( index == this.story.length- 1 ){
-              let g = this.timer%400 > 200 ? 616 : 0;
-              // They are hard-coded but it's planned to allow
-              // a special glyph that will invoke a callback.
-              // See 0xe000 784
-              this.story[index].glyphs[342] = g;
-              this.story[index].glyphs[367] = g;
-              this.story[ index ].draw( this.canvasCtx, 300, y);
+            if( textCenter ){
+              this.story[ index ].draw( this.canvasCtx, 300, y, 0);
             } else {
               this.story[ index ].draw( this.canvasCtx, 25, y);
             }
@@ -3721,11 +3868,8 @@ The Thai Redcross Society #redcross
 
         this.canvasCtx.restore();
         if( this.fastForwarding && this.timer%600 > 300 && this.storyEndTime > storyTimer ){
-
-          if( !this.__fastForwardingText ){
-            this.__fastForwardingText = new Text( 1, "#right#right" );
-          }
-          this.__fastForwardingText.draw( this.canvasCtx, 600, 185, 10 );
+          this.__fastForwardingText = this.__fastForwardingText || new Text().set`${'right'}${'right'}`;
+          this.__fastForwardingText.draw( this.canvasCtx, 600, 185, 1, 10 );
         }
       }
     }
@@ -3826,9 +3970,9 @@ class Menu extends Panel {
     this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
     this.xOffset = 0;
     this.yOffset = 0;
-    this.bottomText = new Text( 0,'press both #slide+#jump to select');
+    this.bottomText = new Text().set`press both ${'slide'}+${'jump'} to select`;
     this.text = new Text();
-    this.scoreText = new Text( 1 );
+    this.scoreText = new Text();
     this.timer = 0;
     this.muted = muted;
   }
@@ -3865,8 +4009,8 @@ class Menu extends Panel {
     */
 
     // An entry was chosen. Waiting until both buttons are released.
-    if( this.willEnter && 0 == this.buttonTime[ 0 ] && 0 == this.buttonTime[ 1 ]){
-      this.willEnter = false;
+    if( this.doublePressed && 0 == this.buttonTime[ 0 ] && 0 == this.buttonTime[ 1 ]){
+      this.doublePressed = false;
 
       let entry = this.model.entries[ this.model.currentIndex ];
 
@@ -3928,7 +4072,6 @@ class Menu extends Panel {
               }
               submenu.exit();
               return submenu;
-              //this.submenu = null;
             },
           }, this.associatedButton, this, entry.muted  );
           return submenu;
@@ -3956,27 +4099,27 @@ class Menu extends Panel {
 
       let tt = ODR.gameModeTotalScore;
       if( tt ){
-        scoreString+= `#gameA+#gameB+#gameS ${tt.toString()} #trophy\n`;
+        scoreString+= Text.$`${'gameA'}+${'gameB'}+${'gameS'} ${tt.toString()} ${'trophy'}\n`;
       }
 
       if( ODR.maxSpeed ){
-        scoreString+= `${(40*ODR.maxSpeed.value/ODR.config.MAX_SPEED).toFixed(2)} mi/h #speed\n`;
+        scoreString+= `${(40*ODR.maxSpeed.value/ODR.config.MAX_SPEED).toFixed(2)} mi/h ${Text.c.speed}\n`;
       }
 
       if( ODR.totalTangerines ){
         let maxPerDay = Math.max( 1, ~~(tt/100));
-        scoreString += ODR.totalTangerines + `[${ODR.dailyTangerines}/${maxPerDay}]` + ' #tangerine\n';
+        scoreString += `${maxPerDay}:${ODR.dailyTangerines}+${ODR.totalTangerines-ODR.dailyTangerines} ${Text.c.tangerine}\n`;
       }
 
-      this.scoreText.setString( scoreString ).draw( this.canvasCtx, 590, 100);
+      this.scoreText.setString( scoreString ).draw( this.canvasCtx, 590, 100, 1 );
 
 
       /*
       if( N7e.user.nickname ) {
         this.text.setString( N7e.user.nickname + {
-            ['google.com']:' #google',
-            ['facebook.com']:' #facebook',
-            ['twitter.com']:' #twitter',
+            ['google.com']:' ${'google'}',
+            ['facebook.com']:' ${'facebook'}',
+            ['twitter.com']:' ${'twitter'}',
           }[this.model.provider]).draw(
           this.canvasCtx,
           562 - 14 * N7e.user.nickname.length, 100);
@@ -4001,29 +4144,19 @@ class Menu extends Panel {
       this.canvasCtx.globalAlpha = (entry.disabled ? 0.5 : 1)*Math.max(0.1,(4 - xxx)/4);
       if (entry.hasOwnProperty('value')) title += '.'.repeat(32-title.length-(entry.value+'').length)+'[ '+entry.value+' ]';
 
-      this.text.setString((i == this.model.currentIndex ? (entry.exit ? '#left ' : ' #right'):'  ') +title +(entry.disabled ? ' #noentry' : '')).draw(
+      this.text.setString((i == this.model.currentIndex ?( entry.exit ? Text.c.left+ ' ' : ' '+ Text.c.right ):'  ') +title +( entry.disabled ? ' '+ Text.c.noentry : '')).draw(
         this.canvasCtx,
         this.xOffset + 20 + 2 * 3 * Math.round( Math.sqrt( 100*xxx )/3 ),
         this.yOffset + 90 + 5 * Math.round( 4 * ( i - this.displayEntry )));
     }
     this.canvasCtx.restore();
 
-    /*
-    if (this.submenu) {
-      this.canvasCtx.save();
-      this.canvasCtx.globalAlpha = 0.9;
-      this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
-      this.canvasCtx.restore();
-      this.submenu.forward(deltaTime, depth + 1 );
-    }
-    */
-
     if( this.model.title ){
-      new Text( 0 ).drawString( this.model.title, this.canvasCtx, 300, 10);
+      new Text().setString( this.model.title ).draw( this.canvasCtx, 300, 10, 0 );
     }
 
     if( this.bottomText ){
-      this.bottomText.draw( this.canvasCtx, 300, 180 );
+      this.bottomText.draw( this.canvasCtx, 300, 180, 0 );
     }
 
     return this;
@@ -4034,26 +4167,25 @@ class Menu extends Panel {
 class TextEditor extends Panel {
   constructor( canvas, value, callback, previousPanel ){
     super( canvas, previousPanel );
-    this.xOffset = 0;
+    this.xOffset = 120;
     this.yOffset = 0;
     this.submenu = null;
-    this.bottomText = new Text( 0,'press both #slide+#jump to select');
+    this.bottomText = new Text().set`press both ${'slide'}+${'jump'} to select`;
 
     this.value = value;
     this.curX = 0;
     this.curY = 0;
     this.callback = callback;
-    this.pattern = "etnsh ◅aiouc.'rdlmf,\"wygpb!?vkqjxz#01234+/56789-▻";
-    this.pattern2 = `etnsh#natA#natB#football
-aiouc.'#bell
-rdlmf,"#<3
-wygpb!?#redcross
-vkqjxz #trophy#noentry
-01234+/#left#false
-56789-%#right#true`;
-
-    this.supporteChars = Text.substituteString( this.pattern2 ).split('\n').join('').split('');
-
+    this.pattern = Text.$`etnsh ${'natA'}${'natB'}${'football'}
+aiouc.'${'bell'}${'speed'}
+rdlmf,"${'<3'}${'tangerine'}
+wygpb!?${'redcross'}${'sun'}
+vkqjxz%${'trophy'}${'noentry'}
+01234+*(${'false'}
+56789-/)${'true'}`;
+    this.textPattern = new Text().setString( this.pattern );
+    this.supportedChars = this.pattern.split('\n').join('').split('');
+    this.guidePattern = new Text().setString("cancel\ndelete\nok");
   }
 
   handleEvent( e ){
@@ -4064,7 +4196,7 @@ vkqjxz #trophy#noentry
       case OnDaRun.events.KEYDOWN:
         return ( e.key == 'Delete'
           || e.key == 'Enter'
-          || this.pattern.indexOf( e.key ) != -1 );
+          || this.supportedChars.indexOf( e.key ) != -1 );
       case OnDaRun.events.KEYUP:
         if( e.key == 'Delete' ){
           Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
@@ -4076,7 +4208,7 @@ vkqjxz #trophy#noentry
           this.curY = 6;
           this.double = true;
           return true;
-        } else if (this.pattern.indexOf(e.key) != -1) {
+        } else if( this.supportedChars.indexOf(e.key) != -1) {
           if( this.value.length >= 25 ){
             this.value = this.value.slice( 0, 25 );
             Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
@@ -4099,30 +4231,28 @@ vkqjxz #trophy#noentry
     if( this.offset && !this.muted )
       Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
     if( this.offset > 0 ){
-      this.curX = (this.curX + this.offset)%8;
+      this.curX = (this.curX + this.offset)%9;
       this.offset = 0;
     } else if ( this.offset < 0 ){
       this.curY = (this.curY - this.offset)%7;
       this.offset = 0;
     }
 
-    if( this.willEnter && 0 == this.buttonTime[ 0 ] && 0 == this.buttonTime[ 1 ]){
-      this.willEnter = false;
-      /*
-      if (this.submenu) {
-        this.submenu = null;
-      }
-      */
-      if( this.curX == 7 && this.curY == 6 ){
+    if( this.doublePressed && 0 == this.buttonTime[ 0 ] && 0 == this.buttonTime[ 1 ]){
+      this.doublePressed = false;
+
+      if( this.curX == 8 && this.curY == 6 ){
         Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
         return this.callback( this.value );
-      } else if( this.curX == 7 && this.curY == 5 ){
+      } else if( this.curX == 8 && this.curY == 5 ){
         Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
         this.value = this.value.slice( 0, this.value.length - 1 );
+      } else if( this.curX == 8 && this.curY == 4 ){
+        this.exit();
       } else {
-        let slicePos = this.curY*8+this.curX;
-        let newChar = this.supporteChars[ this.curY * 8 + this.curX ]
+        let newChar = this.supportedChars[ this.curY * 9 + this.curX ]
         this.value += newChar;
+
         if( "0123456789".includes( newChar )){
           this.curX = 0;
           this.curY = 5;
@@ -4151,15 +4281,8 @@ vkqjxz #trophy#noentry
     this.canvasCtx.fillStyle = "#a60";
     this.canvasCtx.fillRect( this.xOffset+ 25*this.curX,
       this.yOffset+ 2+ ( 1+ this.curY )*25, 23, 23 );
-      /*
-    for( let u = 0; u < 7; u++ ){
-      new Text( -1, this.pattern.slice( u*7, u*7+7 )).draw(
-        this.canvasCtx,
-        5, this.yOffset+ 7+ 25*( u + 1 ),
-        25, 25 );
-    }
-    */
-    new Text( -1, this.pattern2 ).draw( this.canvasCtx, 5, this.yOffset+ 7+ 25, 25, 25 );
+    this.textPattern.draw( this.canvasCtx, 5+ this.xOffset, 7+ 25+ this.yOffset, -1, 25, 25 );
+    this.guidePattern.draw( this.canvasCtx, 230+ this.xOffset, 207-25*3, -1, 14, 25 );
 
     if( this.value.length )
       this.canvasCtx.fillRect(
@@ -4171,7 +4294,7 @@ vkqjxz #trophy#noentry
         this.xOffset, this.yOffset+ 1,
         14*this.value.length+ 10, 23 );
 
-    new Text( -1, this.value ).draw(
+    new Text().setString( this.value ).draw(
       this.canvasCtx,
       this.xOffset + 5,
       this.yOffset + 7);
@@ -4260,7 +4383,6 @@ class GameOver extends Panel {
     this.canvasCtx.save();
     this.canvasCtx.globalAlpha = dist;
 
-
     let bt = [6,4,8,5,9,7,11];
     let bw = [15,15,15,15,15,6,6];
     for( let b = 0, x = 0; b < 7; x+=bw[b], b++ ){
@@ -4294,29 +4416,36 @@ class GameOver extends Panel {
       let newHigh = ODR.runRecord.hiscore < ODR.score ? ' a new high!':'';
       if( !newHigh ) this.playMusicIfNeeded();
 
-      new Text( 0 ).drawString( ODR.gameMode.title, this.canvasCtx, 300, lineY );
+      this.__gameModeTitle = this.__gameModeTitle || new Text().setString( ODR.gameMode.title );
+      this.__gameModeTitle.draw( this.canvasCtx, 300, lineY, 0 );
 
       lineY+=20;
-      new Text( 1 ).drawString('SCORE:',this.canvasCtx, 300, lineY );
-      //FIXME leading space won't appear,
-      let showScore = Math.min( 1, ( this.timer - 1000 )/1000 );
-      let showHi = Math.min( 1, ( this.timer - 1500 )/1500 );
-      let t = 2000;
-      let showNewHi = Math.min( 1, ( this.timer - t )/t );
+      this.__scoreTitle = this.__scoreTitle || new Text().setString( 'SCORE:' );
+      this.__scoreTitle.draw( this.canvasCtx, 300, lineY, 1);
 
-      new Text().drawString(' ' + Math.round( ODR.score*showScore )
-        + (showNewHi == 1 ? newHigh :'' )
-        , this.canvasCtx, 300, lineY );
+        let showScore = Math.min( 1, ( this.timer - 1000 )/1000 );
+        let showHi = Math.min( 1, ( this.timer - 1500 )/1500 );
+        let t = 2000;
+        let showNewHi = Math.min( 1, ( this.timer - t )/t );
+
+        this.__score = this.__score || new Text();
+        this.__score.setString(' '
+          + Math.round( ODR.score*showScore )
+          + (showNewHi == 1 ? newHigh :'')).draw( this.canvasCtx, 300, lineY );
 
       if( ODR.sequencer.dejavus ) return;
-
 
       if( showHi == 1 ){
         let diff = ODR.gameModeScore - ODR.runRecord.hiscore;
 
         lineY += 20;
-        new Text( 1 ).drawString('HIGH SCORE:',this.canvasCtx, 300, lineY );
-        new Text().drawString(' ' + ( showNewHi == 1 ? ODR.runRecord.hiscore + ~~(diff * (this.newHighTimer || 0)/1000) : ODR.runRecord.hiscore ), this.canvasCtx, 300, lineY );
+        this.__hiScoreTitle = this.__hiScoreTitle || new Text().setString('HIGH SCORE:');
+        this.__hiScoreTitle.draw( this.canvasCtx, 300, lineY, 1 );
+          this.__hiScore = this.__hiScore || new Text();
+          this.__hiScore.setString(' '
+            + ( showNewHi == 1
+              ? ODR.runRecord.hiscore + ~~( diff * ( this.newHighTimer || 0 )/1000 )
+              : ODR.runRecord.hiscore )).draw( this.canvasCtx, 300, lineY );
 
         if( showNewHi == 1 ){
           if( newHigh ){
@@ -4345,8 +4474,10 @@ class GameOver extends Panel {
             t+= gotO ? 500 : 0;
             let showDaily = Math.min( 1, ( this.timer - t )/t );
             let gotT = ( showDaily == 1 ? `[${ODR.dailyTangerines}/${Math.floor( ODR.gameModeTotalScore/100)}]` : '');
-            new Text( 1 ).drawString('#tangerine:',this.canvasCtx, 300, lineY );
-            new Text().drawString(` ${gotO}${gotT}`, this.canvasCtx, 300, lineY );
+            this.__tangTitle = this.__tangTitle || new Text().set`${'tangerine'}:`;
+            this.__tangTitle.draw( this.canvasCtx, 300, lineY, 1 );
+              this.__tangScore = this.__tangScore || new Text().set` ${gotO}${gotT}`;
+              this.__tangScore.draw( this.canvasCtx, 300, lineY );
 
             if( !this.playedGotO && gotO ){
               Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
@@ -4389,18 +4520,18 @@ class Greeter extends Panel {
     this.notifier = notifier;
     this.introScriptTimer = 2000;
     this.introScript = this.introScript || [
-      20000, `Hi${(N7e.user||{}).nickname ? '_'+N7e.user.nickname.split(' ').join('_') : ''}!\nPress_#slide/#jump_to_start!`,
+      20000, `Hi${(N7e.user||{}).nickname ? '_'+N7e.user.nickname.split(' ').join('_') : ''}!\nPress_${Text.c.slide}/${Text.c.jump}_to_start!`,
       20000, (N7e.user||{}).nickname ? "Just play already!" : "What's your name? You can login by pressing #trophy button.",
       20000, "Didn't know you love the song that much!",
       20000, "Allow yourself to be a beginner. No one starts at the top.#<3",
-      20000, "Man.City will win ⚽\nYou know.",
+      20000, "Man.City will win ${'football'}\nYou know.",
       20000, "You have no idea of the amount of HAPPINESS you brought into my life.",
       20000, 'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.#<3',
       20000, 'Never give up on something you really want #<3',
-      20000, 'You are my sunshine ☼#<3',
+      20000, 'You are my sunshine #sun#<3',
       20000, 'My love for you is a journey;\nStarting at forever,\nand ending at never.#<3',
       20000, 'Glory in life is not in never failing,but rising each time we fail.#<3',
-      20000, 'Love this project?\nDonate_Thai_Redcross_#redcross!\nSee the bottom right for details.',
+      20000, Text.$`Love this project?\nDonate to The Thai Redcross Society ${'redcross'}!\nSee the bottom right for details.`,
     ];
   }
 
@@ -4481,7 +4612,7 @@ class Greeter extends Panel {
       this.introScript.push(wait);
       this.introScript.push(text);
 
-      this.notifier.notify( text + ' #natB', dur );
+      this.notifier.notify( text + Text.$` ${'natB'}`, dur );
       this.introScriptTimer = wait;
     }
   }
@@ -4650,7 +4781,7 @@ class SlideAction extends Action {
   set currentFrame(_) {}
   get currentFrame() {
     if (this.duration - this.timer < 300) {
-      return 2 + Math.round(Math.max( 0, 2 - (this.duration - this.timer)/150 ));
+      return 2 + Math.round( Math.max( 0, 2- ( this.duration- this.timer )/150 ));
     }
 
     return (this.timer >>> 6)&1;
@@ -4692,7 +4823,7 @@ class ConsoleButton {
     this.sprite.src = 'assets/console/'+id+'.png';
 
     this.pressure = 0;
-    this.dir = 0;
+    this.dir = -1;
     this.frame = -1;
 
     this.canvas = ODR.shadowRoot.getElementById(id);
@@ -4716,18 +4847,18 @@ class ConsoleButton {
 
     this.timer += deltaTime;
 
-    if (this.dir) {
+//    if( this.dir ){
       this.pressure += deltaTime * this.dir;
       if (this.pressure < 0) {
         this.pressure = 0;
-        this.dir = 0;
+//        this.dir = 0;
       } else if (this.pressure > 100) {
         this.pressure = 100
-        this.dir = 0;
+//       this.dir = 0;
       }
-    }
+//    }
 
-    let frame = ~~(4 * this.pressure / 100);
+    let frame = Math.round( this.pressure /25 );
     if (frame != this.frame) {
       this.frame = frame;
       this.canvasCtx.drawImage( this.sprite,
@@ -4741,30 +4872,40 @@ class ConsoleButton {
   }
 
   handleEvent( e ){
+    e.preventDefault();
 
     switch( e.type ){
       case OnDaRun.events.KEYDOWN:
+      // Filter repeating button and also prevent them from default.
+
+        if( e.repeat ){
+          break;
+        }
+
       case OnDaRun.events.MOUSEDOWN:
       case OnDaRun.events.TOUCHSTART: {
-        e.preventDefault();
-        this.timer = 0;
-        this.dir = 1;
-        this.pressure = 1;
-        this.handlePressed(e);
+        if( this.dir != 1 ){
+          this.timer = 0;
+          this.dir = 1;
+          this.handlePressed( e );
+        }
+        //this.pressure = 1;
       } break;
+      /*
       case OnDaRun.events.TOUCHCANCEL:
       break;
       case OnDaRun.events.TOUCHMOVE:
       break;
+      */
+      case OnDaRun.events.KEYUP:
       case OnDaRun.events.TOUCHEND:
       case OnDaRun.events.MOUSEOUT:
-      case OnDaRun.events.KEYUP:
       case OnDaRun.events.MOUSEUP:{
-        if( 0 == this.pressure ) break;
-        e.preventDefault();
-        this.timer = 0;
-        this.dir = -1;
-        this.handleReleased(e);
+        if( this.dir != -1 ){
+          this.timer = 0;
+          this.dir = -1;
+          this.handleReleased( e );
+        }
       } break;
       default:
         console.log('event', this,e);
@@ -5791,16 +5932,22 @@ class OnDaRun extends LitElement {
  * @param {Map} changedProperties
  */
   firstUpdated( changedProperties ){
+    let natImgUrl = 'https://scontent.fbkk5-4.fna.fbcdn.net/v/t1.0-0/c0.0.200.200a/p200x200/65054160_2418918275098581_5937603192194859008_n.jpg?_nc_cat=103&_nc_oc=AQnvd5AaFFq4TRM-0kj-LiNT0AY1tcoMaGl_hO3DeCsk2GOu70lP3W5ga5MX0YaF-scCBFMouA-CYssu8aw2lwNe&_nc_ht=scontent.fbkk5-4.fna&oh=e9977f6d444f931c04db4aa9b8ee9dd9&oe=5DC119D4';
+    let natImg = new Image();
+    natImg.onload = () => {
+      console.log("%c .",`font-size: 1px; padding: 50px 67px; line-height:30px;background: url(${natImgUrl}); background-size:150px 150px; color: transparent;`);
+      console.log(`Made for Natherine BNK48 with %c❤❤❤❤`,'color:crimson');
+    };
+    natImg.src = natImgUrl;
 
     console.log(`Amandarine Frontier : OnDaRun Version ${VERSION}
-Made for Natherine BNK48 (Dusita Kitisarakulchai) with ❤❤❤❤.
-
+%c
 ░░░░░░░░░░ The goal of the project
 ░░░░██░░░░ is to support The
 ░░██████░░ Thai Red Cross Society.
-░░░░██░░░░ Please help by making
-░░░░░░░░░░ a donation to them.
-https://www.redcross.or.th/donate/`);
+░░░░██░░░░ Please make a donation
+░░░░░░░░░░ by this link below.
+https://www.redcross.or.th/donate/`,'color:crimson');
 
     document.querySelector('title').textContent += ` ${VERSION}`;
     document.getElementById('version-banner').textContent = `Version ${VERSION}`;
@@ -5955,7 +6102,7 @@ https://www.redcross.or.th/donate/`);
       "Stay Strong!",
       "Just don't die!",
       "Do the impossible!",
-    ].map( p => p+ '#natB');
+    ].map( p => p+ Text.c.natB );
 
     let skipping;
     this.achievements = [
@@ -5968,7 +6115,7 @@ https://www.redcross.or.th/donate/`);
 
 
     this.notifier = new Notifier( this.canvas );
-    this.cc = new Terminal( this.canvas, 300, 180 ); //Closed Caption
+    this.cc = new Terminal( this.canvas, 300, 180, 0 ); //Closed Caption
 
     this.actionIndex = 0;
 
@@ -6358,7 +6505,7 @@ https://www.redcross.or.th/donate/`);
   }
 
   showGameModeInfo( duration = 3000, delay = 0 ){
-    this.cc.append( `${this.gameMode.title}`+ (this.gameModeScore ? ` #trophy ${this.gameModeScore}` : ''), duration, delay );
+    this.cc.append( `${this.gameMode.title}`+ ( this.gameModeScore ? ' '+Text.c.trophy+' '+this.gameModeScore : ''), duration, delay );
   }
 
   setGameMode( choice ){
@@ -6396,7 +6543,7 @@ https://www.redcross.or.th/donate/`);
 
     this.gameModeList.forEach( mode => {
       entries.push({
-        title: `${mode.title} [${Math.round(mode.distance * this.config.TO_SCORE)}]${this.gameMode === mode ? ' #true' : ''}`,
+        title: `${mode.title} [${Math.round(mode.distance * this.config.TO_SCORE)}]${this.gameMode === mode ? ' '+ Text.c.true : ''}`,
         mode: mode,
       });
     });
@@ -6440,9 +6587,9 @@ https://www.redcross.or.th/donate/`);
       N7e.user
       ? new Menu( this.canvas, {
         title: `${{
-          ['google.com']:' #google',
-          ['facebook.com']:' #facebook',
-          ['twitter.com']:' #twitter',
+          ['google.com']: ` ${Text.c.google}`,
+          ['facebook.com']: ` ${Text.c.facebook}`,
+          ['twitter.com']: ` ${Text.c.twitter}`,
         }[ N7e.user.auth.providerData[0].providerId ]} ${N7e.user.nickname}`,
         entries: [
           "SET NAME",
@@ -6506,9 +6653,9 @@ https://www.redcross.or.th/donate/`);
       : new Menu( this.canvas, {
         title: 'LINK PROFILE',
         entries: [
-          '#facebook FACEBOOK',
-          '#twitter TWITTER',
-          '#google GOOGLE',
+          `${Text.c.facebook} FACEBOOK`,
+          `${Text.c.twitter} TWITTER`,
+          `${Text.c.google} GOOGLE`,
           {title:'EXIT',exit:true}
         ],
         enter: ( entryIndex, choice ) => {
@@ -6576,7 +6723,7 @@ https://www.redcross.or.th/donate/`);
     if( notify )
     switch( mode ){
       case 0:
-        this.notifier.notify('N#aTURING', 5000 );
+        this.notifier.notify(`N${Text.c.a}TURING`, 5000 );
         break;
       case 1:
         this.notifier.notify('STRIPES', 5000 );
@@ -7076,7 +7223,7 @@ https://www.redcross.or.th/donate/`);
       if( this.distance > this.gameMode.distance )
         this.notifier.notify( `A NEW HIGH!
 ${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_SCORE )} ▻ ${Math.round( this.distance * this.config.TO_SCORE )}
-GOOD JOB! #natB`, 15000 );
+GOOD JOB! ${'natB'}`, 15000 );
 */
 
       let skipping;
@@ -7144,7 +7291,7 @@ GOOD JOB! #natB`, 15000 );
             }
           } else {
             this.shouldDropTangerines = false;
-            //this.notifier.notify( `no #tangerine today! [${tangerines.dayCount}/${maxPerDay}]`, 5000 );
+            //this.notifier.notify( `no ${'tangerine'} today! [${tangerines.dayCount}/${maxPerDay}]`, 5000 );
           }
 
           this.scoreboard.minTangerines = tangerines.dayCount;
@@ -7386,9 +7533,9 @@ OnDaRun.defaultDimensions = {
 
 //TODO Implement class GameMode
 OnDaRun.gameModes = {
-  GAME_A: { title:'GAME A', icon:'#gameA', ACCELERATION: 0.00050/16 },
-  GAME_B: { title:'GAME B', icon:'#gameB', ACCELERATION: 0.00050/4 },
-  GAME_S: { title:'SITUATION HALL', icon:'#gameS', ACCELERATION: 0.00050/16 },
+  GAME_A: { title:'GAME A', icon:'gameA', ACCELERATION: 0.00050/16 },
+  GAME_B: { title:'GAME B', icon:'gameB', ACCELERATION: 0.00050/4 },
+  GAME_S: { title:'SITUATION HALL', icon:'gameS', ACCELERATION: 0.00050/16 },
 };
 for( const key in OnDaRun.gameModes ) {
   OnDaRun.gameModes[key].key = key;
@@ -7516,10 +7663,10 @@ OnDaRun.Configurations = {
     27.3, "Raised in every bar",
     29.2, "across the Argentine",
     32.7, "Yes, she has them all",
-    34.3, "#tangerine on da run #tangerine",
-    35.6, "And their #<3#<3#<3 belong to just one",
-    38.4, "Their #<3#<3#<3 belong to",
-    40, "#natA Natherine #natB",
+    34.3, Text.$`${'tangerine'} on da run ${'tangerine'}`,
+    35.6, Text.$`And their ${'<3'}${'<3'}${'<3'}${'<3'} belong to just one`,
+    38.4, Text.$`Their ${'<3'}${'<3'}${'<3'}${'<3'} belong to`,
+    40, Text.$`${'natA'} Natherine ${'natB'}`,
     45, null,
   ],
 
