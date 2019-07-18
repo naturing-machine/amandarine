@@ -18,7 +18,7 @@
 
 import { LitElement, html, css } from 'lit-element';
 
-var VERSION = "1.15"
+var VERSION = "1.16"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;
@@ -48,6 +48,10 @@ var N7e = class {
     if( !this.signing.progress ) {
       ODR.checkShouldDropTangerines();
     }
+  }
+
+  static mod( n, m ){
+    return ((n % m) + m) % m;
   }
 
   static clamp( x, lower, upper ){
@@ -2277,9 +2281,7 @@ class A8e {
       action.currentFrame = 0;
     }
 
-    if (action.type)
-
-    switch (action.type) {
+    switch( action.type ){
       case A8e.status.WAITING:
         if( action.heldStart ){
           if (action.timer - action.heldStart > 450) action.heldStart = action.timer - 450;
@@ -2295,7 +2297,6 @@ class A8e {
         } else {
           adjustXToStart(speed);
         }
-
       } break;
       case A8e.status.JUMPING: {
         if (action.timer == 0) {
@@ -3073,6 +3074,7 @@ class Text {
   }
 
   draw( canvasCtx, offsetX, offsetY, alignment = -1, charW = 14, lineH = 20, image = ODR.spriteGUI ){
+    let callbackIndex = 0;
     for( let line = 0, y = offsetY; line < this.lineLengths.length; line++, y+=lineH ){
       if( y < -lineH || y > DEFAULT_HEIGHT ) continue;
 
@@ -3090,7 +3092,8 @@ class Text {
           let g = this.glyphs[ glyphIndex ];
           if( g ){ // Don't draw a space.
             if( typeof g === 'function'){
-              g( ~~x, ~~y );
+              g( ~~x, ~~y, this, canvasCtx, glyphIndex, callbackIndex );
+              callbackIndex++;
             } else {
               canvasCtx.drawImage( image,
                 g, 0, 14, 16,
@@ -3288,20 +3291,27 @@ class Panel {
   constructor( canvas, previousPanel = null, associatedButton = null ) {
     this.canvas = canvas;
     this.canvasCtx  = canvas.getContext('2d');
-    this.submenu = null;
     this.passthrough = false;
     this.associatedButton = associatedButton;
-    this.buttonTime = [ 0, 0 ];
-    this.doublePressed = false; //Indicate double-pressed.
-    this.offset = 0;
-    this.timer = 0;
+
+    this.resetTimer();
+
     this.previousPanel = previousPanel;
     this.nextPanel = undefined;
   }
 
+  resetTimer(){
+    this.timer = 0;
+    this.buttonDownTime = { l: -2, r : -4 }; // Make them not intersecting or
+    this.buttonUpTime = { l: -1, r : -3 };   // that will mark dualReleased flag.
+  }
+
+
   forward( deltaTime ){
     if( undefined !== this.nextPanel ){
-      return this.nextPanel;
+      let nextPanel = this.nextPanel;
+      this.nextPanel = undefined;
+      return nextPanel;
     }
 
     let nextPanel = this.repaint( deltaTime );
@@ -3332,43 +3342,35 @@ class Panel {
         let button = e.detail.consoleButton;
         switch( button ){
           case ODR.consoleButtons.CONSOLE_LEFT:{
-            this.doublePressed = this.buttonTime[ 1 ] ? true : false;
-            this.buttonTime[ 0 ] = this.timer;
+            this.buttonDownTime.l = Math.max( this.timer, this.buttonUpTime.l+ 1 );
+            //this.buttonUpTime.l = 0;
           } break;
 
           case ODR.consoleButtons.CONSOLE_RIGHT:{
-            this.doublePressed = this.buttonTime[ 0 ] ? true : false;
-            this.buttonTime[ 1 ] = this.timer;
+            this.buttonDownTime.r = Math.max( this.timer, this.buttonUpTime.r+ 1 );
+            //this.buttonUpTime.r = 0;
           } break;
 
           default:
             return false;
         }
-      } break;
+      }
+      break;
 
       case OnDaRun.events.CONSOLEUP: {
         let button = e.detail.consoleButton;
         switch( button ){
           case ODR.consoleButtons.CONSOLE_LEFT:{
-            if( this.buttonTime[ 0 ]){
-              this.buttonTime[ 0 ] = 0;
-              if( !this.doublePressed )
-                this.offset--;
-            }
+            this.buttonUpTime.l = Math.max( this.timer, this.buttonDownTime.l+ 1 );
           } break;
 
           case ODR.consoleButtons.CONSOLE_RIGHT:{
-            if( this.buttonTime[ 1 ]){
-              this.buttonTime[ 1 ] = 0;
-              if( !this.doublePressed )
-                this.offset++;
-            }
+            this.buttonUpTime.r = Math.max( this.timer, this.buttonDownTime.r+ 1 );
           } break;
 
           default:
             return false;
         }
-
       } break;
 
       default:
@@ -3376,6 +3378,80 @@ class Panel {
     }
 
     return true;
+  }
+
+  get leftPressed(){
+    return this.buttonDownTime.l > this.buttonUpTime.l;
+  }
+
+  get rightPressed(){
+    return this.buttonDownTime.r > this.buttonUpTime.r;
+  }
+  
+  get noPressed(){
+    return !this.leftPressed && !this.rightPressed;
+  }
+
+  get singlePressed(){
+    return this.leftPressed ^ this.rightPressed;
+  }
+
+  get dualPressed(){
+    return this.leftPressed && this.rightPressed;
+  }
+
+  /*
+  L  d---d===u
+  R    d========>
+  */
+  get leftDualReleased(){
+    return !( this.leftPressed || !this.rightPressed
+      || this.buttonUpTime.l < this.buttonDownTime.r );
+  }
+
+  /*
+  L    d========>
+  R  d---d===u
+  */
+  get rightDualReleased(){
+    return !( !this.leftPressed || this.rightPressed
+      || this.buttonUpTime.r < this.buttonDownTime.l );
+  }
+
+  get halfDualReleased(){
+    return ( this.leftDualReleased ^ this.rightDualReleased )? true : false;
+  }
+
+  /*
+  L    d===========>
+  R  d---d===u  d==>
+  */
+  get rightDualPressed(){
+    return !( !this.leftPressed || !this.rightPressed
+      || this.buttonUpTime.r < this.buttonDownTime.l );
+  }
+
+  /*
+  L  d---d===u  d==>
+  R    d===========>
+  */
+  get leftDualPressed(){
+    return !( !this.leftPressed || !this.rightPressed
+      || this.buttonUpTime.l < this.buttonDownTime.r );
+  }
+
+  get halfDualPressed(){
+    return (this.leftDualPressed ^ this.rightDualPressed) ? true : false;
+  }
+
+  /*
+  L/R ============o
+  R/L =======o
+  */
+  get dualReleased(){
+    return !( this.leftPressed || this.rightPressed
+      || this.buttonUpTime.l < this.buttonDownTime.r
+      || this.buttonDownTime.l > this.buttonUpTime.r );
   }
 }
 
@@ -3404,7 +3480,6 @@ class TitlePanel extends Panel {
 
     // These 2 used for fast-forwarding the story while holdig both control buttons simultaneously.
     this.storyStartOffset = 18000;
-    this.fastForwarding = false;
 
     // The Redcross Donation Message.
     this.donationText = new Text().set
@@ -3419,7 +3494,7 @@ ${'left'} to donate ${'slide'}                ${'jump'} to sprint ${'right'}
 `;
 
     let heartGlyph = new Text().set`${'<3'}`.glyphs[0];
-    let drawHeart = ( x, y ) => {
+    let drawHeart = ( x, y, text ) => {
 
       let g = this.timer%400 > 200 ? 1092 : 0;
       this.canvasCtx.save();
@@ -3430,7 +3505,7 @@ ${'left'} to donate ${'slide'}                ${'jump'} to sprint ${'right'}
       this.canvasCtx.restore();
     };
 
-    let drawIdle = ( x, y ) => {
+    let drawIdle = ( x, y, text ) => {
       let l = A8e.animFrames.WAITING.frames.length;
 
       this.canvasCtx.drawImage( A8e.animFrames.WAITING.sprite,
@@ -3609,15 +3684,20 @@ The Thai Redcross Society ${'redcross'}
           }
           this.stopWaitingForButtonUp();
         } else if( !this.waitingForAudioContext
-            && 0 == this.buttonTime[ 0 ]
-            && 0 == this.buttonTime[ 1 ]
+            && ( !this.dualReleased
+               || e.detail.consoleButton.id != "console-left"
+                  && e.detail.consoleButton.id != "console-right")
+            && !this.rightPressed
+            && !this.leftPressed
             && this.imagesLoadedTime < this.timer
             && !this.endTime ){
 
+              /*
           if( this.fastForwarding ){
             this.fastForwarding = false;
             return true;
           }
+          */
 
           this.endTime = this.timer;
 
@@ -3693,8 +3773,7 @@ The Thai Redcross Society ${'redcross'}
     let fadingDuration = 2000;
 
     //Fast-forward the story
-    if( this.buttonTime[ 0 ] && this.buttonTime[ 1 ] ){
-      this.fastForwarding = true;
+    if( this.dualPressed ){
       this.storyStartOffset -= 300;
     }
 
@@ -3867,7 +3946,7 @@ The Thai Redcross Society ${'redcross'}
         });
 
         this.canvasCtx.restore();
-        if( this.fastForwarding && this.timer%600 > 300 && this.storyEndTime > storyTimer ){
+        if( this.dualPressed && this.timer%600 > 300 && this.storyEndTime > storyTimer ){
           this.__fastForwardingText = this.__fastForwardingText || new Text().set`${'right'}${'right'}`;
           this.__fastForwardingText.draw( this.canvasCtx, 600, 185, 1, 10 );
         }
@@ -3886,30 +3965,30 @@ class Pause extends Panel {
   }
 
   repaint(){
-    if( !this.isPaused ){
-      console.log('PAUSED');
-      this.isPaused = true;
+    console.log('PAUSED');
+    this.isPaused = true;
 
-      if( !this.silent ){
-        this.screenOpacity = ODR.canvas.style.opacity;
-        ODR.canvas.style.opacity /= 2;
+    if( !this.silent ){
+      this.screenOpacity = ODR.canvas.style.opacity;
+      ODR.canvas.style.opacity /= 2;
 
-        this.canvasCtx.save();
-        for( let i = 4; i >= 0; i -= 4 ){
-          this.canvasCtx.fillStyle = i ? "#0003" : "#fffd";
-          this.canvasCtx.filter =  i ? `blur(4px)` : 'blur(0px)';
-          this.canvasCtx.fillRect( 270+i, 70+i, 20, 60 );
-          this.canvasCtx.fillRect( 310+i, 70+i, 20, 60 );
-        }
-        this.canvasCtx.restore();
-
+      this.canvasCtx.save();
+      for( let i = 4; i >= 0; i -= 4 ){
+        this.canvasCtx.fillStyle = i ? "#0003" : "#fffd";
+        this.canvasCtx.filter =  i ? `blur(4px)` : 'blur(0px)';
+        this.canvasCtx.fillRect( 270+i, 70+i, 20, 60 );
+        this.canvasCtx.fillRect( 310+i, 70+i, 20, 60 );
       }
+      this.canvasCtx.restore();
+
     }
+    N7e.freeze = true;
 
     return this;
   }
 
   handleEvent( e ){
+    //if( e.code === "KeyP") return false;
     return true;
   }
 
@@ -3917,6 +3996,9 @@ class Pause extends Panel {
     if( !this.silent && this.isPaused){
       ODR.canvas.style.opacity = this.screenOpacity;
       console.log('UNPAUSED');
+      N7e.freeze = false;
+      ODR.scheduleNextRepaint();
+      
     }
 
     this.isPaused = false;
@@ -3967,7 +4049,7 @@ class Menu extends Panel {
   constructor( canvas, model, associatedButton, previousPanel, muted = false ){
     super( canvas, previousPanel, associatedButton );
     this.model = model;
-    this.displayEntry = this.model.currentIndex = this.model.currentIndex  || 0;
+    this.currentCursor = this.model.currentIndex = this.model.currentIndex  || 0;
     this.xOffset = 0;
     this.yOffset = 0;
     this.bottomText = new Text().set`press both ${'slide'}+${'jump'} to select`;
@@ -3975,116 +4057,76 @@ class Menu extends Panel {
     this.scoreText = new Text();
     this.timer = 0;
     this.muted = muted;
+    this.menuTextList = [];
+
+    // For button scrolling.
+    this.offset = 0;
   }
 
-  /*
   handleEvent( e ){
-    if( this.submenu && this.submenu.handleEvent ){
-      return this.submenu.handleEvent( e );
+    // Only handle known event types, default to passing the event back to the parent.
+    if( !super.handleEvent( e )){
+      return false;
     }
 
-    // Only handle known event types, default to passing the event back to the parent.
-    return super.handleEvent( e );
+    let button = e.detail.consoleButton;
+
+    if( this.__waitBothReleased ){
+      if( this.dualReleased ){
+        this.__waitBothReleased = false;
+        this.enterCurrentModelEntry();
+      }
+      return true;
+    }
+    if( this.dualPressed ){
+      this.__waitBothReleased = true;
+      return true;
+    }
+
+    switch( e.type ){
+      case OnDaRun.events.CONSOLEDOWN: {
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:{
+          } break;
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+          } break;
+        }
+      } break;
+      case OnDaRun.events.CONSOLEUP: {
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:{
+            this.offset--;
+          } break;
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+            this.offset++;
+          } break;
+        }
+
+        if( this.offset ){
+
+          if( !this.muted )
+            Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+
+          let newIdx = this.model.currentIndex + this.offset;
+          let length = this.model.entries.length;
+
+          this.model.currentIndex = newIdx - length * Math.floor( newIdx / length );
+          this.offset = 0;
+        }
+
+      } break;
+    }
+
+    return true;
   }
-  */
 
   repaint( deltaTime ){
     this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
-
-    if( this.offset ){
-
-      if( !this.muted )
-        Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-
-      let newIdx = this.model.currentIndex + this.offset;
-      let length = this.model.entries.length;
-
-      this.model.currentIndex = newIdx - length * Math.floor( newIdx / length );
-      this.offset = 0;
-    }
 
     /*
     this.canvasCtx.fillStyle = "#000d";
     this.canvasCtx.fillRect(0,0,this.canvas.width,this.canvas.height);
     */
-
-    // An entry was chosen. Waiting until both buttons are released.
-    if( this.doublePressed && 0 == this.buttonTime[ 0 ] && 0 == this.buttonTime[ 1 ]){
-      this.doublePressed = false;
-
-      let entry = this.model.entries[ this.model.currentIndex ];
-
-      if( entry.disabled || ( entry.hasOwnProperty('value') && !entry.options )){
-        Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-      } else {
-        Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-
-        // The choosen entry has "options". Create a submenu.
-        if (entry.options) {
-          this.model.enter(this.model.currentIndex, entry);
-
-          let subEntries;
-          if( entry.options.hasOwnProperty('min')){
-            subEntries = [];
-            for (let i = entry.options.min; i <= entry.options.max; i+= entry.options.step) {
-              subEntries.push(i);
-            }
-          } else {
-            subEntries = entry.options.slice();
-          }
-          let currentIndex;
-          for (currentIndex = 0; currentIndex < subEntries.length; currentIndex++) {
-            if (entry.value == subEntries[currentIndex]) {
-              break;
-            }
-          }
-          subEntries.push({ title:'CANCEL', exit:true });
-
-          let submenu = new Menu( this.canvas, {
-            name: entry.name,
-            title: `${this.model.title}\n${entry.title}`,
-            _currentIndex: currentIndex,
-            select: this.model.select,
-            get currentIndex() {
-              return this._currentIndex;
-            },
-            set currentIndex( newIndex ) {
-              if( this.select ) {
-                this.select( entry, newIndex, this );
-              }
-              this._currentIndex = newIndex;
-            },
-            entries: subEntries,
-            enter: ( select, selectedItem ) => {
-              if( !selectedItem.exit ){
-                entry.value = selectedItem;
-                this.model.enter( select, entry );
-                /*
-                ODR.config.GRAPHICS_MODE_SETTINGS[3][entry.name] = selectedItem;
-                ODR.setGraphicsMode(3);
-                if (N7e.user)
-                  N7e.user.odrRef.child('settings/'+entry.name).set(selectedItem);
-                  */
-              }
-              //hackish, to turn sample music off on leaving the submenu.
-              if( this.associatedButton == ODR.consoleButtons.CONSOLE_A ){
-                Sound.inst.currentSong = null;
-              }
-              submenu.exit();
-              return submenu;
-            },
-          }, this.associatedButton, this, entry.muted  );
-          return submenu;
-
-          /*
-          this.submenu.xOffset = this.xOffset + 25;
-          this.submenu.yOffset = this.yOffset + 8;
-          this.submenu.bottomText = null;
-          */
-
-        } else return this.model.enter( this.model.currentIndex, entry );
-      }
-    }
 
     // Dislay User Profile on the right side of the menu.
     // FIXME subclass this
@@ -4128,26 +4170,70 @@ class Menu extends Panel {
 
     }
 
-    if (this.displayEntry != this.model.currentIndex) {
-      this.displayEntry += (this.model.currentIndex - this.displayEntry) * (FPS / 7000) * deltaTime;
-      if (Math.abs(this.displayEntry - this.model.currentIndex) < 0.05) {
-        this.displayEntry = this.model.currentIndex;
+    if( this.currentCursor != this.model.currentIndex ){
+      this.currentCursor+= ( this.model.currentIndex- this.currentCursor )*( FPS/7000 ) *deltaTime;
+      if( Math.abs( this.currentCursor- this.model.currentIndex ) < 0.05 ){
+        this.currentCursor = this.model.currentIndex;
       }
     }
 
+    function drawSpringDots( x, y, text, canvasCtx ) {
+      let data = text.callbackData;
+      let dotNo = (32- data.titleLen - data.valueLen)*1.5;
+      let dist = ( x - data.titleMaxX )/dotNo;
+      for( let di = 0; di < dotNo; di++ ){
+        canvasCtx.drawImage( ODR.spriteGUI,
+          518, 0, 14, 16, //Text.glyphMap.get('.'.charCodeAt(0)) == 518
+          ~~(data.titleMaxX + di*dist + 10), ~~y, 14, 16 );
+      }
+    }
+
+
     this.canvasCtx.save();
-    for (let i = 0; i < this.model.entries.length; i++) {
-      let entry = this.model.entries[i];
+    for( let i = 0; i < this.model.entries.length; i++ ){
+      let entry = this.model.entries[ i ];
       let title = entry.title ? entry.title : entry;
 
-      let xxx = Math.abs(this.displayEntry - i);
+      let xxx = Math.abs( this.currentCursor - i );
       this.canvasCtx.globalAlpha = (entry.disabled ? 0.5 : 1)*Math.max(0.1,(4 - xxx)/4);
-      if (entry.hasOwnProperty('value')) title += '.'.repeat(32-title.length-(entry.value+'').length)+'[ '+entry.value+' ]';
 
-      this.text.setString((i == this.model.currentIndex ?( entry.exit ? Text.c.left+ ' ' : ' '+ Text.c.right ):'  ') +title +( entry.disabled ? ' '+ Text.c.noentry : '')).draw(
-        this.canvasCtx,
-        this.xOffset + 20 + 2 * 3 * Math.round( Math.sqrt( 100*xxx )/3 ),
-        this.yOffset + 90 + 5 * Math.round( 4 * ( i - this.displayEntry )));
+      this.menuTextList[i] = this.menuTextList[i] || { text: new Text(), valueText: entry.hasOwnProperty('value') ? new Text() : null };
+
+      let newEntryString = '  '+ title+( entry.disabled ? ' '+ Text.c.noentry : '');
+      if( newEntryString != this.menuTextList[i].string ){
+        this.menuTextList[i].string = newEntryString;
+        this.menuTextList[i].text.setString( newEntryString );
+      }
+
+      let x = this.xOffset + 20 + 2 * 3 * Math.round( Math.sqrt( 100*xxx )/3 );
+      let y = this.yOffset + 90 + 5 * Math.round( 4 * ( i - this.currentCursor ));
+
+      this.menuTextList[ i ].text.draw( this.canvasCtx, x, y );
+
+      if( entry.hasOwnProperty('value')){
+
+        newEntryString = '[ '+ entry.value+ ' ]';
+        if( newEntryString != this.menuTextList[i].valueString ){
+          this.menuTextList[i].valueString = newEntryString;
+          // The function (x,y) below got invoked by the text rendering.
+          // set() here anchor it into the glyph stream.
+          // The function adds elasticity to the dots (....).
+          this.menuTextList[i].valueText.set`${drawSpringDots}${Text._(newEntryString)}`;
+        }
+
+        // Set up data needed by the callback.
+        this.menuTextList[i].valueText.callbackData = {
+          titleMaxX: x+ ( title.length + 2 )*14,
+          titleLen: title.length,
+          valueLen: entry.value.toString().length + 4,
+        };
+        this.menuTextList[i].valueText.draw( this.canvasCtx, 590, y, 1 );
+      }
+      if( i == this.model.currentIndex ){
+        let indicator = entry.exit ? Text.c.left+ ' ' : ' '+ Text.c.right;
+        this.text.setString( indicator ).draw( this.canvasCtx, x, y );
+      }
+
     }
     this.canvasCtx.restore();
 
@@ -4162,15 +4248,95 @@ class Menu extends Panel {
     return this;
   }
 
+  enterCurrentModelEntry(){
+    let entry = this.model.entries[ this.model.currentIndex ];
+
+    if( entry.disabled || ( entry.hasOwnProperty('value') && !entry.options )){
+      Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+    } else {
+      Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+
+      // The choosen entry has "options". Create a submenu.
+      if( entry.options ){
+        this.model.enter(this.model.currentIndex, entry);
+
+        let subEntries;
+        if( entry.options.hasOwnProperty('min')){
+          subEntries = [];
+          for (let i = entry.options.min; i <= entry.options.max; i+= entry.options.step) {
+            subEntries.push(i);
+          }
+        } else {
+          subEntries = entry.options.slice();
+        }
+        let currentIndex;
+        for (currentIndex = 0; currentIndex < subEntries.length; currentIndex++) {
+          if (entry.value == subEntries[currentIndex]) {
+            break;
+          }
+        }
+        subEntries.push({ title:'CANCEL', exit:true });
+
+        let submenu = new Menu( this.canvas, {
+          name: entry.name,
+          title: `${this.model.title}\n${entry.title}`,
+          _currentIndex: currentIndex,
+          select: this.model.select,
+          get currentIndex() {
+            return this._currentIndex;
+          },
+          set currentIndex( newIndex ) {
+            if( this.select ) {
+              this.select( entry, newIndex, this );
+            }
+            this._currentIndex = newIndex;
+          },
+          entries: subEntries,
+          enter: ( select, selectedItem ) => {
+            if( !selectedItem.exit ){
+              entry.value = selectedItem;
+
+              //Submenu set the selected value with parent's model.
+              this.model.enter( select, entry );
+
+              /*
+              ODR.config.GRAPHICS_MODE_SETTINGS[3][entry.name] = selectedItem;
+              ODR.setGraphicsMode(3);
+              if (N7e.user)
+                N7e.user.odrRef.child('settings/'+entry.name).set(selectedItem);
+                */
+            }
+            //hackish, to turn sample music off on leaving the submenu.
+            if( this.associatedButton == ODR.consoleButtons.CONSOLE_A ){
+              Sound.inst.currentSong = null;
+            }
+
+            submenu.exit();
+          },
+        }, this.associatedButton, this, entry.muted  );
+
+        // Exit to the created option submenu.
+        this.exit( submenu );
+
+      } else {
+        this.exit( this.model.enter( this.model.currentIndex, entry ));
+      }
+    }
+
+  }
+
+
 }
 
 class TextEditor extends Panel {
   constructor( canvas, value, callback, previousPanel ){
     super( canvas, previousPanel );
-    this.xOffset = 120;
+    this.xOffset = 0;
     this.yOffset = 0;
-    this.submenu = null;
     this.bottomText = new Text().set`press both ${'slide'}+${'jump'} to select`;
+
+    this.offsetH = 0;
+    this.offsetV = 0;
 
     this.value = value;
     this.curX = 0;
@@ -4222,61 +4388,131 @@ vkqjxz%${'trophy'}${'noentry'}
         break;
     }
 
-    return super.handleEvent( e );
+    // Handle console button events.
+
+    if( !super.handleEvent( e )){
+      return false;
+    }
+
+    let button = e.detail.consoleButton;
+
+    if( this.__verticalMode && this.dualReleased ){
+      this.__verticalMode = false;
+    } else if( this.dualReleased ){
+      this.enterAtCursor();
+    } else if( this.dualPressed && !this.halfDualPressed
+      || this.halfDualReleased && !this.__verticalMode ){
+        
+    } else switch( e.type ){
+      case OnDaRun.events.CONSOLEDOWN: {
+        if( this.halfDualPressed ){
+          this.__verticalMode = true;
+        }
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:{
+          } break;
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+          } break;
+        }
+      } break;
+      case OnDaRun.events.CONSOLEUP: {
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:{
+            if( this.__verticalMode )
+              this.offsetV--;
+            else
+              this.offsetH--;
+          } break;
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+            if( this.__verticalMode )
+              this.offsetV++;
+            else
+              this.offsetH++;
+          } break;
+        }
+
+        if( this.offsetV || this.offsetH ){
+          if( !this.muted ){
+            Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          }
+
+          if( this.offsetH != 0 ){
+            this.curX += this.offsetH;
+            this.offsetV -= Math.floor( this.curX/9 );
+            this.curX = N7e.mod( this.curX, 9 );
+            this.offsetH = 0;
+          }
+          
+          if( this.offsetV != 0 ){
+            this.curY = N7e.mod( this.curY- this.offsetV, 7 );
+            this.offsetV = 0;
+          }
+
+        }
+
+      } break;
+    }
+
+    return true;
+  }
+  
+  enterAtCursor(){
+    if( this.curX == 8 && this.curY == 6 ){
+      Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      this.exit(this.callback( this.value ));
+    } else if( this.curX == 8 && this.curY == 5 ){
+      Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      this.value = this.value.slice( 0, this.value.length - 1 );
+    } else if( this.curX == 8 && this.curY == 4 ){
+      this.exit();
+    } else {
+      let newChar = this.supportedChars[ this.curY * 9 + this.curX ]
+      this.value += newChar;
+
+      if( "0123456789".includes( newChar )){
+        this.curX = 0;
+        this.curY = 5;
+      } else if( "abcdefghijklmnopqrstuvwxyz".includes( newChar )){
+        this.curX = 0;
+        this.curY = 0;
+      }
+
+      if( this.value.length > 25 ){
+        this.value = this.value.slice( 0, 25 );
+        Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      } else {
+        Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      }
+    }
   }
 
   repaint( deltaTime ) {
     this.timer += deltaTime;
 
-    if( this.offset && !this.muted )
-      Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-    if( this.offset > 0 ){
-      this.curX = (this.curX + this.offset)%9;
-      this.offset = 0;
-    } else if ( this.offset < 0 ){
-      this.curY = (this.curY - this.offset)%7;
-      this.offset = 0;
-    }
-
-    if( this.doublePressed && 0 == this.buttonTime[ 0 ] && 0 == this.buttonTime[ 1 ]){
-      this.doublePressed = false;
-
-      if( this.curX == 8 && this.curY == 6 ){
-        Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-        return this.callback( this.value );
-      } else if( this.curX == 8 && this.curY == 5 ){
-        Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
-        this.value = this.value.slice( 0, this.value.length - 1 );
-      } else if( this.curX == 8 && this.curY == 4 ){
-        this.exit();
-      } else {
-        let newChar = this.supportedChars[ this.curY * 9 + this.curX ]
-        this.value += newChar;
-
-        if( "0123456789".includes( newChar )){
-          this.curX = 0;
-          this.curY = 5;
-        } else if( "abcdefghijklmnopqrstuvwxyz".includes( newChar )){
-          this.curX = 0;
-          this.curY = 0;
-        }
-
-        if( this.value.length > 25 ){
-          this.value = this.value.slice( 0, 25 );
-          Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-        } else {
-          Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-        }
-      }
-
-    }
-
-    this.canvasCtx.save();
-    /*
-    this.canvasCtx.fillStyle = "#000d";
-    this.canvasCtx.fillRect(0,0,this.canvas.width,this.canvas.height);
-    */
     this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
+    
+    //Drawing guiding text on the right side
+    this.__jumpingGlyphs = this.__jumpingGlyphs
+      || [ new Text().set`${'slide'}`.glyphs[ 0 ],
+           new Text().set`${'jump'}`.glyphs[ 0 ]];
+
+    let gd = ( x, y, text, ctx, gidx, cidx ) => {
+      let glyph = this.__jumpingGlyphs[[ 1, 0, 1, 0 ][ cidx ]];
+
+      this.canvasCtx.drawImage( ODR.spriteGUI,
+        glyph, 0, 14, 16,
+        ~~x, ~~(y + 3 - Math.abs( 5*Math.sin( this.timer/200 ))), 14, 16 );
+    };
+    
+    this.__guideText = this.__guideText || new Text().set
+`${'slide'}+${'jump'}${gd} Up   
+
+${gd} Left ${gd} Right  
+
+${gd}${'slide'}+${'jump'} Down 
+`
+    this.__guideText.draw( this.canvasCtx, 500, 50, 0, 14, 25 );
+
 
     this.canvasCtx.fillStyle = "#a60";
     this.canvasCtx.fillRect( this.xOffset+ 25*this.curX,
@@ -4289,24 +4525,16 @@ vkqjxz%${'trophy'}${'noentry'}
         this.xOffset, this.yOffset+ 1,
         14*25 + 10, 23 );
     this.canvasCtx.fillStyle = "#840";
-    if( this.value.length )
+    if( this.value.length ){
       this.canvasCtx.fillRect(
         this.xOffset, this.yOffset+ 1,
         14*this.value.length+ 10, 23 );
+    }
 
     new Text().setString( this.value ).draw(
       this.canvasCtx,
       this.xOffset + 5,
       this.yOffset + 7);
-
-      /*
-    new Text( 1, "up to 25 chars.\n...delete_____________________\n\nyou can use keyboard on pc.\nand touch screen on mobile.\nactually, I lied. Oh c'mon.\nit's fun!\n...enter______________________"  ).draw(
-      this.canvasCtx,
-      this.xOffset + 600 - 5,
-      this.yOffset + 7, 14, 25);
-      */
-
-    this.canvasCtx.restore();
 
     return this;
   }
@@ -4348,8 +4576,7 @@ class GameOver extends Panel {
 
     if( e.type == OnDaRun.events.CONSOLEUP
       && this.timer > this.clearTime
-      && 0 == this.buttonTime[ 0 ]
-      && 0 == this.buttonTime[ 1 ]){
+      && this.noPressed ){
 
       this.willRestart = true;
       ODR.gameState = 1;
@@ -4551,8 +4778,8 @@ class Greeter extends Panel {
     if( e.type == OnDaRun.events.CONSOLEUP
       && ODR.activeAction
       && 0 == ODR.activeAction.speed
-      && 0 == this.buttonTime[ 0 ]
-      && 0 == this.buttonTime[ 1 ]){
+      && !this.rightPressed
+      && !this.leftPressed ){
 
       this.willStart = true;
       ODR.gameState = 1;
@@ -4615,7 +4842,13 @@ class Greeter extends Panel {
       this.notifier.notify( text + Text.$` ${'natB'}`, dur );
       this.introScriptTimer = wait;
     }
+
+    if( !this.__reloadIntroMusic ){
+      this.__reloadIntroMusic = true;
+      Sound.inst.loadMusic('offline-intro-music', ODR.config.PLAY_MUSIC );
+    }
   }
+
 }
 
 class Action {
@@ -4711,8 +4944,10 @@ class DefaultAction extends Action {
             }
           }
           Object.assign(this, A8e.animFrames.RUNNING);
+          this.currentFrame = 0;
         } else {
           Object.assign(this, A8e.animFrames.WALKING);
+          this.currentFrame = 0;
         }
       }
     }
@@ -6291,6 +6526,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
               distances = distances || {};
               distances[ mode.key ] = mode.distance;
             }
+
           });
 
           return distances;
@@ -6767,7 +7003,6 @@ https://www.redcross.or.th/donate/`,'color:crimson');
  * OnDarun main forwarding
  */
   forward( now ) {
-    //this.forwardPending = false;
 
     var deltaTime = now - (this.time || now);
     this.time = now;
@@ -6878,13 +7113,6 @@ https://www.redcross.or.th/donate/`,'color:crimson');
         this.queueAction( crashAction );
       }
 
-
-      /* Auto by setting runTime
-      this.currentSpeed = this.config.SPEED + this.runTime * this.config.ACCELERATION;
-      if( this.currentSpeed > this.config.MAX_SPEED )
-        this.currentSpeed = this.config.MAX_SPEED;
-        */
-
     } else if( 2 == this.gameState ){
       //CEASING
       //Define existence as a timing ratio used to by the gameover animations.
@@ -6923,15 +7151,6 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       Sound.inst.updateLyricsIfNeeded( m => this.cc.appendMessage( m ));
     }
     this.cc.forward( deltaTime );
-
-    /*
-    if( N7e.signing.progress ) {
-      // Draw starry spinner
-      this.canvasCtx.drawImage(this.spriteGUI,
-        38 + ~~(now/100)%4 * 22, 73, 22, 22,
-        600-25, 200-25, 22, 22);
-    }
-    */
 
     if( this.panel.passthrough ){
       this.panel = this.panel.forward( deltaTime );
@@ -7180,16 +7399,14 @@ https://www.redcross.or.th/donate/`,'color:crimson');
   }
 
   scheduleNextRepaint() {
-    if (N7e.freeze) {
+    if( N7e.freeze ){
       console.warn('FROZEN');
+      cancelAnimationFrame( this.raqId );
+      this.raqId = 0;
       return;
     }
-    /*
-    if (!this.forwardPending) {
-      this.forwardPending = true;
-    }
-    */
-      this.raqId = requestAnimationFrame((now) => this.forward( now ));
+    
+    this.raqId = requestAnimationFrame((now) => this.forward( now ));
   }
 
   /*
