@@ -4558,6 +4558,7 @@ class GameOver extends Panel {
     this.passthrough = true;
     this.willRestart = false;
     this.playedMusic = false;
+    this.newHighTimer = 0;
 
     if( ODR.runRecord.hiscore < ODR.score)
       this.clearTime = ODR.config.GAMEOVER_CLEAR_TIME + 4000;
@@ -4596,11 +4597,11 @@ class GameOver extends Panel {
     return true;
   }
 
-  forward( deltaTime ){
+  repaint( deltaTime ){
     this.timer += deltaTime;
 
     if( this.willRestart ){
-      return this.forwardRestarting( deltaTime );
+      return this.repaintRestarting( deltaTime );
     } else {
       let alphaRestore = this.canvasCtx.globalAlpha;
         this.repaintGameOver( deltaTime );
@@ -4609,32 +4610,27 @@ class GameOver extends Panel {
     }
   }
 
-  forwardRestarting( deltaTime ){
+  repaintRestarting( deltaTime ){
     //TODO transition
-    return null;
+    this.exit( null );
   }
 
-  forwardGameOver( deltaTime ){
-    deltaTime = deltaTime ? deltaTime : 1;
-    let dist = this.timer/100;
-      if (dist > 1) dist = 1;
+  repaintGameOver( deltaTime ){
+    // Jumping OGG Block slices
+    this.canvasCtx.globalAlpha = Math.min( 1, this.timer/100 );
 
-    // OGG
-    this.canvasCtx.save();
-    this.canvasCtx.globalAlpha = dist;
-
-    let bt = [6,4,8,5,9,7,11];
-    let bw = [15,15,15,15,15,6,6];
-    for( let b = 0, x = 0; b < 7; x+=bw[b], b++ ){
-      let t = this.timer - bt[b]**2;
+    let blockTimeFactor = [ 6, 4, 8, 5, 9, 7, 11 ];
+    let blockSlices = [ 15, 15, 15, 15, 15, 6, 6 ];
+    for( let b = 0, x = 0; b < 7; x+= blockSlices[ b ], b++ ){
+      let t = this.timer - blockTimeFactor[ b ]**2;
       let d = Math.max(0, 100 - t/10);
       let a = t%300 / 300;
       let y = Math.min( 50, 50- d *a+ d *a**2 );
 
-      this.canvasCtx.drawImage(ODR.spriteGUI,
-          x, 159, bw[b], 17,
+      this.canvasCtx.drawImage( ODR.spriteGUI,
+          x, 159, blockSlices[ b ], 17,
           257 + x , Math.floor(y),
-          bw[b], 17);
+          blockSlices[ b ], 17);
 
       if( !b ){
         t = this.timer - 8**2;
@@ -4642,7 +4638,7 @@ class GameOver extends Panel {
         a = t%300 / 300;
         y = Math.min( 50, 50- d *a+ d *a**2 );
 
-        this.canvasCtx.drawImage(ODR.spriteGUI,
+        this.canvasCtx.drawImage( ODR.spriteGUI,
             x, 150, 15, 9,
             257 + x , Math.floor(y) - 9,
             15, 9);
@@ -4673,7 +4669,9 @@ class GameOver extends Panel {
           + Math.round( ODR.score*showScore )
           + (showNewHi == 1 ? newHigh :'')).draw( this.canvasCtx, 300, lineY );
 
-      if( ODR.sequencer.dejavus ) return;
+      if( ODR.sequencer.dejavus ){
+        return;
+      }
 
       if( showHi == 1 ){
         let diff = ODR.gameModeScore - ODR.runRecord.hiscore;
@@ -4684,7 +4682,7 @@ class GameOver extends Panel {
           this.__hiScore = this.__hiScore || new Text();
           this.__hiScore.setString(' '
             + ( showNewHi == 1
-              ? ODR.runRecord.hiscore + ~~( diff * ( this.newHighTimer || 0 )/1000 )
+              ? ODR.runRecord.hiscore + ~~( diff * this.newHighTimer/1000 )
               : ODR.runRecord.hiscore )).draw( this.canvasCtx, 300, lineY );
 
         if( showNewHi == 1 ){
@@ -4704,7 +4702,7 @@ class GameOver extends Panel {
 
               this.playMusicIfNeeded( 1 );
             }
-            this.newHighTimer = Math.min( 1000 , ( this.newHighTimer || 0 ) + deltaTime );
+            this.newHighTimer = Math.min( 1000 , this.newHighTimer+ deltaTime );
           }
 
           lineY += 20;
@@ -4729,23 +4727,6 @@ class GameOver extends Panel {
 
       }
     }
-
-    // Restart button.
-        /*
-    this.canvasCtx.drawImage(ODR.spriteGUI,
-        0, 40,
-        38, 34,
-        281 + (1-dist) * 38/2,
-        100 + (1-dist) * 28/2,
-        38 * dist, 34 * dist);
-    this.canvasCtx.drawImage(ODR.spriteGUI,
-        7, 74,
-        23, 19,
-        281 + 7, 100 + 8,
-        23, 19);
-        */
-    this.canvasCtx.restore();
-
   }
 }
 
