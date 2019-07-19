@@ -6164,10 +6164,11 @@ class OnDaRun extends LitElement {
  * @param {Map} changedProperties
  */
   firstUpdated( changedProperties ){
-    let natImgUrl = 'https://scontent.fbkk5-4.fna.fbcdn.net/v/t1.0-0/c0.0.200.200a/p200x200/65054160_2418918275098581_5937603192194859008_n.jpg?_nc_cat=103&_nc_oc=AQnvd5AaFFq4TRM-0kj-LiNT0AY1tcoMaGl_hO3DeCsk2GOu70lP3W5ga5MX0YaF-scCBFMouA-CYssu8aw2lwNe&_nc_ht=scontent.fbkk5-4.fna&oh=e9977f6d444f931c04db4aa9b8ee9dd9&oe=5DC119D4';
+//    let natImgUrl = 'https://scontent.fbkk5-4.fna.fbcdn.net/v/t1.0-0/c0.0.200.200a/p200x200/65054160_2418918275098581_5937603192194859008_n.jpg?_nc_cat=103&_nc_oc=AQnvd5AaFFq4TRM-0kj-LiNT0AY1tcoMaGl_hO3DeCsk2GOu70lP3W5ga5MX0YaF-scCBFMouA-CYssu8aw2lwNe&_nc_ht=scontent.fbkk5-4.fna&oh=e9977f6d444f931c04db4aa9b8ee9dd9&oe=5DC119D4';
+    let natImgUrl = 'https://scontent.fbkk5-4.fna.fbcdn.net/v/t1.0-9/65054160_2418918275098581_5937603192194859008_n.jpg?_nc_cat=103&_nc_oc=AQln9fwCciCiy6gosrHzt0kVadWmaEASNIsC0VwgZpJoBHNodpoHqTT7sZTMqsT2ZhlHpMz6RYrjoGttVZTj3syA&_nc_ht=scontent.fbkk5-4.fna&oh=904fd5ba5537447d65106826ee988cd5&oe=5DB738CB';
     let natImg = new Image();
     natImg.onload = () => {
-      console.log("%c .",`font-size: 1px; padding: 50px 67px; line-height:30px;background: url(${natImgUrl}); background-size:150px 150px; color: transparent;`);
+      console.log("%c .",`font-size: 1px; padding: 30px 33px; line-height:10px;background: url(${natImgUrl}); background-size:154px 192px; background-position: center -10px; color: transparent;`);
       console.log(`Made for Natherine BNK48 with %c❤❤❤❤`,'color:crimson');
     };
     natImg.src = natImgUrl;
