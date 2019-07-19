@@ -1025,7 +1025,7 @@ class Sequencer {
     if( !lastEntity || lastEntity.maxX < 600 ){
 
       // Tangerine
-      if( ODR.shouldDropTangerines && N7e.user && !N7e.randomInt(0,10)){
+      if( ODR.shouldDropTangerines && N7e.user && !N7e.randomInt(0,ODR.tangerineDropRate)){
         ODR.shouldDropTangerines = false;
         ODR.tangerineTimer = 0;
         let tangerine = new Tangerine( this.canvasCtx, DuckType.elevationList[ N7e.randomInt( 1, 4 )]);
@@ -2529,27 +2529,13 @@ class A8e {
         ~~( baseX +action.fullDistance - 30*i *alpha ) - s**2, this.groundMinY,
         A8e.config.WIDTH, A8e.config.HEIGHT);
     }
-
-    this.canvasCtx.restore();
+    this.canvasCtx.globalAlpha = alphaRestore;
   }
 
   reset(){
     this.minY = this.groundMinY;
     this.minX = -40;// A8e.config.START_X_POS;
     this.dust.reset();
-
-    /*
-    let endTime = getTimeStamp();
-    let startingSlide = new SlideAction(endTime - ODR.config.MAX_ACTION_PRESS, 7.2);
-    startingSlide.priority = 1;
-    //FIXME playCount is used for deciding if it should draw guides or not at start.
-    startingSlide.start = ODR.crashed ? true : false;
-    startingSlide.end = endTime;
-      startingSlide.maxPressDuration = 1500;
-
-    ODR.queueAction(startingSlide);
-    */
-//    ODR.queueAction(ODR.defaultAction);
   }
 }
 
@@ -3799,6 +3785,9 @@ The Thai Redcross Society ${'redcross'}
       // Falling tangerines on Thursday.
       if( !this.__dayOfWeek ){
         this.__dayOfWeek = new Date().getDay() + 1;
+        if( this.__dayOfWeek == 5 ){
+          ODR.tangerineDropRate = 5;
+        }
       }
       if( this.__dayOfWeek == 5 ){
         let manyTangs = 40;
@@ -6094,7 +6083,9 @@ class OnDaRun extends LitElement {
     //this.distance = 0;
 
     this.shouldDropTangerines = false;
+    this.tangerineDropRate = 10;
     this.tangerineTimer = 0;
+    this.tangerineTimerGap = 5000;
 
     this.inverted = false;
     this.invertTimer = 0;
@@ -7085,9 +7076,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       }
 
       //Drop tangerine
-      if( this.tangerineTimer < 5000 ){
+      if( this.tangerineTimer < this.tangerineTimerGap ){
         this.tangerineTimer += deltaTime;
-        if( this.tangerineTimer >= 5000 ){
+        if( this.tangerineTimer >= this.tangerineTimerGap ){
           this.checkShouldDropTangerines();
         }
       }
@@ -7510,7 +7501,7 @@ GOOD JOB! ${'natB'}`, 15000 );
           let tangerines = complete.snapshot.val();
           let maxPerDay = Math.max( 1, ~~(this.gameModeTotalScore/100));
           if( tangerines.dayCount < maxPerDay ){
-            if( this.tangerineTimer >= 5000 ){
+            if( this.tangerineTimer >= this.tangerineTimerGap ){
               this.shouldDropTangerines = true;
             }
           } else {
