@@ -2890,7 +2890,7 @@ class Text {
   typeset( string, callbacks ){
     this.glyphs = [];
     this.lineLengths = [];
-    if( ! string ) return;
+    string = string || "";
 
     let lineNo = 0;
 
