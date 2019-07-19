@@ -6789,13 +6789,14 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     }
     entries.push({ title:'EXIT', exit: true });
 
-    return new Menu( this.canvas, {
+    let gameMenu = new Menu( this.canvas, {
       title: 'games',
       entries: entries,
       enter: ( entryIndex, choice ) => {
         if( choice.mode ){
           this.setGameMode(choice.mode);
         } else if ( !choice.exit ){
+          //The Hidden Total Recall Menu
           let sequencer = ODR.sequencer;
 
           // For setting after callng setGameMode() as both props will be gone.
@@ -6809,14 +6810,15 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           sequencer.dejavus = dejavus;
         }
 
-        return null;
+        gameMenu.exit( null );
       }
     }, this.consoleButtons.CONSOLE_C );
+    return gameMenu;
   }
 
   createUserMenu(){
     Sound.inst.currentSong = null;
-    let mainMenu =
+    let userMenu =
       /* User has signed in */
       N7e.user
       ? new Menu( this.canvas, {
@@ -6836,18 +6838,20 @@ https://www.redcross.or.th/donate/`,'color:crimson');
         nickname: N7e.user.nickname,
         provider: N7e.user.auth.providerData[0].providerId,
         enter: (entryIndex,choice) => {
-          if (choice.exit) return null;
+          if (choice.exit) userMenu.exit();
 
           if( choice == "SET NAME"){
-            return new TextEditor( this.canvas, N7e.user.nickname ? N7e.user.nickname: '', newNickname => {
+            userMenu.exit( new TextEditor( this.canvas, N7e.user.nickname || '', newNickname => {
+
               N7e.user.ref.child('nickname').set( newNickname );
               N7e.user.nickname = newNickname;
               this.notifier.notify(`all hail ${newNickname}.`, 5000 );
-              mainMenu.model.title = newNickname;
-              return mainMenu;
-            }, mainMenu );
+              userMenu.model.title = newNickname;
+
+              return userMenu; //caller can also forward menu
+            }, userMenu ));
           } else if( choice == "SIGN OUT"){
-            return new Menu( this.canvas, {
+            let confirmMenu = userMenu.exit( new Menu( this.canvas, {
               title: 'DO YOU WANT TO SIGN OUT?',
               profile: true,
               profilePhoto: N7e.user.image,
@@ -6859,8 +6863,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
               ],
               currentIndex: 1,
               enter: (confirm,confirmation) => {
-                if (confirmation.exit) {
-                  return null;
+                if( confirmation.exit ){
+                  confirmMenu.exit();
                 } else {
                   //N7e.user.odrRef.off();
                   N7e.user.ref.child('items/tangerines/count').off();
@@ -6877,9 +6881,10 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                   // Reset game score.
                   ODR.gameModeList.forEach( mode => mode.distance = 0 );
                   ODR.setGameMode( OnDaRun.gameModes.GAME_A );
+                  confirmMenu.exit( null );
                 }
               },
-            }, this.consoleButtons.CONSOLE_D, mainMenu );
+            }, this.consoleButtons.CONSOLE_D, userMenu ));
           }
         }
       }, this.consoleButtons.CONSOLE_D )
@@ -6893,29 +6898,29 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           {title:'EXIT',exit:true}
         ],
         enter: ( entryIndex, choice ) => {
-          if (choice.exit) return null;
+          if( choice.exit ) userMenu.exit();
 
-          return new Menu( this.canvas, {
+          let confirmMenu = userMenu.exit( new Menu( this.canvas, {
             title: 'DO YOU WANT TO LINK ' + choice + '?',
             entries: [
               'YES',
-              {title:'NO',exit:true}
+              { title:'NO', exit: true },
             ],
             currentIndex: 1,
-            enter: (confirm,confirmation) => {
-              if (confirmation.exit) {
-                return mainMenu;
+            enter: ( confirm, confirmation ) => {
+              if( confirmation.exit ){
+                confirmMenu.exit();
               } else {
                 N7e.user = new User(['facebook','twitter','google'][entryIndex]);
-                return new Wait( this.canvas, null, `signing with ${['facebook','twitter','google'][entryIndex]}..please wait`,
-                  waiter => N7e.signing.progress ? waiter : null );
+                confirmMenu.exit( new Wait( this.canvas, null, `signing with ${['facebook','twitter','google'][entryIndex]}..please wait`,
+                  waiter => N7e.signing.progress ? waiter : null ));
               }
             },
-          }, this.consoleButtons.CONSOLE_D, mainMenu );
+          }, this.consoleButtons.CONSOLE_D, userMenu ));
         },
       }, this.consoleButtons.CONSOLE_D );
 
-    return mainMenu;
+    return userMenu;
   }
 
   createResetMenu(){
