@@ -4814,21 +4814,24 @@ class Greeter extends Panel {
 
     this.drawTutorial();
 
-    this.introScriptTimer -= deltaTime;
-    if (this.introScriptTimer < 0) {
-      let wait = this.introScript.shift();
-      let text = this.introScript.shift();
-      let dur = 6000;
-      let wc = text.split(' ').length;
-      if (wc > 5) {
-        dur = wc * 1200;
+    // Only intro if notifier is free.
+    if( this.notifier.timer <= 0){
+      this.introScriptTimer -= deltaTime;
+      if (this.introScriptTimer < 0) {
+        let wait = this.introScript.shift();
+        let text = this.introScript.shift();
+        let dur = 6000;
+        let wc = text.split(' ').length;
+        if (wc > 5) {
+          dur = wc * 1200;
+        }
+
+        this.introScript.push(wait);
+        this.introScript.push(text);
+
+        this.notifier.notify( text + Text.$` ${'natB'}`, dur );
+        this.introScriptTimer = wait;
       }
-
-      this.introScript.push(wait);
-      this.introScript.push(text);
-
-      this.notifier.notify( text + Text.$` ${'natB'}`, dur );
-      this.introScriptTimer = wait;
     }
 
     if( !this.__reloadIntroMusic ){
