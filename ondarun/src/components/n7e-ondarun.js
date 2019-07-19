@@ -5961,7 +5961,8 @@ class OnDaRun extends LitElement {
       this._maxSpeed = newMaxSpeed;
       if( N7e.user ){
         N7e.user.odrRef.child('maxSpeed')
-        .transaction(( maxSpeed = newMaxSpeed ) => {
+        .transaction(( maxSpeed ) => {
+          maxSpeed = maxSpeed || newMaxSpeed;
 
           if( newMaxSpeed.value > maxSpeed.value ){
             maxSpeed = newMaxSpeed;
