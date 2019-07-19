@@ -1823,7 +1823,7 @@ class HorizonLine {
     ctx.restore();
   }
 
-  drawGround(canvasCtx, spinner, mode, r,g,b) {
+  drawGround( canvasCtx, spinner, mode, r,g,b ){
     canvasCtx.save();
     canvasCtx.lineWidth = 5;
     canvasCtx.lineCap = 'butt';
@@ -4862,7 +4862,7 @@ class Action {
   }
 
   set type(_) {
-    console.log('no no');
+    console.trace();
   }
 
   get index() {
@@ -5063,6 +5063,10 @@ class ConsoleButton {
 
     this.canvas.addEventListener(OnDaRun.events.TOUCHSTART, this);
     this.canvas.addEventListener(OnDaRun.events.TOUCHEND, this);
+    /*
+    this.canvas.addEventListener(OnDaRun.events.TOUCHCANCEL, this);
+    this.canvas.addEventListener(OnDaRun.events.TOUCHMOVE, this);
+    */
     this.canvas.addEventListener(OnDaRun.events.MOUSEDOWN, this);
     this.canvas.addEventListener(OnDaRun.events.MOUSEUP, this);
     this.canvas.addEventListener(OnDaRun.events.MOUSEOUT, this);
@@ -6461,7 +6465,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     N7e.signing.progress = true;
 
     firebase.auth().onAuthStateChanged(user => {
-      if (user) {
+      if( user ){
         let authUser = new User();
         N7e.user = authUser;
 
@@ -7371,6 +7375,20 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       return;
     }
 
+    /* Don't forget another KeyP handling above.
+    if( e.code === "KeyP"){
+
+      if( this._handleEvent_Pause ){
+        this._handleEvent_Pause.exit();
+        this._handleEvent_Pause = null;
+      } else {
+        this.panel = new Pause ( this.canvas, this.panel, true );
+        this._handleEvent_Pause = this.panel;
+      }
+
+    }
+    */
+
     // Prevent native page scrolling whilst tapping on mobile.
     //if( IS_MOBILE && this.playing ){
       //e.preventDefault();
@@ -7405,11 +7423,13 @@ https://www.redcross.or.th/donate/`,'color:crimson');
   scheduleNextRepaint() {
     if( N7e.freeze ){
       console.warn('FROZEN');
-      cancelAnimationFrame( this.raqId );
-      this.raqId = 0;
+      if( this.raqId ){
+        cancelAnimationFrame( this.raqId );
+        this.raqId = 0;
+      }
       return;
     }
-    
+
     this.raqId = requestAnimationFrame((now) => this.forward( now ));
   }
 
@@ -7906,8 +7926,10 @@ OnDaRun.events = {
   MOUSEUP: 'mouseup',
   MOUSEOUT: 'mouseout',
   RESIZE: 'resize',
-  TOUCHEND: 'touchend',
   TOUCHSTART: 'touchstart',
+  TOUCHEND: 'touchend',
+  TOUCHMOVE: 'touchmove',
+  TOUCHCANCEL: 'touchcancel',
   VISIBILITY: 'visibilitychange',
   BLUR: 'blur',
   FOCUS: 'focus',
