@@ -4255,26 +4255,24 @@ class Menu extends Panel {
 
       // The choosen entry has "options". Create a submenu.
       if( entry.options ){
-        this.model.enter(this.model.currentIndex, entry);
-
-        let subEntries;
+        let optionMenuEntries;
         if( entry.options.hasOwnProperty('min')){
-          subEntries = [];
+          optionMenuEntries = [];
           for (let i = entry.options.min; i <= entry.options.max; i+= entry.options.step) {
-            subEntries.push(i);
+            optionMenuEntries.push(i);
           }
         } else {
-          subEntries = entry.options.slice();
+          optionMenuEntries = entry.options.slice();
         }
         let currentIndex;
-        for (currentIndex = 0; currentIndex < subEntries.length; currentIndex++) {
-          if (entry.value == subEntries[currentIndex]) {
+        for (currentIndex = 0; currentIndex < optionMenuEntries.length; currentIndex++) {
+          if (entry.value == optionMenuEntries[currentIndex]) {
             break;
           }
         }
-        subEntries.push({ title:'CANCEL', exit:true });
+        optionMenuEntries.push({ title:'CANCEL', exit:true });
 
-        let submenu = new Menu( this.canvas, {
+        let optionMenu = new Menu( this.canvas, {
           name: entry.name,
           title: `${this.model.title}\n${entry.title}`,
           _currentIndex: currentIndex,
@@ -4288,7 +4286,7 @@ class Menu extends Panel {
             }
             this._currentIndex = newIndex;
           },
-          entries: subEntries,
+          entries: optionMenuEntries,
           enter: ( select, selectedItem ) => {
             if( !selectedItem.exit ){
               entry.value = selectedItem;
@@ -4303,20 +4301,20 @@ class Menu extends Panel {
                 N7e.user.odrRef.child('settings/'+entry.name).set(selectedItem);
                 */
             }
-            //hackish, to turn sample music off on leaving the submenu.
+            //hackish, to turn sample music off on leaving the optionMenu.
             if( this.associatedButton == ODR.consoleButtons.CONSOLE_A ){
               Sound.inst.currentSong = null;
             }
 
-            submenu.exit();
+            optionMenu.exit();
           },
         }, this.associatedButton, this, entry.muted  );
 
-        // Exit to the created option submenu.
-        this.exit( submenu );
+        // Exit to the created option optionMenu.
+        this.exit( optionMenu );
 
       } else {
-        this.exit( this.model.enter( this.model.currentIndex, entry ));
+        this.model.enter( this.model.currentIndex, entry );
       }
     }
 
