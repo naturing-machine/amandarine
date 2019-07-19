@@ -468,13 +468,13 @@ class Tangerine extends Entity {
       this.minY = this.collectedY - y;
       //super.forward( 0, 0 );
 
-      this.canvasCtx.save();
+      let alphaRestore = this.canvasCtx.globalAlpha;
       if( this.timer > 200 ) {
         this.canvasCtx.globalAlpha = 1 - ((this.timer - 200) / 200);
       }
       this.spriteX = 20 * ~~(this.timer / 100);
       super.forward( deltaTime, currentSpeed/10 );
-      this.canvasCtx.restore();
+      this.canvasCtx.globalAlpha = alphaRestore;
     } else {
       this.minY = this.yOrigin + Math.abs(Math.sin((2000+this.timer)/4000)) * 25;
       this.spriteX = 20 * ~~(this.timer /50 %6);
@@ -952,10 +952,10 @@ class Sequencer {
     if( 1 == entityExistence ) {
       lastEntity = this.forwardEntities( deltaTime, currentSpeed, decrement );
     } else if( entityExistence > 0 ) {
-      this.canvasCtx.save();
+      let alphaRestore = this.canvasCtx.globalAlpha;
       this.canvasCtx.globalAlpha = entityExistence;
       lastEntity = this.forwardEntities( deltaTime, currentSpeed, decrement );
-      this.canvasCtx.restore();
+      this.canvasCtx.globalAlpha = alphaRestore;
     }
 
     if( shouldAddObstacle ){
@@ -1579,8 +1579,8 @@ class NightMode {
     return currentPos;
   }
 
-  draw( darkness = 255 ) {
-    this.canvasCtx.save();
+  draw( darkness = 255 ){
+    let alphaRestore = this.canvasCtx.globalAlpha;
     this.canvasCtx.globalAlpha = this.opacity;// * (( 255 + darkness )>>>1)/255;
 
     let mx = Infinity, my = Infinity;
@@ -1656,7 +1656,7 @@ class NightMode {
       }
     }
 
-    this.canvasCtx.restore();
+    this.canvasCtx.globalAlpha = alphaRestore;
   }
 
   generateMoonCache(){
@@ -2048,7 +2048,8 @@ class Scenery {
         });
 
         // Nearer layer will be constanty shifted a bit faster.
-        this.canvasCtx.save();{
+        let alphaRestore = this.canvasCtx.globalAlpha;
+        let compositeRestore = this.canvasCtx.globalCompositeOperation;
 
           this.canvasCtx.globalAlpha = (i+1)/5;
           layer.forEach( cloud => {
@@ -2062,7 +2063,8 @@ class Scenery {
           this.canvasCtx.fillStyle = '#' + ODR.sky.toRGB;
           this.canvasCtx.fillRect( 0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT );
 
-        } this.canvasCtx.restore();
+        this.canvasCtx.globalCompositeOperation = compositeRestore;
+        this.canvasCtx.globalAlpha = alphaRestore;
 
 
       } else {
@@ -2104,12 +2106,12 @@ class Scenery {
     }
 
     // Fill atmosphere
-    this.canvasCtx.save();
-    this.canvasCtx.globalCompositeOperation = 'destination-over';
+    let compositeRestore = this.canvasCtx.globalCompositeOperation;
+      this.canvasCtx.globalCompositeOperation = 'destination-over';
 
-    this.nightMode.forward( showNightMode, deltaTime, ODR.sky.shade[6] );
-    ODR.sky.repaint( this.canvasCtx );
-    this.canvasCtx.restore();
+      this.nightMode.forward( showNightMode, deltaTime, ODR.sky.shade[6] );
+      ODR.sky.repaint( this.canvasCtx );
+    this.canvasCtx.globalCompositeOperation = compositeRestore;
 
     this.horizonLine.forward( -currentSpeed * FPS / 1000 * deltaTime );
 
@@ -2448,7 +2450,8 @@ class A8e {
 
     action.willEnd(now,speed);
 
-    this.canvasCtx.save(); {
+    let alphaRestore = this.canvasCtx.globalAlpha;
+    {
       this.canvasCtx.beginPath();
       this.canvasCtx.strokeStyle = "white";
 
@@ -2494,7 +2497,8 @@ class A8e {
       this.canvasCtx.lineWidth = alpha*5;
       this.canvasCtx.lineDashOffset = now;
       this.canvasCtx.stroke();
-    } this.canvasCtx.restore();
+    }
+    this.canvasCtx.globalAlpha = alphaRestore;
 
   }
 
@@ -2515,9 +2519,8 @@ class A8e {
 
     let frame = ~~(now / A8e.animFrames.SLIDING.msPerFrame) % 3;
 
-    this.canvasCtx.save();
-
     // Draw future destination body ghosts.
+    let alphaRestore = this.canvasCtx.globalAlpha;
     for( let i = 0, len = ODR.config.GRAPHICS_SLIDE_STEPS, s = 0, sd = Math.abs( now/100 %4 -2 );
         i < len; i++, s+=sd) {
       this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/( 1<<i );
@@ -2770,10 +2773,10 @@ class Scoreboard {
     }
 
     if( this.opacity != 1 ){
-      this.canvasCtx.save();
+    let alphaRestore = this.canvasCtx.globalAlpha;
       this.canvasCtx.globalAlpha = this.opacity;
       this.text.draw( this.canvasCtx, this.existence ? 590 : 0, 10, 1, 10+ 8*this.opacity );
-      this.canvasCtx.restore();
+    this.canvasCtx.globalAlpha = alphaRestore;
     } else {
       this.text.draw( this.canvasCtx, 590, 10, 1, 18, 16 );
     }
@@ -3269,12 +3272,13 @@ class Notifier {
           if (this.opacity < 0) this.opacity = 0;
           else if (this.opacity > 1) this.opacity = 1;
 
-      this.canvasCtx.save();
-      this.canvasCtx.globalAlpha = this.opacity;
-      this.text.draw( this.canvasCtx,
-        14 - 20*(1 - this.opacity), 10,
-        Math.ceil( 14*this.opacity ), Math.ceil( 16*this.opacity ));
-      this.canvasCtx.restore();
+      let alphaRestore = this.canvasCtx.globalAlpha;
+        this.canvasCtx.globalAlpha = this.opacity;
+        this.text.draw( this.canvasCtx,
+          14 - 20*(1 - this.opacity), 10,
+          Math.ceil( 14*this.opacity ), Math.ceil( 16*this.opacity ));
+      this.canvasCtx.globalAlpha = alphaRestore;
+      
       this.timer -= deltaTime;
     }
   }
@@ -3497,12 +3501,13 @@ ${'left'} to donate ${'slide'}                ${'jump'} to sprint ${'right'}
     let drawHeart = ( x, y, text ) => {
 
       let g = this.timer%400 > 200 ? 1092 : 0;
-      this.canvasCtx.save();
-      this.canvasCtx.globalAlpha = Math.abs(Math.sin(this.timer/300));
-      this.canvasCtx.drawImage( ODR.spriteGUI,
-        heartGlyph, 0, 14, 16,
-        ~~x, ~~y, 14, 16 );
-      this.canvasCtx.restore();
+      
+      let alphaRestore = this.canvasCtx.globalAlpha;
+        this.canvasCtx.globalAlpha = Math.abs(Math.sin(this.timer/300));
+        this.canvasCtx.drawImage( ODR.spriteGUI,
+          heartGlyph, 0, 14, 16,
+          ~~x, ~~y, 14, 16 );
+      this.canvasCtx.globalAlpha = alphaRestore;
     };
 
     let drawIdle = ( x, y, text ) => {
@@ -3723,11 +3728,10 @@ The Thai Redcross Society ${'redcross'}
       let e = () => this.donationText.draw( this.canvasCtx, 300, 30, 0 );
 
       if( !this.waitingForAudioContext && this.timer > this.buttonBlockStopTime ){
-        let opacity = 1 - Math.min( 2000, this.timer- this.buttonBlockStopTime )/2000;
-        this.canvasCtx.save();
-        this.canvasCtx.globalAlpha = opacity;
-        e();
-        this.canvasCtx.restore();
+        let alphaRestore = this.canvasCtx.globalAlpha;
+          this.canvasCtx.globalAlpha = 1 - Math.min( 2000, this.timer- this.buttonBlockStopTime )/2000;
+          e();
+        this.canvasCtx.globalAlpha = alphaRestore;
         if( this.timer > this.buttonBlockStopTime + 2500 ) this.stopWaitingForButtonUp();
       } else {
         e();
@@ -3821,7 +3825,7 @@ The Thai Redcross Society ${'redcross'}
             });
           }
         }
-        this.canvasCtx.save();
+        let alphaRestore = this.canvasCtx.globalAlpha;
         this.canvasCtx.globalAlpha = endingOpacity;
         this.__tangList.forEach( t => {
           t.d += deltaTime * t.r;
@@ -3831,7 +3835,7 @@ The Thai Redcross Society ${'redcross'}
             ~~Math.floor(t.d/1000*8)%6 * 20, 20, 20, 20,
             ~~t.x, ~~t.y+endingOffset, 20, 20 );
         });
-        this.canvasCtx.restore();
+        this.canvasCtx.globalAlpha = alphaRestore;
         this.__tangList = this.__tangList.filter( t => t.y < 220 );
       }
 
@@ -3878,10 +3882,10 @@ The Thai Redcross Society ${'redcross'}
 
     // Dark out the logo scene.
     if( this.blackoutOpacity !==0 ){
-      this.canvasCtx.save();
+      let alphaRestore = this.canvasCtx.globalAlpha;
       this.canvasCtx.globalAlpha = this.blackoutOpacity;
       this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
-      this.canvasCtx.restore();
+      this.canvasCtx.globalAlpha = alphaRestore;
     }
 
     if( dataDownloaded < 100 ){
@@ -3897,11 +3901,10 @@ The Thai Redcross Society ${'redcross'}
       // Begin the story mode.
 
       if( this.timer - this.imagesLoadedTime > this.storyStartOffset ){
-        this.canvasCtx.save();
+        let alphaRestore = this.canvasCtx.globalAlpha;
 
         //Providing smooth-out during story mode.
         this.canvasCtx.globalAlpha = this.blackoutOpacity;
-
         this.photoTiming.forEach(([ beginTime, endTime, beginX, beginY, beginSize, endX, endY, endSize, textCenter ], index ) => {
           if( storyTimer > beginTime && storyTimer < endTime ){
 
@@ -3944,8 +3947,8 @@ The Thai Redcross Society ${'redcross'}
             }
           }
         });
-
-        this.canvasCtx.restore();
+        this.canvasCtx.globalAlpha = alphaRestore;
+        
         if( this.dualPressed && this.timer%600 > 300 && this.storyEndTime > storyTimer ){
           this.__fastForwardingText = this.__fastForwardingText || new Text().set`${'right'}${'right'}`;
           this.__fastForwardingText.draw( this.canvasCtx, 600, 185, 1, 10 );
@@ -3959,7 +3962,6 @@ The Thai Redcross Society ${'redcross'}
 class Pause extends Panel {
   constructor( canvas, previousPanel = null , silent = false ){
     super( canvas, previousPanel );
-    this.screenOpacity = ODR.canvas.style.opacity;
     this.isPaused = false;
     this.silent = silent;
   }
@@ -3969,7 +3971,6 @@ class Pause extends Panel {
     this.isPaused = true;
 
     if( !this.silent ){
-      this.screenOpacity = ODR.canvas.style.opacity;
       ODR.canvas.style.opacity /= 2;
 
       this.canvasCtx.save();
@@ -3994,7 +3995,7 @@ class Pause extends Panel {
 
   exit( panel ){
     if( !this.silent && this.isPaused){
-      ODR.canvas.style.opacity = this.screenOpacity;
+      ODR.canvas.style.opacity = 1 - ODR.config.GRAPHICS_DAY_LIGHT/5;
       console.log('UNPAUSED');
       N7e.freeze = false;
       ODR.scheduleNextRepaint();
@@ -4189,7 +4190,7 @@ class Menu extends Panel {
     }
 
 
-    this.canvasCtx.save();
+    let alphaRestore = this.canvasCtx.globalAlpha;
     for( let i = 0; i < this.model.entries.length; i++ ){
       let entry = this.model.entries[ i ];
       let title = entry.title ? entry.title : entry;
@@ -4235,7 +4236,7 @@ class Menu extends Panel {
       }
 
     }
-    this.canvasCtx.restore();
+    this.canvasCtx.globalAlpha = alphaRestore;
 
     if( this.model.title ){
       new Text().setString( this.model.title ).draw( this.canvasCtx, 300, 10, 0 );
@@ -4499,10 +4500,14 @@ vkqjxz%${'trophy'}${'noentry'}
     let gd = ( x, y, text, ctx, gidx, cidx ) => {
       let glyph = this.__jumpingGlyphs[[ 1, 0, 1, 0 ][ cidx ]];
 
-      this.canvasCtx.drawImage( ODR.spriteGUI,
-        glyph, 0, 14, 16,
-        ~~x, ~~(y + 3 - Math.abs( 5*Math.sin( this.timer/200 ))), 14, 16 );
-    };
+        let alphaRestore = this.canvasCtx.globalAlpha;
+          this.canvasCtx.globalAlpha = 1 - 0.3 *Math.abs( Math.sin( this.timer/200 ));
+          this.canvasCtx.drawImage( ODR.spriteGUI,
+            glyph, 0, 14, 16,
+            ~~x, ~~(y + 2 - Math.abs( 3*Math.sin( this.timer/200 ))), 14, 16 );
+        this.canvasCtx.globalAlpha = alphaRestore;
+      };
+    }
     
     this.__guideText = this.__guideText || new Text().set
 `${'slide'}+${'jump'}${gd} Up   
@@ -4591,7 +4596,9 @@ class GameOver extends Panel {
     if( this.willRestart ){
       return this.forwardRestarting( deltaTime );
     } else {
-      this.forwardGameOver( deltaTime );
+      let alphaRestore = this.canvasCtx.globalAlpha;
+        this.repaintGameOver( deltaTime );
+      this.canvasCtx.globalAlpha = alphaRestore;
       return this;
     }
   }
