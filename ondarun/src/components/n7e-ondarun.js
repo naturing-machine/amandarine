@@ -3321,8 +3321,8 @@ class Panel {
     return this;
   }
 
-  exit( panel ){
-    this.nextPanel = panel || this.previousPanel;
+  exit( panel = this.previousPanel ){
+    return this.nextPanel = panel;
   }
 
 /**
@@ -3999,7 +3999,7 @@ class Pause extends Panel {
     }
 
     this.isPaused = false;
-    super.exit( panel );
+    return super.exit( panel );
   }
 }
 
