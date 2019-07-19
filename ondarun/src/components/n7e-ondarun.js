@@ -1039,6 +1039,10 @@ class Sequencer {
 
       let situation = lastEntity ? this.getSituation( currentSpeed ) : 0;
 
+      if( ODR.config.GAME_MODE_REPLAY && !this.dejavus ){
+        this.__situationMarker = situation.name;
+      }
+
       do {switch( situation ) {
         case Sequencer.situation.Velota: {
 
@@ -1175,6 +1179,9 @@ class Sequencer {
   register( runTime, entity ){
 
     let entry = { runTime: runTime, minX: entity.minX };
+    if( this.__situationMarker ){
+      entry.marker = this.__situationMarker;
+    }
 
     switch( entity.constructor.name ){
       case 'SmallCactus':
