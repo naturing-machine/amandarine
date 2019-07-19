@@ -3032,7 +3032,7 @@ class Text {
       [ 'tangerine', 0xe00e ],
       [ 'a', 0xe00f ],
       [ 'trophy', 0xe010 ],
-      [ '<3', 0xe011 ],
+      [ 'heart', 0xe011 ],
       [ 'note', 0xe012 ],
       [ 'bell', 0xe014 ],
       [ 'noentry', 0xe015 ],
@@ -3045,7 +3045,7 @@ class Text {
       [ 'left', 0xe022 ],
       [ 'true', 0xe023 ],
       [ 'false', 0xe024 ],
-      [ '<3', code`❤`],
+      [ 'heart', code`❤`],
       [ 'sun', code`☼`],
       [ 'football', code`⚽`],
     ]);
@@ -3056,7 +3056,7 @@ class Text {
       },
     });
 
-    this.glyphMap.set( this.subMap.get('<3'), 1092 );
+    this.glyphMap.set( this.subMap.get('heart'), 1092 );
     this.glyphMap.set( this.subMap.get('sun'), 700 );
     this.glyphMap.set( this.subMap.get('football'), 756 );
 
@@ -3483,7 +3483,7 @@ the thai redcross society
 ${'left'} to donate ${'slide'}                ${'jump'} to sprint ${'right'}
 `;
 
-    let heartGlyph = new Text().set`${'<3'}`.glyphs[0];
+    let heartGlyph = new Text().set`${'heart'}`.glyphs[0];
     let drawHeart = ( x, y, text ) => {
 
       let g = this.timer%400 > 200 ? 1092 : 0;
@@ -4334,7 +4334,7 @@ class TextEditor extends Panel {
     this.callback = callback;
     this.pattern = Text.$`etnsh ${'natA'}${'natB'}${'football'}
 aiouc.'${'bell'}${'speed'}
-rdlmf,"${'<3'}${'tangerine'}
+rdlmf,"${'heart'}${'tangerine'}
 wygpb!?${'redcross'}${'sun'}
 vkqjxz%${'trophy'}${'noentry'}
 01234+*(${'false'}
@@ -4744,16 +4744,16 @@ class Greeter extends Panel {
     this.introScriptTimer = 2000;
     this.introScript = this.introScript || [
       20000, `Hi${(N7e.user||{}).nickname ? '_'+N7e.user.nickname.split(' ').join('_') : ''}!\nPress_${Text.c.slide}/${Text.c.jump}_to_start!`,
-      20000, (N7e.user||{}).nickname ? "Just play already!" : "What's your name? You can login by pressing #trophy button.",
+      20000, (N7e.user||{}).nickname ? "Just play already!" : `What's your name? You can login by pressing the ${Text.c.trophy} button.`,
       20000, "Didn't know you love the song that much!",
-      20000, "Allow yourself to be a beginner. No one starts at the top.#<3",
+      20000, "Allow yourself to be a beginner. No one starts at the top."+Text.c.heart,
       20000, "Man.City will win ${'football'}\nYou know.",
       20000, "You have no idea of the amount of HAPPINESS you brought into my life.",
-      20000, 'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.#<3',
-      20000, 'Never give up on something you really want #<3',
-      20000, 'You are my sunshine #sun#<3',
-      20000, 'My love for you is a journey;\nStarting at forever,\nand ending at never.#<3',
-      20000, 'Glory in life is not in never failing,but rising each time we fail.#<3',
+      20000, 'I didnt say "I_love_you" to hear it back. I said it to make sure you knew.',
+      20000, 'Never give up on something you really want '+Text.c.heart,
+      20000, Text.$`You are my sunshine ${'sun'}${'heart'}`,
+      20000, 'My love for you is a journey;\nStarting at forever,\nand ending at never.'+Text.c.heart,
+      20000, 'Glory in life is not in never failing,but rising each time we fail.'+Text.c.heart,
       20000, Text.$`Love this project?\nDonate to The Thai Redcross Society ${'redcross'}!\nSee the bottom right for details.`,
     ];
   }
