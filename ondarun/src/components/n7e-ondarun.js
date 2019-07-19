@@ -4127,7 +4127,7 @@ class Menu extends Panel {
 
     // Dislay User Profile on the right side of the menu.
     // FIXME subclass this
-    if( this.model.profile ){
+    if( this.model.profile && N7e.user ){
       if( N7e.user.image ){
         this.canvasCtx.drawImage( N7e.user.image,
           0, 0, N7e.user.image.width, N7e.user.image.height,
