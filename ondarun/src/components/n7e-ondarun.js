@@ -4344,6 +4344,34 @@ vkqjxz%${'trophy'}${'noentry'}
     this.textPattern = new Text().setString( this.pattern );
     this.supportedChars = this.pattern.split('\n').join('').split('');
     this.guidePattern = new Text().setString("cancel\ndelete\nok");
+
+    let consoleGlyphs = [
+      Text.glyphMap.get( Text.c.slide.charCodeAt( 0 )),
+      Text.glyphMap.get( Text.c.jump.charCodeAt( 0 )),
+    ];
+
+    let gd = ( x, y, text, ctx, gidx, cidx ) => {
+      let glyph = consoleGlyphs[[ 0, 0, 1, 1, 0, 1 ][ cidx ]];
+      let math = Math.abs(Math.sin( this.timer/200 ));
+
+      let alphaRestore = ctx.globalAlpha;
+        ctx.globalAlpha = 1 - 0.3*math;
+        ctx.drawImage( ODR.spriteGUI,
+          glyph, 0, 14, 16,
+          ~~x, ~~(y + 2 - 3*math), 14, 16 );
+      ctx.globalAlpha = alphaRestore;
+    }
+
+    // Guiding text on the right side.
+    this.guideText = new Text().set
+`${'jump'}+${'slide'}${gd} Up
+
+${gd} Left ${gd} Right
+
+${'slide'}+${'jump'}${gd} Down
+
+${gd}+${gd} Choose`
+
   }
 
   handleEvent( e ){
@@ -4362,9 +4390,9 @@ vkqjxz%${'trophy'}${'noentry'}
           return true;
         } else if (e.key == 'Enter') {
           Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-          this.curX = 7;
+          this.curX = 8;
           this.curY = 6;
-          this.double = true;
+          this.enterAtCursor();
           return true;
         } else if( this.supportedChars.indexOf(e.key) != -1) {
           if( this.value.length >= 25 ){
@@ -4411,13 +4439,13 @@ vkqjxz%${'trophy'}${'noentry'}
         switch( button ){
           case ODR.consoleButtons.CONSOLE_LEFT:{
             if( this.verticalMode )
-              this.offsetV--;
+              this.offsetV++;
             else
               this.offsetH--;
           } break;
           case ODR.consoleButtons.CONSOLE_RIGHT:{
             if( this.verticalMode )
-              this.offsetV++;
+              this.offsetV--;
             else
               this.offsetH++;
           } break;
@@ -4481,35 +4509,6 @@ vkqjxz%${'trophy'}${'noentry'}
   repaint( deltaTime ) {
     this.timer += deltaTime;
     this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
-    
-    //Drawing guiding text on the right side
-    this.__jumpingGlyphs = this.__jumpingGlyphs
-      || [ new Text().set`${'slide'}`.glyphs[ 0 ],
-           new Text().set`${'jump'}`.glyphs[ 0 ]];
-
-    if(! this.__gd ){
-      this.__gd = ( x, y, text, ctx, gidx, cidx ) => {
-        let glyph = this.__jumpingGlyphs[[ 1, 0, 1, 0, 0, 1 ][ cidx ]];
-
-        let alphaRestore = this.canvasCtx.globalAlpha;
-          this.canvasCtx.globalAlpha = 1 - 0.3 *Math.abs( Math.sin( this.timer/200 ));
-          this.canvasCtx.drawImage( ODR.spriteGUI,
-            glyph, 0, 14, 16,
-            ~~x, ~~(y + 2 - Math.abs( 3*Math.sin( this.timer/200 ))), 14, 16 );
-        this.canvasCtx.globalAlpha = alphaRestore;
-      };
-    }
-
-    this.__guideText = this.__guideText || new Text().set
-`${'slide'}+${'jump'}${this.__gd} Up
-
-${this.__gd} Left ${this.__gd} Right
-
-${'jump'}+${'slide'}${this.__gd} Down
-
-${this.__gd}+${this.__gd} Choose
-`
-    this.__guideText.draw( this.canvasCtx, 590, 30, 1, 14, 22 );
 
     this.canvasCtx.fillStyle = "#444";
     if( this.verticalMode ){
@@ -4525,6 +4524,7 @@ ${this.__gd}+${this.__gd} Choose
       this.yOffset+ 2+ ( 1+ this.curY )*25, 23, 23 );
     this.textPattern.draw( this.canvasCtx, 5+ this.xOffset, 7+ 25+ this.yOffset, -1, 25, 25 );
     this.guidePattern.draw( this.canvasCtx, 230+ this.xOffset, 207-25*3, -1, 14, 25 );
+    this.guideText.draw( this.canvasCtx, 590, 30, 1, 14, 22 );
 
     this.canvasCtx.fillRect(
       this.xOffset, this.yOffset+ 1,
