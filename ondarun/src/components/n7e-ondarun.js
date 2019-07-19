@@ -2812,7 +2812,6 @@ class Text {
       ref.string = string;
       this.softLength = ref.softLength || this.softLength;
       this.maxLength = ref.maxLength || this.maxLength;
-      console.log('use ref')
     }
 
     while( index < strings.length ){
@@ -2858,7 +2857,6 @@ class Text {
       ref.string = string;
       this.softLength = ref.softLength || this.softLength;
       this.maxLength = ref.maxLength || this.maxLength;
-      console.log('use ref')
     }
 
     while( index < strings.length ){
@@ -3271,7 +3269,7 @@ class Notifier {
           14 - 20*(1 - this.opacity), 10,
           Math.ceil( 14*this.opacity ), Math.ceil( 16*this.opacity ));
       this.canvasCtx.globalAlpha = alphaRestore;
-      
+
       this.timer -= deltaTime;
     }
   }
@@ -3311,14 +3309,13 @@ class Panel {
       return nextPanel;
     }
 
-    let nextPanel = this.repaint( deltaTime );
+    this.repaint( deltaTime );
     this.timer += deltaTime;
 
-    return nextPanel;
+    return this;
   }
 
   repaint( deltaTime ){
-    return this;
   }
 
   exit( panel = this.previousPanel ){
@@ -3729,8 +3726,7 @@ The Thai Redcross Society ${'redcross'}
       } else {
         e();
       }
-
-      return this;
+      return;
     }
 
     //====== Logo Display ======//
@@ -3742,7 +3738,7 @@ The Thai Redcross Society ${'redcross'}
       endingTimer = this.timer - this.endTime;
 
       if ( endingTimer > 863) { // -endingOffset > ~200
-        return ODR.start();
+        this.exit( ODR.start());
       }
       endingOffset = ( 40000- ( 0.8*endingTimer - 200 )**2 )/1000 ;
       endingOpacity = 1 - Math.min( endingTimer, 400 )/400;
@@ -3944,14 +3940,13 @@ The Thai Redcross Society ${'redcross'}
           }
         });
         this.canvasCtx.globalAlpha = alphaRestore;
-        
+
         if( this.dualPressed && this.timer%600 > 300 && this.storyEndTime > storyTimer ){
           this.__fastForwardingText = this.__fastForwardingText || new Text().set`${'right'}${'right'}`;
           this.__fastForwardingText.draw( this.canvasCtx, 600, 185, 1, 10 );
         }
       }
     }
-    return this;
   }
 }
 
@@ -3980,8 +3975,6 @@ class Pause extends Panel {
 
     }
     N7e.freeze = true;
-
-    return this;
   }
 
   handleEvent( e ){
@@ -3995,7 +3988,7 @@ class Pause extends Panel {
       console.log('UNPAUSED');
       N7e.freeze = false;
       ODR.scheduleNextRepaint();
-      
+
     }
 
     this.isPaused = false;
@@ -4010,6 +4003,9 @@ class Wait extends Panel {
     this.timer = 0;
     this.ticker = 0;
     this.bottomText = new Text( 0, bottomMessage );
+    // Prevent Pause
+    // FIXME, if needed, pause should be activated at the ending.
+    // Should return a promise
     this.isWaiting = true;
   }
 
@@ -4032,9 +4028,8 @@ class Wait extends Panel {
     }
 
     if( this.progressingCallback ){
-      return this.progressingCallback( this );
+      this.progressingCallback( this );
     }
-    return this;
   }
 
   handleEvent( e ){
@@ -4241,8 +4236,6 @@ class Menu extends Panel {
     if( this.bottomText ){
       this.bottomText.draw( this.canvasCtx, 300, 180, 0 );
     }
-
-    return this;
   }
 
   enterCurrentModelEntry(){
@@ -4254,7 +4247,9 @@ class Menu extends Panel {
       Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
 
       // The choosen entry has "options". Create a submenu.
-      if( entry.options ){
+      if( entry.exit ){
+        this.exit();
+      } else if( entry.options ){
         let optionMenuEntries;
         if( entry.options.hasOwnProperty('min')){
           optionMenuEntries = [];
@@ -4399,7 +4394,7 @@ vkqjxz%${'trophy'}${'noentry'}
       this.enterAtCursor();
     } else if( this.dualPressed && !this.halfDualPressed
       || this.halfDualReleased && !this.verticalMode ){
-        
+
     } else switch( e.type ){
       case OnDaRun.events.CONSOLEDOWN: {
         if( this.halfDualPressed ){
@@ -4439,7 +4434,7 @@ vkqjxz%${'trophy'}${'noentry'}
             this.curX = N7e.mod( this.curX, 9 );
             this.offsetH = 0;
           }
-          
+
           if( this.offsetV != 0 ){
             this.curY = N7e.mod( this.curY- this.offsetV, 7 );
             this.offsetV = 0;
@@ -4452,7 +4447,7 @@ vkqjxz%${'trophy'}${'noentry'}
 
     return true;
   }
-  
+
   enterAtCursor(){
     if( this.curX == 8 && this.curY == 6 ){
       Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
@@ -4601,12 +4596,11 @@ class GameOver extends Panel {
     this.timer += deltaTime;
 
     if( this.willRestart ){
-      return this.repaintRestarting( deltaTime );
+      this.repaintRestarting( deltaTime );
     } else {
       let alphaRestore = this.canvasCtx.globalAlpha;
         this.repaintGameOver( deltaTime );
       this.canvasCtx.globalAlpha = alphaRestore;
-      return this;
     }
   }
 
@@ -6454,7 +6448,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     //FIXME should wait for a Promise and call end()?
     if( N7e.signing.progress ){
       return new Wait( this.canvas, null, "signing in..please wait",
-        waiter =>  N7e.signing.progress ? waiter : null );
+        waiter => !N7e.signing.progress && waiter.exit());
     }
 
     return new Greeter( this.canvas, this.notifier );
