@@ -4336,6 +4336,8 @@ class TextEditor extends Panel {
     this.value = value;
     this.curX = 0;
     this.curY = 0;
+    this.verticalMode = false;
+
     this.callback = callback;
     this.pattern = Text.$`etnsh ${'natA'}${'natB'}${'football'}
 aiouc.'${'bell'}${'speed'}
@@ -4391,17 +4393,17 @@ vkqjxz%${'trophy'}${'noentry'}
 
     let button = e.detail.consoleButton;
 
-    if( this.__verticalMode && this.dualReleased ){
-      this.__verticalMode = false;
+    if( this.verticalMode && this.dualReleased ){
+      this.verticalMode = false;
     } else if( this.dualReleased ){
       this.enterAtCursor();
     } else if( this.dualPressed && !this.halfDualPressed
-      || this.halfDualReleased && !this.__verticalMode ){
+      || this.halfDualReleased && !this.verticalMode ){
         
     } else switch( e.type ){
       case OnDaRun.events.CONSOLEDOWN: {
         if( this.halfDualPressed ){
-          this.__verticalMode = true;
+          this.verticalMode = true;
         }
         switch( button ){
           case ODR.consoleButtons.CONSOLE_LEFT:{
@@ -4413,13 +4415,13 @@ vkqjxz%${'trophy'}${'noentry'}
       case OnDaRun.events.CONSOLEUP: {
         switch( button ){
           case ODR.consoleButtons.CONSOLE_LEFT:{
-            if( this.__verticalMode )
+            if( this.verticalMode )
               this.offsetV--;
             else
               this.offsetH--;
           } break;
           case ODR.consoleButtons.CONSOLE_RIGHT:{
-            if( this.__verticalMode )
+            if( this.verticalMode )
               this.offsetV++;
             else
               this.offsetH++;
@@ -4454,7 +4456,7 @@ vkqjxz%${'trophy'}${'noentry'}
   enterAtCursor(){
     if( this.curX == 8 && this.curY == 6 ){
       Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-      this.exit(this.callback( this.value ));
+      this.exit( this.callback( this.value ));
     } else if( this.curX == 8 && this.curY == 5 ){
       Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
       this.value = this.value.slice( 0, this.value.length - 1 );
@@ -4483,7 +4485,6 @@ vkqjxz%${'trophy'}${'noentry'}
 
   repaint( deltaTime ) {
     this.timer += deltaTime;
-
     this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
     
     //Drawing guiding text on the right side
@@ -4491,8 +4492,9 @@ vkqjxz%${'trophy'}${'noentry'}
       || [ new Text().set`${'slide'}`.glyphs[ 0 ],
            new Text().set`${'jump'}`.glyphs[ 0 ]];
 
-    let gd = ( x, y, text, ctx, gidx, cidx ) => {
-      let glyph = this.__jumpingGlyphs[[ 1, 0, 1, 0 ][ cidx ]];
+    if(! this.__gd ){
+      this.__gd = ( x, y, text, ctx, gidx, cidx ) => {
+        let glyph = this.__jumpingGlyphs[[ 1, 0, 1, 0, 0, 1 ][ cidx ]];
 
         let alphaRestore = this.canvasCtx.globalAlpha;
           this.canvasCtx.globalAlpha = 1 - 0.3 *Math.abs( Math.sin( this.timer/200 ));
@@ -4502,16 +4504,26 @@ vkqjxz%${'trophy'}${'noentry'}
         this.canvasCtx.globalAlpha = alphaRestore;
       };
     }
-    
+
     this.__guideText = this.__guideText || new Text().set
-`${'slide'}+${'jump'}${gd} Up   
+`${'slide'}+${'jump'}${this.__gd} Up
 
-${gd} Left ${gd} Right  
+${this.__gd} Left ${this.__gd} Right
 
-${gd}${'slide'}+${'jump'} Down 
+${'jump'}+${'slide'}${this.__gd} Down
+
+${this.__gd}+${this.__gd} Choose
 `
-    this.__guideText.draw( this.canvasCtx, 500, 50, 0, 14, 25 );
+    this.__guideText.draw( this.canvasCtx, 590, 30, 1, 14, 22 );
 
+    this.canvasCtx.fillStyle = "#444";
+    if( this.verticalMode ){
+      this.canvasCtx.fillRect( this.xOffset+ 25*this.curX+ 2,
+        this.yOffset+ 27, 23, 23*2 + 25*5 );
+    } else {
+      this.canvasCtx.fillRect( this.xOffset + 2,
+        this.yOffset+ 27+ 25*this.curY, 23*2+ 25*7, 23 );
+    }
 
     this.canvasCtx.fillStyle = "#a60";
     this.canvasCtx.fillRect( this.xOffset+ 25*this.curX,
@@ -4519,10 +4531,10 @@ ${gd}${'slide'}+${'jump'} Down
     this.textPattern.draw( this.canvasCtx, 5+ this.xOffset, 7+ 25+ this.yOffset, -1, 25, 25 );
     this.guidePattern.draw( this.canvasCtx, 230+ this.xOffset, 207-25*3, -1, 14, 25 );
 
-    if( this.value.length )
-      this.canvasCtx.fillRect(
-        this.xOffset, this.yOffset+ 1,
-        14*25 + 10, 23 );
+    this.canvasCtx.fillRect(
+      this.xOffset, this.yOffset+ 1,
+      14*25 + 10, 23 );
+
     this.canvasCtx.fillStyle = "#840";
     if( this.value.length ){
       this.canvasCtx.fillRect(
