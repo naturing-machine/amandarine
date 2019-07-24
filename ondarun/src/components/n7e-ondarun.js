@@ -2900,7 +2900,6 @@ class Text {
       if( part ) part.split(' ').forEach( word => {
         if( cur != 0 && cur + word.length > this.maxLength ){
           this.lineLengths[ lineNo ] = this.glyphs.length;
-          //this.minLength = Math.max( this.minLength, this.glyphs.length );
           lineNo++;
           cur = 0;
           breaker = false;
@@ -2931,7 +2930,6 @@ class Text {
             lineNo++;
             cur = 0;
             breaker = false;
-            //this.minLength = Math.max( this.minLength, this.glyphs.length );
           } else breaker = true;
         } else {
           if( breaker ){
@@ -2945,7 +2943,6 @@ class Text {
       });
 
       this.lineLengths[ lineNo ] = this.glyphs.length;
-      //this.minLength = Math.max( this.minLength, this.glyphs.length );
       lineNo++;
     });
 
@@ -3958,7 +3955,6 @@ class Pause extends Panel {
   }
 
   repaint(){
-    console.log('PAUSED');
     this.isPaused = true;
 
     if( !this.silent ){
@@ -3974,6 +3970,7 @@ class Pause extends Panel {
       this.canvasCtx.restore();
 
     }
+    console.log('▮▮ PAUSED');
     N7e.freeze = true;
   }
 
@@ -3985,7 +3982,7 @@ class Pause extends Panel {
   exit( panel ){
     if( !this.silent && this.isPaused){
       ODR.canvas.style.opacity = 1 - ODR.config.GRAPHICS_DAY_LIGHT/5;
-      console.log('UNPAUSED');
+      console.log('▶ PLAYING');
       N7e.freeze = false;
       ODR.scheduleNextRepaint();
 
@@ -4364,11 +4361,11 @@ vkqjxz%${'trophy'}${'noentry'}
 
     // Guiding text on the right side.
     this.guideText = new Text().set
-`${'jump'}+${'slide'}${gd} Up
+`${gd}+${'jump'} Up
 
 ${gd} Left ${gd} Right
 
-${'slide'}+${'jump'}${gd} Down
+${'slide'}+${gd} Down
 
 ${gd}+${gd} Choose`
 
@@ -4489,10 +4486,7 @@ ${gd}+${gd} Choose`
       let newChar = this.supportedChars[ this.curY * 9 + this.curX ]
       this.value += newChar;
 
-      if( "0123456789".includes( newChar )){
-        this.curX = 0;
-        this.curY = 5;
-      } else if( "abcdefghijklmnopqrstuvwxyz".includes( newChar )){
+      if( "abcdefghijklmnopqrstuvwxyz".includes( newChar )){
         this.curX = 0;
         this.curY = 0;
       }
@@ -4512,11 +4506,11 @@ ${gd}+${gd} Choose`
 
     this.canvasCtx.fillStyle = "#444";
     if( this.verticalMode ){
-      this.canvasCtx.fillRect( this.xOffset+ 25*this.curX+ 2,
-        this.yOffset+ 27, 23, 23*2 + 25*5 );
+      this.canvasCtx.fillRect( this.xOffset+ 25*this.curX,
+        this.yOffset+ 27, 23, 25*7- 2  );
     } else {
-      this.canvasCtx.fillRect( this.xOffset + 2,
-        this.yOffset+ 27+ 25*this.curY, 23*2+ 25*7, 23 );
+      this.canvasCtx.fillRect( this.xOffset,
+        this.yOffset+ 27+ 25*this.curY, 25*9- 2, 23 );
     }
 
     this.canvasCtx.fillStyle = "#a60";
@@ -4613,114 +4607,110 @@ class GameOver extends Panel {
     // Jumping OGG Block slices
     this.canvasCtx.globalAlpha = Math.min( 1, this.timer/100 );
 
-    let blockTimeFactor = [ 6, 4, 8, 5, 9, 7, 11 ];
-    let blockSlices = [ 15, 15, 15, 15, 15, 6, 6 ];
-    for( let b = 0, x = 0; b < 7; x+= blockSlices[ b ], b++ ){
+    let blockTimeFactor = [ 8, 6, 4, 8, 5, 9, 7, 11 ];
+    let blockSlices = [ 0, 15, 15, 15, 15, 15, 6, 6 ];
+    let td = 20;
+    for( let b = 0, x = 0; b < 8; x+= blockSlices[ b ], b++ ){
       let t = this.timer - blockTimeFactor[ b ]**2;
-      let d = Math.max(0, 100 - t/10);
+      let d = Math.max(0, 100 - t/td);
       let a = t%300 / 300;
       let y = Math.min( 50, 50- d *a+ d *a**2 );
 
-      this.canvasCtx.drawImage( ODR.spriteGUI,
-          x, 159, blockSlices[ b ], 17,
-          257 + x , Math.floor(y),
-          blockSlices[ b ], 17);
-
-      if( !b ){
-        t = this.timer - 8**2;
-        d = Math.max(0, 100 - t/10);
-        a = t%300 / 300;
-        y = Math.min( 50, 50- d *a+ d *a**2 );
-
+      if( b > 0 ){
+        this.canvasCtx.drawImage( ODR.spriteGUI,
+            x, 159, blockSlices[ b ], 17,
+            257 + x , Math.floor(y),
+            blockSlices[ b ], 17);
+      } else {
         this.canvasCtx.drawImage( ODR.spriteGUI,
             x, 150, 15, 9,
             257 + x , Math.floor(y) - 9,
             15, 9);
       }
-
     }
 
-    let d = Math.max( 0, 100 - this.timer/10);
+    if( this.timer < 1000 ) return;
+
     let lineY = 90;
-    if( d == 0 ){
-      let newHigh = ODR.runRecord.hiscore < ODR.score ? ' a new high!':'';
-      if( !newHigh ) this.playMusicIfNeeded();
 
-      this.__gameModeTitle = this.__gameModeTitle || new Text().setString( ODR.gameMode.title );
-      this.__gameModeTitle.draw( this.canvasCtx, 300, lineY, 0 );
+    let newHigh = ODR.runRecord.hiscore < ODR.score ? ' a new high!':'';
+    if( !newHigh ) this.playMusicIfNeeded();
 
-      lineY+=20;
-      this.__scoreTitle = this.__scoreTitle || new Text().setString( 'SCORE:' );
-      this.__scoreTitle.draw( this.canvasCtx, 300, lineY, 1);
+    this.__gameModeTitle = this.__gameModeTitle || new Text().setString( ODR.gameMode.title );
+    this.__gameModeTitle.draw( this.canvasCtx, 300, lineY, 0 );
 
-        let showScore = Math.min( 1, ( this.timer - 1000 )/1000 );
-        let showHi = Math.min( 1, ( this.timer - 1500 )/1500 );
-        let t = 2000;
-        let showNewHi = Math.min( 1, ( this.timer - t )/t );
+    lineY+=20;
+    this.__scoreTitle = this.__scoreTitle || new Text().setString( 'SCORE:' );
+    this.__scoreTitle.draw( this.canvasCtx, 300, lineY, 1);
 
-        this.__score = this.__score || new Text();
-        this.__score.setString(' '
-          + Math.round( ODR.score*showScore )
-          + (showNewHi == 1 ? newHigh :'')).draw( this.canvasCtx, 300, lineY );
+      let showScore = Math.min( 1, ( this.timer - 1000 )/1000 );
+      let showHi = Math.min( 1, ( this.timer - 1500 )/1500 );
+      let t = 2000;
+      let showNewHi = Math.min( 1, ( this.timer - t )/t );
 
-      if( ODR.sequencer.dejavus ){
-        return;
-      }
+      this.__score = this.__score || new Text();
+      this.__score.setString(' '
+        + Math.round( ODR.score*showScore )
+        + (showNewHi == 1 ? newHigh :'')).draw( this.canvasCtx, 300, lineY );
 
-      if( showHi == 1 ){
-        let diff = ODR.gameModeScore - ODR.runRecord.hiscore;
+    if( ODR.sequencer.dejavus ){
+      return;
+    }
 
-        lineY += 20;
-        this.__hiScoreTitle = this.__hiScoreTitle || new Text().setString('HIGH SCORE:');
-        this.__hiScoreTitle.draw( this.canvasCtx, 300, lineY, 1 );
-          this.__hiScore = this.__hiScore || new Text();
-          this.__hiScore.setString(' '
-            + ( showNewHi == 1
-              ? ODR.runRecord.hiscore + ~~( diff * this.newHighTimer/1000 )
-              : ODR.runRecord.hiscore )).draw( this.canvasCtx, 300, lineY );
+    if( showHi == 1 ){
+      let diff = ODR.gameModeScore - ODR.runRecord.hiscore;
 
-        if( showNewHi == 1 ){
-          if( newHigh ){
-            t += 1000;
-            if( !this.playedHiscore ){
-              this.playedHiscore = true;
-              /*
-              if( IS_IOS ){
-                Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-              } else
-              */
-              for( let i = 0, j = 0 ; i <= 1 ; i+=0.1,j+=0.1){
-                Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
-                Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
-              }
+      lineY += 20;
+      this.__hiScoreTitle = this.__hiScoreTitle || new Text().setString('HIGH SCORE:');
+      this.__hiScoreTitle.draw( this.canvasCtx, 300, lineY, 1 );
+        this.__hiScore = this.__hiScore || new Text();
+        this.__hiScore.setString(' '
+          + ( showNewHi == 1
+            ? ODR.runRecord.hiscore + ~~( diff * this.newHighTimer/1000 )
+            : ODR.runRecord.hiscore )).draw( this.canvasCtx, 300, lineY );
 
-              this.playMusicIfNeeded( 1 );
+      if( showNewHi == 1 ){
+        if( newHigh ){
+          t += 1000;
+          if( !this.playedHiscore ){
+            this.playedHiscore = true;
+            /*
+            if( IS_IOS ){
+              Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            } else
+            */
+            for( let i = 0, j = 0 ; i <= 1 ; i+=0.1,j+=0.1){
+              Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
+              Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
             }
-            this.newHighTimer = Math.min( 1000 , this.newHighTimer+ deltaTime );
+
+            this.playMusicIfNeeded( 1 );
           }
-
-          lineY += 20;
-          let showTang = Math.min( 1, ( this.timer - t )/t );
-          if( showTang == 1 && N7e.user ){
-            let gotO = ODR.runRecord.tangerines ? `${ODR.runRecord.tangerines} ` : "";
-            t+= gotO ? 500 : 0;
-            let showDaily = Math.min( 1, ( this.timer - t )/t );
-            let gotT = ( showDaily == 1 ? `[${ODR.dailyTangerines}/${Math.floor( ODR.gameModeTotalScore/100)}]` : '');
-            this.__tangTitle = this.__tangTitle || new Text().set`${'tangerine'}:`;
-            this.__tangTitle.draw( this.canvasCtx, 300, lineY, 1 );
-              this.__tangScore = this.__tangScore || new Text().set` ${gotO}${gotT}`;
-              this.__tangScore.draw( this.canvasCtx, 300, lineY );
-
-            if( !this.playedGotO && gotO ){
-              Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-              this.playedGotO = true;
-            }
-          }
-
+          this.newHighTimer = Math.min( 1000 , this.newHighTimer+ deltaTime );
         }
 
-      }
-    }
+        lineY += 20;
+        let showTang = Math.min( 1, ( this.timer - t )/t );
+        if( showTang == 1 && N7e.user ){
+          let gotO = ODR.runRecord.tangerines ? `${ODR.runRecord.tangerines} ` : "";
+          t+= gotO ? 500 : 0;
+          let showDaily = Math.min( 1, ( this.timer - t )/t );
+          let gotT = ( showDaily == 1 ? `[${ODR.dailyTangerines}/${Math.floor( ODR.gameModeTotalScore/100)}]` : '');
+          this.__tangTitle = this.__tangTitle || new Text().set`${'tangerine'}:`;
+          this.__tangTitle.draw( this.canvasCtx, 300, lineY, 1 );
+            this.__tangScore = this.__tangScore || new Text().set` ${gotO}${gotT}`;
+            this.__tangScore.draw( this.canvasCtx, 300, lineY );
+
+          if( !this.playedGotO && gotO ){
+            Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            this.playedGotO = true;
+          }
+        }
+
+      }// if( showNewHi == 1 )
+    }// if( showHi == 1 )
+
+
   }
 }
 
@@ -6366,8 +6356,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     setTimeout(() => this.scheduleNextRepaint(), 1000 );
   }
 
-  /* TODO
-  generateShadowCache() {
+    /*
+  generateShadowCache(){
     // Generate A8e shadows.
 
     let width = 0;
@@ -6393,8 +6383,10 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       }
 
     });
+    */
 
     // Entity shadows.
+    /*
     XObstacle.typeList.forEach(type => {
       let base = 0;
       type.collisionBoxes.forEach(box => base = Math.max( base, box.maxY()));
@@ -6421,9 +6413,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       });
 
     });
-
   }
-  */
+    */
+
 
   get runTime(){
     return this._runTime;
@@ -7125,11 +7117,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     } else if( 2 == this.gameState ){
       //CEASING
       //Define existence as a timing ratio used to by the gameover animations.
-      let existence = Math.max( 0,
-        Math.min( 1,
-          ( this.config.GAMEOVER_CLEAR_TIME - this.activeAction.timer )
-            /this.config.GAMEOVER_CLEAR_TIME )
-      );
+      let existence = N7e.clamp(( this.config.GAMEOVER_CLEAR_TIME-
+        this.activeAction.timer )/this.config.GAMEOVER_CLEAR_TIME, 0, 1 );
 
       this.scenery.forward( deltaTime, this.currentSpeed, this.inverted );
       this.sequencer.forward( deltaTime, this.currentSpeed, false, existence );
@@ -7423,7 +7412,6 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
   scheduleNextRepaint() {
     if( N7e.freeze ){
-      console.warn('FROZEN');
       if( this.raqId ){
         cancelAnimationFrame( this.raqId );
         this.raqId = 0;
@@ -7513,6 +7501,7 @@ GOOD JOB! ${'natB'}`, 15000 );
     this.shouldDropTangerines = false;
 
     if( N7e.userSignedIn ){
+      //console.log('CHECK DROP')
       let d = new Date();
       let today = `${d.getFullYear()}/${d.getMonth()}/${d.getDate()}`;
       N7e.user.odrRef.child('items/tangerines').transaction( tangerines => {
