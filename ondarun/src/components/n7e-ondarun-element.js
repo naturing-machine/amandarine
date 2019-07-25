@@ -1,4 +1,4 @@
-/*+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;'''+,
+/*+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+ki+;+;+;+;+;+;+;+;+;+;+;'''+,
 :+:+:+:+:NATH|\+:NATH\:+:EN|\NATHERINE|\NATHERINE|\+:+:+: O G :
 ;.;.;';'NA/HE| |;AT|ER\';NA| AT|  _NE/  AT| _______|;.;'   R   '
  . . . NA/ ER| | TH| IN\ AT| \___|NE/  /THERINE|\. . .    O A
@@ -17,30 +17,29 @@
   ODR : application instance of OnDaRun
 */
 
-import { N7e } from '../n7e.js';
-
 import { LitElement, html, css } from 'lit-element';
 
+import { N7e } from '../n7e.js';
 import { OnDaRun } from '../ondarun.js';
-import { ConsoleLeftButton, ConsoleRightButton, ConsoleAButton, ConsoleBButton, ConsoleCButton, ConsoleDButton, ConsoleN7EButton, ConsoleResetButton } from '../modules/console-buttons.js';
 import { User } from '../modules/user.js';
 import { Sound } from '../modules/sound.js';
-import { Text } from '../modules/text.js';
+import { ConsoleLeftButton, ConsoleRightButton, ConsoleAButton, ConsoleBButton, ConsoleCButton, ConsoleDButton, ConsoleN7EButton, ConsoleResetButton } from '../modules/ondarun/console-buttons.js';
+import { Text } from '../modules/ondarun/text.js';
 import { CollisionBox } from '../modules/collision-box.js';
 
-import { Panel, NoPanel } from '../modules/panel.js';
-import { TitlePanel } from '../modules/title-panel.js';
-import { Menu } from '../modules/menu.js';
-import { TextEditor } from '../modules/text-editor.js';
-import { Greeter } from '../modules/greeter.js';
-import { GameOver } from '../modules/game-over.js';
-import { Wait } from '../modules/wait.js';
-import { Pause } from '../modules/pause.js';
+import { Panel, NoPanel } from '../modules/ondarun/panels/panel.js';
+import { TitlePanel } from '../modules/ondarun/panels/title-panel.js';
+import { Menu } from '../modules/ondarun/panels/menu.js';
+import { TextEditor } from '../modules/ondarun/panels/text-editor.js';
+import { Greeter } from '../modules/ondarun/panels/greeter.js';
+import { GameOver } from '../modules/ondarun/panels/game-over.js';
+import { Wait } from '../modules/ondarun/panels/wait.js';
+import { Pause } from '../modules/ondarun/panels/pause.js';
 
-import { Space, Tangerine, Cactus, SmallCactus, LargeCactus, Velota, Rotata, DuckType, Liver, Rubber } from '../modules/entity.js';
-import { A8e } from '../modules/amandarine.js';
-import { Scenery, Sky, Mountain } from '../modules/scenery.js';
-import { Terminal, Notifier } from '../modules/terminal.js';
+import { Space, Tangerine, Cactus, SmallCactus, LargeCactus, Velota, Rotata, DuckType, Liver, Rubber } from '../modules/ondarun/entity.js';
+import { A8e } from '../modules/ondarun/amandarine.js';
+import { Scenery, Sky, Mountain } from '../modules/ondarun/scenery.js';
+import { Terminal, Notifier, Scoreboard } from '../modules/ondarun/terminal.js';
 
 var FPS = N7e.FPS;
 var IS_MOBILE = N7e.isMobile;
@@ -491,159 +490,6 @@ class Figure {
   }
 
 }
-
-class Scoreboard {
-  constructor( canvas ){
-    this.canvas = canvas;
-    this.canvasCtx = canvas.getContext('2d');
-    this.glyphs = new Text().set`0123456789`.glyphs;
-
-    this.reset();
-  }
-
-  reset(){
-    this.nextScoreAchievement = 100;
-    this.flashAchievementTimer = 0;
-    this._score = 0;
-    this.text = null;
-    this.opacity = 0;
-    this.existence = 0;
-    this.template = `${Text.c[ODR.gameMode.icon]}00000`;
-    this._minTang = null;
-    this._maxTang = null;
-    this.replay = false;
-  }
-
-  set replay( willReplay ){
-    this._replay = willReplay;
-    if( willReplay ){
-      this.template = `replay ${Text.c.gameR}00000`;
-      this.score = 0;
-      this.replayBlink = [];
-      this.replayBlink[0] = this.text;
-      this.template = `${Text.c[ODR.gameMode.icon]}00000`;
-      this.score = 0;
-      this.replayBlink[1] = this.text;
-      this.replayTimer = 0;
-    } else {
-      this.replayBlink = null;
-      this.replayTimer = 0;
-    }
-  }
-  get replay(){
-    return this._replay;
-  }
-
-  // maxTangerines must be set before minTangerines
-  set maxTangerines( newMaxTang ){
-    if( this.replay ) return;
-    if( newMaxTang != this._maxTang ){
-      this._maxTang = newMaxTang;
-      this._minTang = 0;
-      this.template = `${Text.c.tangerine}${this._maxTang}:${this._minTang} ${Text.c[ODR.gameMode.icon]||'trophy'}00000`;
-    }
-  }
-  set minTangerines( newMinTang ){
-    if( this.replay ) return;
-    if( newMinTang != this._minTang ){
-      this._minTang = newMinTang;
-      this.template = `${Text.c.tangerine}${this._maxTang}:${this._minTang} ${Text.c[ODR.gameMode.icon]||'trophy'}00000`;
-    }
-  }
-
-  set template( newTemplate ){
-    this._template = newTemplate;
-    this.text = null;
-    this.score = this._score;
-  }
-
-  set score( newScore ){
-    this._score = newScore;
-
-    if( this.flashAchievementTimer == 0 ){
-      newScore = newScore || 0;
-
-      this._playAchievement = 0;
-      while( newScore > this.nextScoreAchievement ){
-        if( !this._playAchievement ){
-          Sound.inst.effects.SOUND_SCORE.play( 0.2 * ODR.config.SOUND_SYSTEM_VOLUME/10, 0, 0.8 );
-          this.flashAchievementTimer = 2300;
-        }
-        this._playAchievement = this.nextScoreAchievement;
-        this.nextScoreAchievement += Scoreboard.achievementScore;
-      }
-
-      if( this._playAchievement != 0 ){
-        if( this._playAchievement >= ODR.achievements[ 0 ]){
-          ODR.achievements.shift();
-          ODR.notifier.notify( ODR.achievements.shift(), 6000 );
-        }
-
-        newScore = this._playAchievement;
-      }
-    } else {
-      newScore = this._playAchievement;
-    }
-
-    if( !this.text ){
-      this.text = new Text().set`${this._template}`;
-    }
-
-    for( let i = this.text.glyphs.length - 1, j = 0; j < 5; i--, j++ ){
-      this.text.glyphs[ i ] = this.glyphs[ newScore % 10 ];
-      newScore = Math.floor( newScore /10 );
-    }
-
-  }
-
-  forward( deltaTime ){
-    if( !this.text ) return;
-
-    if( this.flashAchievementTimer ){
-      if( this.flashAchievementTimer % 800 > 300 ){
-        let flashingScore = this._playAchievement;
-        for( let i = this.text.glyphs.length - 1, j = 0; j < 5; i--, j++ ){
-          this.text.glyphs[ i ] = this.glyphs[ flashingScore % 10 ];
-          flashingScore = Math.floor( flashingScore /10 );
-        }
-      } else {
-        for( let i = this.text.glyphs.length - 1, j = 0; j < 5; i--, j++ ){
-          this.text.glyphs[ i ] = 0;
-        }
-      }
-
-      this.flashAchievementTimer = Math.max( 0, this.flashAchievementTimer -deltaTime );
-      // Set back to the actual score.
-      if( this.flashAchievementTimer == 0 ){
-        this.score = this._score;
-      }
-    }
-
-    if( this.existence != this.opacity ){
-
-      this.opacity += deltaTime/300 * Math.sign( this.existence - this.opacity );
-      this.opacity = N7e.clamp( this.opacity, 0, 1 );
-
-    }
-
-    if( this.replay ){
-      this.replayTimer += deltaTime;
-      this.text = this.replayBlink[ this.replayTimer%1000 < 500 ? 0 : 1 ];
-    }
-
-    if( this.opacity != 1 ){
-    let alphaRestore = this.canvasCtx.globalAlpha;
-      this.canvasCtx.globalAlpha = this.opacity;
-      this.text.draw( this.canvasCtx, this.existence ? 590 : 0, 10, 1, 10+ 8*this.opacity );
-    this.canvasCtx.globalAlpha = alphaRestore;
-    } else {
-      this.text.draw( this.canvasCtx, 590, 10, 1, 18, 16 );
-    }
-  }
-
-}
-
-Scoreboard.achievementScore = 100;
 
 //FIXME if runTime exist, action 'now' time should be converted to runTime
 class Action {
@@ -1123,15 +969,8 @@ class OnDaRunElement extends LitElement {
       this._HACC = 0.5*this.config.ACCELERATION *FPS/1000;
       this._HSPD = this.config.SPEED *FPS/1000;
 
-    } else if( newState == 1 ){
-      ODR.runRecord = {
-        tangerines: 0,
-        hiscore: this.gameModeScore,
-      };
-      if( this.config.GAME_MODE_REPLAY && ODR.sequencer.dejavus ){
-        ODR.scoreboard.replay = true;
-      }
-      ODR.scoreboard.existence = 1;
+    }
+     else if( newState == 1 ){
     }
   }
 
@@ -1165,10 +1004,40 @@ class OnDaRunElement extends LitElement {
       this.scoreboard.maxTangerines = Tangerine.allDayMax;
       Tangerine.increaseTangerine( 0 ).then( dayCount => this.scoreboard.minTangerines = dayCount );
     }
+
+    this.runSession = {
+      tangerines: 0,
+      hiscore: this.gameModeScore,
+    };
+    if( this.config.GAME_MODE_REPLAY && ODR.sequencer.dejavus ){
+      this.scoreboard.replay = true;
+    }
+    this.scoreboard.existence = 1;
+
+      /*
+      if( this.distance > this.gameMode.distance )
+        this.notifier.notify( `A NEW HIGH!
+${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_SCORE )} ▻ ${Math.round( this.distance * this.config.TO_SCORE )}
+GOOD JOB! ${'natB'}`, 15000 );
+*/
+
+    // Rebuild achievement strings on each restart.
+    let d0 = Math.round( this.gameMode.distance * this.config.TO_SCORE );
+    let skipping;
+    let d = d0/5 - d0/5%100;
+    let lead = Text.c.natA + ' ';
+    this.achievements = [
+      Math.max( 200, d ), lead+ this.achievementPhrases[ skipping = N7e.randomInt( 0, 2 )],
+      Math.max( 400, 2*d ), lead+ this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
+      Math.max( 600, 3*d ), lead+ this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
+      Math.max( 800, 4*d ), lead+ this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 ) ],
+      Math.max( 1000, d0 ), lead+ `This is a brand new high!!`,
+    ];
   }
 
   stateStart(){
     this.statePrestart( 1 );
+
     this.scenery.addTREX();
 
     this.currentSpeed = this.config.SPEED;
@@ -1180,6 +1049,9 @@ class OnDaRunElement extends LitElement {
   }
 
   stateCrash(){
+
+    if( this.notifier.timer > 200 ) this.notifier.timer = 200;
+
     this.scoreboard.existence = 0;
     if( !this.sequencer.dejavus )
       this.updateScore();
@@ -1388,17 +1260,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       "Stay Strong!",
       "Just don't die!",
       "Do the impossible!",
-    ].map( p => p+ Text.c.natB );
-
-    let skipping;
-    this.achievements = [
-      200, this.achievementPhrases[ skipping = N7e.randomInt( 0, 2 )],
-      400, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
-      800, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
-      1600, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
     ];
-
-
 
     this.notifier = new Notifier( this.canvas );
     this.cc = new Terminal( this.canvas, 300, 180, 0 ); //Closed Caption
@@ -2032,28 +1894,33 @@ https://www.redcross.or.th/donate/`,'color:crimson');
         } else {
           this.runTime += deltaTime;
           //this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
-          this.scoreboard.score = this.score;
         }
       } else {
         this.runTime += deltaTime;
         //this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
-        this.scoreboard.score = this.score;
       }
 
       this.scenery.forward( deltaTime, this.currentSpeed, this.inverted );
       this.sequencer.forward( deltaTime, this.currentSpeed, true );
       this.scoreboard.forward( deltaTime );
 
+      let score = this.score;
+      this.scoreboard.score = score;
+      if( this.achievements.length && score >= this.achievements[ 0 ]){
+        this.achievements.shift();
+        this.notifier.notify( this.achievements.shift(), 6000, 18 );
+      }
+
       // Night & Day FIXME use time instead of timer
       if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
         this.invertTimer = 0;
         this.invertTrigger = false;
         this.invert();
-      } else if (this.invertTimer) {
+      } else if( this.invertTimer ){
         this.invertTimer += deltaTime;
       } else {
-        if( this.score > 0 ){
-          this.invertTrigger = !(this.score % this.config.INVERT_DISTANCE);
+        if( score > 0 ){
+          this.invertTrigger = !( score % this.config.INVERT_DISTANCE );
 
           if (this.invertTrigger && this.invertTimer === 0) {
             this.invertTimer += deltaTime;
@@ -2102,7 +1969,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     }
 
     let a = this.actions[0];
-    this.scheduleActionQueue( deltaTime, this.currentSpeed );
+    this.scheduleActionQueue( deltaTime );
     this.notifier.forward( deltaTime );
 
     if( this.playLyrics ){
@@ -2389,45 +2256,22 @@ https://www.redcross.or.th/donate/`,'color:crimson');
   */
 
   updateScore(){
-    User.inst.maxSpeed = { value: this.runRecord.crashSpeed, time: new Date().getTime()};
+    let user = User.inst;
+    user.maxSpeed = { value: this.runSession.crashSpeed, time: new Date().getTime()};
 
     let d = this.score;
 
     // Only play lyrics if reaching a half of hiscore and more than 1000.
     // FIXME Rethink for different difficulties.
-    if( this.runRecord.crashSpeed > 8 && this.distance > this.gameMode.distance / 2 ){
+    if( this.runSession.crashSpeed > 8 && this.distance > this.gameMode.distance / 2 ){
       this.playLyrics = true;
-    }
-
-    if( this.runRecord.crashSpeed < 8 ){
-      let skipping;
-      this.achievements = [
-        200, this.achievementPhrases[ skipping = N7e.randomInt( 0, 2 )],
-        400, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
-        800, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
-        1600, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 ) ],
-      ];
-    } else {
-
-      /*
-      if( this.distance > this.gameMode.distance )
-        this.notifier.notify( `A NEW HIGH!
-${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_SCORE )} ▻ ${Math.round( this.distance * this.config.TO_SCORE )}
-GOOD JOB! ${'natB'}`, 15000 );
-*/
-
-      let skipping;
-      d = d/2 - d/2%100;
-      this.achievements = [
-        d, this.achievementPhrases[ skipping = N7e.randomInt( 0, 2 )],
-        2*d, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
-        3*d, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 )],
-        4*d, this.achievementPhrases[ skipping += N7e.randomInt( 1, 3 ) ],
-      ];
     }
 
     // Update the high score.
     this.gameMode.distance = this.distance;
+    if( user.uidRef ){
+      Tangerine.allDayMax = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
+    }
   }
 
   get gameModeTotalScore(){
@@ -2485,8 +2329,9 @@ GOOD JOB! ${'natB'}`, 15000 );
       3: Interrupting. (eg. Crash, Pause)
      -1: Zombie, a released task.
   */
-  scheduleActionQueue( deltaTime, speed ){
+  scheduleActionQueue( deltaTime ){
     let now = this.time; //FIXME should not use now but runTime after start.
+    let speed = this.currentSpeed;
 
     /* activeAction points to the current active action, drawings & tests
     such as collision checkings will be done with this action.
@@ -2519,23 +2364,22 @@ GOOD JOB! ${'natB'}`, 15000 );
       let actionQueue = this.actions.slice();
       for (let queueIndex = 0, action; action = actionQueue[queueIndex]; queueIndex++) {
         switch(action.priority) {
-          case 0: { /* priority : Preparing actions */
+          case 0: { // Priority 0 : Preparing actions.
 
             switch(action.type) {
               case A8e.status.JUMPING:
                 this.amandarine.jumpingGuideIntensity = Math.min( 1, gji + deltaTime/200 );
-                this.amandarine.drawJumpingGuide(action, now, speed);
+                this.amandarine.drawJumpingGuide(action, now, this.currentSpeed );
                 continue;
               case A8e.status.SLIDING:
                 this.amandarine.slidingGuideIntensity = Math.min( 1, gsi + deltaTime/200 );
-                this.amandarine.drawSlidingGuide(action, now, speed);
+                this.amandarine.drawSlidingGuide(action, now, this.currentSpeed );
                 continue;
               case A8e.status.RUNNING:
 
                 action.timer = 0;
                 action.priority = 1;
                 this.activeAction = action;
-                //this.amandarine.activateAction(action, deltaTime, speed);
 
                 break;
               case A8e.status.WAITING:
@@ -2546,7 +2390,7 @@ GOOD JOB! ${'natB'}`, 15000 );
             break HANDLE_ACTION_QUEUE;
           }
 
-          case 1:  /* priority : Initialise action */
+          case 1:  // Priority 1 : Initialising actions.
             switch(action.type) {
               case A8e.status.JUMPING:
                 this.activeAction = action;
@@ -2577,25 +2421,24 @@ GOOD JOB! ${'natB'}`, 15000 );
               // to proceed with the active preparing action (priority 0).
               case A8e.status.RUNNING:
                 this.activeAction = action;
-                action.speed = speed;
-                action.msPerFrame = 1000 / (22 + speed);
+                action.speed = this.currentSpeed;
+                action.msPerFrame = 1000 /( 22+ this.currentSpeed );
 
                 continue;
 
               case A8e.status.CEASING:
                 // The priority-3 was demoted to 1
-                //this.amandarine.activateAction(action, deltaTime, speed);
+
               default:
                 break HANDLE_ACTION_QUEUE;
             }
             action.priority = 2;
             // All 1s will progress into 2s
-          case 2: /* priority */
+          case 2: // Priority 2 : Concurrent actions.
             this.activeAction = action;
-            //this.amandarine.activateAction(action, deltaTime, speed);
 
             break HANDLE_ACTION_QUEUE;
-          case 3: /* priority */
+          case 3: // Priority 3 : Immediate actions.
             this.activeAction = action;
             switch(action.type) {
               case A8e.status.RUNNING:
@@ -2616,7 +2459,7 @@ GOOD JOB! ${'natB'}`, 15000 );
                 //Start the crash animation.
                 if( 2 != this.gameState ){
                   //TOOD this.dispatchEvent(new CustomEvent('odr-crash', { bubbles: false, detail: { action: action } }));
-                  this.runRecord.crashSpeed = speed;
+                  this.runSession.crashSpeed = this.currentSpeed;
                   this.gameState = 2;
 
                   if( action.crash ){
@@ -2634,7 +2477,7 @@ GOOD JOB! ${'natB'}`, 15000 );
                     action.halfTime = Math.sqrt( 2000 * action.duration / A8e.config.GRAVITY );
                     action.timer = 0;
                     action.crashedMinY = this.amandarine.minY;
-                    action.lagging = speed;
+                    action.lagging = this.currentSpeed;
 
                   }
                 }

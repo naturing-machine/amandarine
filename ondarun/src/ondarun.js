@@ -12,7 +12,7 @@
 // found in the LICENSE file AND if possible, in the Public Domain.
 
 import { N7e } from './n7e.js';
-import { Text } from './modules/text.js';
+import { Text } from './modules/ondarun/text.js';
 
 export class OnDaRun {
 }
