@@ -119,27 +119,36 @@ export class GameOver extends Panel {
     this.__gameModeTitle = this.__gameModeTitle || new Text().setString( ODR.gameMode.title );
     this.__gameModeTitle.draw( this.canvasCtx, 300, lineY, 0 );
 
-    lineY+=20;
-    this.__scoreTitle = this.__scoreTitle || new Text().setString( 'SCORE:' );
-    this.__scoreTitle.draw( this.canvasCtx, 300, lineY, 1);
+    if( this.timer > 1500 ){
+      lineY+=20;
+      this.__scoreTitle = this.__scoreTitle || new Text().setString( 'SCORE:' );
+      this.__scoreTitle.draw( this.canvasCtx, 300, lineY, 1);
+    } else {
+      return;
+    }
 
-      let showScore = Math.min( 1, ( this.timer - 1000 )/1000 );
-      let showHi = Math.min( 1, ( this.timer - 1500 )/1500 );
-      let t = 2000;
-      let showNewHi = Math.min( 1, ( this.timer - t )/t );
+    let t = 0;
+    let showHi = Math.min( 1, ( this.timer - 1500 )/1500 );
+    let showNewHi = this.timer > 2500;
 
+    if( this.timer > 1500 ){
+      let showScore = Math.min( 1, ( this.timer - 1300 )/700 );
       this.__score = this.__score || new Text();
       this.__score.setString(` ${
         Math.round( ODR.score *showScore )
       }${
-        1 == showNewHi ? newHigh :''
+        showNewHi ? newHigh :''
       }`).draw( this.canvasCtx, 300, lineY );
+    } else {
+      return;
+    }
 
     if( ODR.sequencer.dejavus ){
       return;
     }
 
-    if( showHi == 1 ){
+    if( this.timer > 2500 ){
+      t = 2500;
       let diff = ODR.gameModeScore - ODR.runSession.hiscore;
 
       lineY += 20;
@@ -147,16 +156,16 @@ export class GameOver extends Panel {
       this.__hiScoreTitle.draw( this.canvasCtx, 300, lineY, 1 );
         this.__hiScore = this.__hiScore || new Text();
         this.__hiScore.setString(` ${
-          1 == showNewHi
-          ? ODR.runSession.hiscore + Math.floor( diff * this.newHighTimer/1000 )
+          showNewHi
+          ? ODR.runSession.hiscore + Math.floor( diff * N7e.clamp( this.timer - 3000, 0, 500 )/500 )
           : ODR.runSession.hiscore
         }`).draw( this.canvasCtx, 300, lineY );
 
-      if( showNewHi == 1 ){
+      if( showNewHi ){
         if( newHigh ){
           t += 1000;
-          if( !this.playedHiscore ){
-            this.playedHiscore = true;
+          if( !this.playedHiscoreTune ){
+            this.playedHiscoreTune = true;
             /*
             if( IS_IOS ){
               Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
@@ -173,12 +182,20 @@ export class GameOver extends Panel {
         }
 
         lineY += 20;
-        let showTang = Math.min( 1, ( this.timer - t )/t );
-        if( showTang == 1 && User.inst.uidRef ){
-          let gotO = ODR.runSession.tangerines ? `${ODR.runSession.tangerines} ` : "";
+        t += 1000;
+        if( this.timer > t && User.inst.uidRef ){
+          let gotO = ODR.runSession.collected.tangerines ? `${ODR.runSession.collected.tangerines} ` : "";
           t+= gotO ? 500 : 0;
-          let showDaily = Math.min( 1, ( this.timer - t )/t );
-          let gotT = ( showDaily == 1 ? `[${Tangerine.allDayMax}:${User.inst.dailyTangerines}]` : '');
+
+          let diffTang = Tangerine.allDayMax- ODR.runSession.allDayMax;
+          t+= diffTang ? 500 : 0;
+          let gotT = ( this.timer > t ? `[${
+            ODR.runSession.allDayMax
+            + Math.floor( diffTang * Math.min( 1, Math.max( 0, this.timer- t - 500 )/1000*diffTang ))
+          }:${
+            User.inst.dailyTangerines
+          }]` : '');
+
           this.__tangTitle = this.__tangTitle || new Text().set`${'tangerine'}:`;
           this.__tangTitle.draw( this.canvasCtx, 300, lineY, 1 );
             this.__tangScore = this.__tangScore || new Text();

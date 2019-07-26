@@ -211,7 +211,7 @@ export class Tangerine extends Entity {
       this.collected = true;
       this.timer = 0;
       this.collectedY = this.minY;
-      ODR.runSession.tangerines++;
+      ODR.runSession.collected.tangerines++;
       Tangerine.increaseTangerine( 1 )
       .then( dayCount => ODR.scoreboard.minTangerines = dayCount );
     }

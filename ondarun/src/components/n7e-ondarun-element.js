@@ -563,8 +563,12 @@ class OnDaRunElement extends LitElement {
     }
 
     this.runSession = {
-      tangerines: 0,
+      mode: this.gameMode.key,
+      collected: {
+        tangerines: 0,
+      },
       hiscore: this.gameModeScore,
+      allDayMax: Tangerine.allDayMax,
     };
     if( this.config.GAME_MODE_REPLAY && ODR.sequencer.dejavus ){
       this.scoreboard.replay = true;
