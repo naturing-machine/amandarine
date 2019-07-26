@@ -23,17 +23,26 @@ class Cloud {
     this.canvas = canvas;
     this.canvasCtx = this.canvas.getContext('2d');
     this.type = type;
+    this.type2 = N7e.randomInt( 0, 1 ) ? N7e.randomInt( 0, 5 ) : null;
     this.spriteX = Cloud.spriteXList[ N7e.randomInt( 0, 1 )];
     this.spriteY = Cloud.spriteYList[ type ];
+    if( this.type2 != null ){
+      this.spriteX2 = Cloud.spriteXList[ N7e.randomInt( 0, 1 )];
+      this.spriteY2 = Cloud.spriteYList[ this.type2 ];
+    }
     this.minX = minX;
     this.minY = minY;
+    this.rX = N7e.randomInt( 0, Cloud.width * 1.5 );
+    let h = Cloud.heightList[ this.type ] ;
+    this.rY = N7e.randomInt( -h, h );
     this.removed = false;
     this.speedModifier = 0.7 + 0.3*Math.random();
+    this.rSpeedModifier = 0.7 + 0.3*Math.random() - this.speedModifier;
     this.opacity = 1 - (type/10)*Math.random() ;
   }
 
   get maxX(){
-    return this.minX + Cloud.width;
+    return Math.max( this.minX, this.minX + this.rX ) + Cloud.width;
   }
 
   get maxY(){
@@ -48,17 +57,26 @@ class Cloud {
         Cloud.width, Cloud.heightList[ this.type ],
         Math.ceil( this.minX ), this.minY,
         Cloud.width, Cloud.heightList[ this.type ]);
+    if( this.type2 != null ){
+      this.canvasCtx.drawImage( ODR.spriteScene,
+        this.spriteX2, this.spriteY2,
+        Cloud.width, Cloud.heightList[ this.type2 ],
+        Math.ceil( this.minX + this.rX), this.minY + this.rY,
+        Cloud.width, Cloud.heightList[ this.type2 ]);
+    }
     this.canvasCtx.globalAlpha = alphaRestore;
   }
 
   forward( deltaTime, currentSpeed ) {
     if( !this.removed ){
 
-      this.minX -= currentSpeed * this.speedModifier * FPS/1000 * deltaTime;
+      let fd = currentSpeed * FPS/1000 * deltaTime
+      this.minX -= fd* this.speedModifier;
+      this.rX -= fd* this.rSpeedModifier;
       this.draw();
 
       // Mark as removeable if no longer in the canvas.
-      if( this.minX + Cloud.width < 0 ){
+      if( this.maxX < 0 ){
         this.removed = true;
       }
     }
@@ -665,7 +683,7 @@ export class Scenery {
     this.horizonLine = new HorizonLine( this.canvas );
     this.nightMode = new NightMode( this.canvas );
 
-    for( let i = 0; i < this.cloudFrequency * 10; i++ ){
+    for( let i = 0; i < this.cloudFrequency * 5; i++ ){
       let x = N7e.randomInt(-50, 2*OnDaRun.DefaultWidth );
       this.layers[[ 0, 2, 4 ][ N7e.randomInt( 0, 2 )]].push( new Cloud( this.canvas, Cloud.randomCloudType,
         x, Cloud.randomCloudHeight ));
@@ -774,7 +792,7 @@ export class Scenery {
     }
 
     // Too few cloud, create one.
-    if( numClouds < (ODR.config.GRAPHICS_CLOUDS || 0) * this.cloudFrequency ){
+    if( numClouds < (ODR.config.GRAPHICS_CLOUDS || 0) * this.cloudFrequency / 2 ){
       //HACK FIXME
       let x = OnDaRun.DefaultWidth + N7e.randomInt(0,600);
       this.layers[[0,2,2,4,4,4][N7e.randomInt(0,5)]].push( new Cloud( this.canvas, Cloud.randomCloudType,
