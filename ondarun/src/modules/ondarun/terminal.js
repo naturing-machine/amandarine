@@ -14,6 +14,8 @@
 import { N7e } from '../../n7e.js';
 import { OnDaRun } from '../../ondarun.js';
 
+import { Sound } from '../sound.js';
+
 import { Text } from './text.js';
 
 /**

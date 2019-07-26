@@ -12,6 +12,7 @@
 // found in the LICENSE file AND if possible, in the Public Domain.
 
 import { N7e } from '../n7e.js';
+import { OnDaRun } from '../ondarun.js';
 
 var IS_SOUND_DISABLED = N7e.isSoundDisabled;
 

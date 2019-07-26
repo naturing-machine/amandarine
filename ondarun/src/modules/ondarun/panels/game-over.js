@@ -111,7 +111,6 @@ export class GameOver extends Panel {
     }
 
     if( this.timer < 1000 ) return;
-
     let lineY = 90;
 
     let newHigh = ODR.runSession.hiscore < ODR.score ? ' a new high!':'';
