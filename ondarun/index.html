@@ -21,13 +21,11 @@
 <body>
 
 <a id="github" onmouseover="gitHover()" href="https://github.com/naturing-machine/amandarine/wiki"><img style="border: 0;" src="assets/github.png" alt="Fork me on GitHub"></a>
-<a id="facebook" onmouseover="gitHover()" href="https://www.facebook.com/Amandarine-Frontier-536061560224979"><img style="border: 0;" src="assets/facebook.png" alt="Facebook"></a>
-<a id="twitter" onmouseover="gitHover()" href="https://twitter.com/naturingmachine"><img style="border: 0;" src="assets/twitter.png" alt="Twitter"></a>
 <a id="redcross" onmouseover="gitHover()" href="https://www.redcrossfundraising.org/"><img style="border: 0;" src="assets/redcross.png" alt="Thai Red Cross"></a>
 
 
 <!-- BETA NOTICE -->
-<div style="background-color:#fee;font-size:13px;line-height:16px;min-height:100px;max-width:200px;min-width:200px;padding:5px;border-radius:5px;position:fixed;top:calc(50% - 360px);left:calc(50% - 400px);transform:rotate(-20deg);font-family:sans-serif;text-align:center;"><font id="version-banner" style="font-weight:bold;color:black">Version . . . .</font><div style="text-align:left;color:black;border-radius:3px;padding:5px;font-weight:normal;font-size:13px;line-height:13px;"><font style="color:Maroon">
+<div id="game-banner" style="opacity:0; visibility:hidden; transition: opacity 1s linear;background-color:#fee;font-size:13px;line-height:16px;min-height:100px;max-width:200px;min-width:200px;padding:5px;border-radius:5px;position:fixed;top:calc(50% - 360px);left:calc(50% - 400px);transform:rotate(-20deg);font-family:sans-serif;text-align:center;"><font id="version-banner" style="font-weight:bold;color:black">Version . . . .</font><div style="text-align:left;color:black;border-radius:3px;padding:5px;font-weight:normal;font-size:13px;line-height:13px;"><font style="color:Maroon">
 • 🏆 Link SNS profile to keep scores/settings/items.<br/>
 • 🖼 Adjust graphics display if your box is too slow.<br/>
 </div> </div>
@@ -43,10 +41,6 @@ Please enable JavaScript to view this website.
 	    if (evt.keyCode == 32) {
 		    var box = document.getElementById("github");
 		    box.classList.add("banner-off-screen");
-		    box = document.getElementById("facebook");
-		    box.classList.add("banner-off-screen");
-		    box = document.getElementById("twitter");
-		    box.classList.add("banner-off-screen");
 		    box = document.getElementById("redcross");
 		    box.classList.add("banner-off-screen");
 	    }
@@ -54,10 +48,6 @@ Please enable JavaScript to view this website.
 
     document.onmousedown = function(evt) {
 		    var box = document.getElementById("github");
-		    box.classList.add("banner-off-screen");
-		    box = document.getElementById("facebook");
-		    box.classList.add("banner-off-screen");
-		    box = document.getElementById("twitter");
 		    box.classList.add("banner-off-screen");
 		    box = document.getElementById("redcross");
 		    box.classList.add("banner-off-screen");

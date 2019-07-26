@@ -41,26 +41,10 @@ n7e-ondaarun {
   z-index: 5;
 }
 
-#facebook {
-  position: absolute;
-  top: 0px;
-  left: 43px;
-  -webkit-transition: all 0.5s ease-out;
-  z-index: 5;
-}
-
-#twitter {
-  position: absolute;
-  top: 0px;
-  left: 86px;
-  -webkit-transition: all 0.5s ease-out;
-  z-index: 5;
-}
-
 #redcross {
   position: absolute;
   top: 0px;
-  left: 129px;
+  left: 43px;
   -webkit-transition: all 0.5s ease-out;
   z-index: 5;
 }
