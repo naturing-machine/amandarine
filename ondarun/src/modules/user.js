@@ -147,10 +147,9 @@ export class User {
     // Here trying to keep onAuthStateChanged() out side of
     // The promise to aviod unsubscribing loop.
 
-    let dataAvailableResolve, dataAvailableReject;
-    let dataAvailable = ( resolve, reject ) => {
-      dataAvailableResolve = resolve;
-      dataAvailableReject = reject;
+    let waitingForDataResolve;
+    function dataAvailable( resolve ){
+      waitingForDataResolve = resolve;
     }
     this.setTask( new Promise( dataAvailable ));
 
@@ -168,16 +167,22 @@ export class User {
           this.uidRef.on('value', snapshot => {
             this.__setData( snapshot.val());
 
-            if( dataAvailableResolve ){
-              dataAvailableResolve( true );
-              dataAvailableResolve = null;
+            if( waitingForDataResolve ){
+              waitingForDataResolve();
+              waitingForDataResolve = null;
             }
 
           });
         });
       } else {
-        this.reset();
-        this.setTask( new Promise( dataAvailable ));
+        if( waitingForDataResolve ){
+          waitingForDataResolve();
+          waitingForDataResolve = null;
+        }
+        this.allTasksSettled().then(() => {
+          this.reset();
+          this.setTask( new Promise( dataAvailable ));
+        });
         // Renew to wait for another sign-in.
       }
     });
@@ -197,6 +202,7 @@ export class User {
   }
 
   signOut(){
+    this.reset();
     firebase.auth().signOut();
   }
 

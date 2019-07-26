@@ -842,6 +842,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
       if( !User.inst.uidRef ){
         // No user
+        let banner = document.getElementById('game-banner');
+        banner.style.visibility = 'visible';
+        banner.style.opacity = 1;
       } else {
         console.log(`Welcome back, "${this.user.nickname}"!`);
 
