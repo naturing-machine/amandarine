@@ -526,14 +526,6 @@ class OnDaRunElement extends LitElement {
 
     //console.log([ "IDLE", "PLAY", "CRASH" ][ newState ]);
 
-    if( newState == 0 ){
-
-      this._HACC = 0.5*this.config.ACCELERATION *FPS/1000;
-      this._HSPD = this.config.SPEED *FPS/1000;
-
-    }
-     else if( newState == 1 ){
-    }
   }
 
   stateResetProperties(){
@@ -550,6 +542,9 @@ class OnDaRunElement extends LitElement {
     this.consoleButtonActionMap = new Map();
     this.activeAction = null;
     this.playLyrics = false;
+
+    this._HACC = 0.5*this.config.ACCELERATION *FPS/1000;
+    this._HSPD = this.config.SPEED *FPS/1000;
   }
 
   statePrestart( musicDelay ){
@@ -1253,7 +1248,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
                   // Reset game score.
                   Object.values( this.gameModeList ).forEach( mode => mode.distance = 0 );
-                  this.setGameMode( OnDaRun.gameModes.GAME_A );
+                  this.setGameMode( this.gameModeList.GAME_A );
                   confirmMenu.exit( null );
                 }
               },
@@ -1295,7 +1290,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                   'twitter.com',
                   'google.com',
                 ][entryIndex], N7e.isMobile ) .then(() => {
-                  ODR.setGameMode( OnDaRun.gameModes.GAME_A );
+                  this.setGameMode( this.gameModeList.GAME_A );
                   waitPanel.exit()
                 });
 
@@ -2015,15 +2010,19 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                 break HANDLE_ACTION_QUEUE;
               case A8e.status.CEASING: {
 
-                //Start the crash animation.
+                // Initialize the crashing process.
                 if( 2 != this.gameState ){
                   //TOOD this.dispatchEvent(new CustomEvent('odr-crash', { bubbles: false, detail: { action: action } }));
-                  this.runSession.crashSpeed = this.currentSpeed;
-                  this.gameState = 2;
-
                   if( action.crash ){
                     // Prepare crash animation.
                     let crashPoint = action.crash.C.center();
+
+                    this.runSession.crashSpeed = this.currentSpeed;
+                    this.runSession.crashPoint = crashPoint;
+                    this.runSession.crashAction = action;
+
+                    this.gameState = 2;
+
                     //TODO 4 dirs
                     if( crashPoint.minY - this.amandarine.minY < 20 ){
                       action.dir = -1;
@@ -2070,7 +2069,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     if (this.activeAction)
       this.amandarine.activateAction( this.activeAction, deltaTime, speed );
     else {
-      //console.log('No active action for repainting.');
+      console.warn('No active action for repainting.');
       //N7e.freeze = true;
     }
     //this.amandarine.forward(deltaTime, speed, activeAction);
