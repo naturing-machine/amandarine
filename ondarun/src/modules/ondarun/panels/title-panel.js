@@ -58,7 +58,7 @@ export class TitlePanel extends Panel {
       let math = Math.abs(Math.sin( ODR.time/200 ));
 
       let alphaRestore = ctx.globalAlpha;
-        ctx.globalAlpha *= 1 - 0.3*math;
+        ctx.globalAlpha*= 1 - 0.3*math;
         ctx.drawImage( ODR.spriteGUI,
           glyph, 0, 14, 16,
           ~~x, ~~(y + 2 - 3*math), 14, 16 );
@@ -78,16 +78,16 @@ ${'left'} to donate ${gd}                ${gd} to sprint ${'right'}
 `;
 
     let heartGlyph = new Text().set`${'heart'}`.glyphs[0];
-    let drawHeart = ( x, y, text ) => {
+    let drawHeart = ( x, y, text, ctx ) => {
 
       let g = this.timer%400 > 200 ? 1092 : 0;
 
       let alphaRestore = this.canvasCtx.globalAlpha;
-        this.canvasCtx.globalAlpha = Math.abs(Math.sin(this.timer/300));
-        this.canvasCtx.drawImage( ODR.spriteGUI,
+        ctx.globalAlpha*= Math.abs( Math.sin( this.timer/300 ));
+        ctx.drawImage( ODR.spriteGUI,
           heartGlyph, 0, 14, 16,
           ~~x, ~~y, 14, 16 );
-      this.canvasCtx.globalAlpha = alphaRestore;
+      ctx.globalAlpha = alphaRestore;
     };
 
     let drawIdle = ( x, y, text ) => {
