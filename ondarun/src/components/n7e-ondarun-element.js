@@ -689,7 +689,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     let natImg = new Image();
     natImg.onload = () => {
       console.log("%c█",`border-radius:50%; border:5px solid orange;font-size: 0px; padding: 0px 50px; line-height:100px;background: url(${natImgUrl}); background-size:100px 100px; background-position: center center; color: red;`);
-      console.log(`Especially built from the ground up overnight into the moonlit sky 🎑 above the asleep children in Nagoya 🗾 for Natherine BNK48\nwith my %c❤❤❤❤%c and a supernova 🌟`,'color:crimson','color:black',"\nhttps://www.facebook.com/bnk48official.natherine/");
+      console.log(`Built among the asleep newborns in Nagoya 🗾\nFrom the ground up overnight into the moonlit sky 🎑\nEspecially for Natherine BNK48 with my %c❤❤❤❤%cplus enough neurons to operate a supernova 🌟`,'color:crimson','color:black',"\nhttps://www.facebook.com/bnk48official.natherine/");
     };
     natImg.src = natImgUrl;
 
