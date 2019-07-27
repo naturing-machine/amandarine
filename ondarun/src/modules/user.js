@@ -21,6 +21,8 @@ export class User {
   }
 
   allTasksSettled(){
+    // Trying to deal with late-inserted tasks. May be finding out the
+    // whole nested Promised.all() from start would be a better idea.
     let flushTasks = function( resolve, activeTasks ){
       if( activeTasks.size ){
         Promise.all( activeTasks ).then(() => {
@@ -44,7 +46,7 @@ export class User {
     return aPromise;
   }
 
-  __setUser( u ){
+  __setUser( u, resolve ){
     this.provider = {
       displayName: u.displayName,
       providerId: u.providerData[0].providerId,
@@ -56,9 +58,29 @@ export class User {
       default:
         this.provider.photoURL = u.photoURL;
     }
+    if( this.uidRef && this.uidRef.key != u.uid ){
+        this.uidRef.off();
+        this.odrRef = null;
+        console.warn('re-sign-in');
+    }
+    if( !this.uidRef || this.uidRef.key != u.uid ){
+      this.uidRef = firebase.database().ref(`users/${u.uid}`);
+      this.odrRef = this.uidRef.child('odr');
 
-    this.uidRef = firebase.database().ref(`users/${u.uid}`);
-    this.odrRef = this.uidRef.child('odr');
+      // Migrate old value if needed before starting the listener.
+      this.odrRef.transaction( odr => {
+        if( odr && odr.scores ){
+          odr.distances = odr.scores;
+        }
+        return odr;
+      }).then(() => {
+          this.uidRef.on('value', snapshot => {
+            this.__setData( snapshot );
+            resolve();
+          });
+      });
+
+    }
   }
 
   getProfilePhoto(){
@@ -76,7 +98,8 @@ export class User {
     return this.__getProfilePhotoPromise;
   }
 
-  __setData( data ){
+  __setData( snapshot ){
+    let data = snapshot.val();
     let nickname;
     if( data ){
       //console.log('USER DATA');
@@ -147,41 +170,30 @@ export class User {
     // Here trying to keep onAuthStateChanged() out side of
     // The promise to aviod unsubscribing loop.
 
-    let waitingForDataResolve;
-    function dataAvailable( resolve ){
-      waitingForDataResolve = resolve;
+    let pendingForDataResolve;
+    function dataPending( resolve ){
+      pendingForDataResolve = resolve;
     }
-    this.setTask( new Promise( dataAvailable ));
+
+    function dataReady(){
+      pendingForDataResolve = null;
+    }
+
+    this.setTask( new Promise( dataPending )).then( dataReady );
 
     this.__AUTH_UNSUBSCRIBE = firebase.auth().onAuthStateChanged( u => {
       if( u ){
-        this.__setUser( u );
+        this.__setUser( u, pendingForDataResolve );
 
         // Transfering scores from older locations.
-        this.odrRef.transaction( odr => {
-          if( odr && odr.scores ){
-            odr.distances = odr.scores;
-          }
-          return odr;
-        }).then(() => {
-          this.uidRef.on('value', snapshot => {
-            this.__setData( snapshot.val());
-
-            if( waitingForDataResolve ){
-              waitingForDataResolve();
-              waitingForDataResolve = null;
-            }
-
-          });
-        });
       } else {
-        if( waitingForDataResolve ){
-          waitingForDataResolve();
-          waitingForDataResolve = null;
+        if( pendingForDataResolve ){
+          pendingForDataResolve();
         }
+
         this.allTasksSettled().then(() => {
           this.reset();
-          this.setTask( new Promise( dataAvailable ));
+          this.setTask( new Promise( dataPending )).then( dataReady );
         });
         // Renew to wait for another sign-in.
       }
