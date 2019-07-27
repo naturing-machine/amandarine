@@ -121,7 +121,7 @@ class Entity {
       this.canvasCtx.drawImage(
         this.constructor.sprite,
         this.spriteX, this.spriteY, this.width, this.height,
-        Math.round(this.minX), ~~this.minY,  this.width, this.height );
+        Math.floor( this.minX ), Math.floor( this.minY ),  this.width, this.height );
     }
   }
 
