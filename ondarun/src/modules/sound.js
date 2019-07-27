@@ -42,16 +42,16 @@ class AudioController{
     this.sourceNode.stop( time );
   }
 
-  drop( fadingDuration ){
+  drop( volumeTransitionDuration ){
     let actx = Sound.inst.audioContext;
-    this.sourceNode.stop( actx.currentTime + fadingDuration );
+    this.sourceNode.stop( actx.currentTime+ volumeTransitionDuration );
     if( this.gainNode )
-      this.gainNode.gain.exponentialRampToValueAtTime( 0.00001, actx.currentTime +fadingDuration );
+      this.gainNode.gain.exponentialRampToValueAtTime( 0.00001, actx.currentTime+ volumeTransitionDuration );
   }
 
-  setVolume( newVolume, duration = 0 ){
+  setVolume( newVolume, volumeTransitionDuration = 0 ){
     if( this.gainNode )
-      this.gainNode.gain.exponentialRampToValueAtTime( Math.max( 0.00001, newVolume ), Sound.inst.audioContext.currentTime+ duration );
+      this.gainNode.gain.exponentialRampToValueAtTime( Math.max( 0.00001, newVolume ), Sound.inst.audioContext.currentTime+ volumeTransitionDuration );
   }
 }
 /**
@@ -65,7 +65,7 @@ class Audio {
     this.controller = null;
   }
 
-  play( volume, delay = 0, pan = null, loop = false ){
+  play( volume, delay = 0, pan = null, loop = false, offset /*,duration*/ ){
 
     let actx = Sound.inst.audioContext;
     let star
@@ -113,7 +113,8 @@ class Audio {
     if( loop ){
       sourceNode.loop = loop;
     }
-    sourceNode.start( controller.startTime );
+
+    sourceNode.start( controller.startTime, offset );
 
     return controller;
   }
@@ -145,6 +146,11 @@ class Song {
   }
 
   play( delay, volume ){
+    if( this.controller ){
+      console.warn(this, ' is already playing.');
+      return;
+    }
+
     this._volume = volume;
     this.delayStart = delay;
     this.startTime = Sound.inst.audioContext.currentTime;
@@ -160,16 +166,28 @@ class Song {
     }
   }
 
-  continue(){
-  
+  stop( volumeTransitionDuration = 0 ){
+    if( this.controller ){
+      this.controller.drop( volumeTransitionDuration );
+      this.controller = null;
+    }
+    this.stopOffset = Sound.inst.audioContext.currentTime- this.startTime+ volumeTransitionDuration;
+    this.startTime = Infinity;
   }
 
-  stop( fadingDuration = 0 ){
-    if( this.controller ){
-      this.controller.drop( fadingDuration );
+  resume( volumeTransitionDuration = 0){
+    // wasMuted NYI, will try to continue as if the song was never stopped.
+    if( !this.stopOffset || this.controller || !this.audio ){
+      console.warn(this, ' Something wrong.');
+      this.play( 0, this._volume );
+      return;
     }
-    this.stopOffset = Sound.inst.audioContext.currentTime - this.startTime;
-    this.startTime = Infinity;
+
+    this.startTime = Sound.inst.audioContext.currentTime- this.stopOffset- this.delayStart;
+    this.controller = this.audio.play( 0, 0, null, false, this.stopOffset );
+    this.controller.setVolume( 0 );
+    this.controller.setVolume( this._volume, volumeTransitionDuration );
+
   }
 
   set volume( newVolume ){

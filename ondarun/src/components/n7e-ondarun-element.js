@@ -463,6 +463,7 @@ class OnDaRunElement extends LitElement {
   }
 
   set gameState( newState ){
+
     switch( this._gameState ){
       case undefined:
         if( 0 === newState ){
@@ -524,7 +525,28 @@ class OnDaRunElement extends LitElement {
         break;
     }
 
-    //console.log([ "IDLE", "PLAY", "CRASH" ][ newState ]);
+    if( 3 === newState && 3 !== this._gameState ){
+      // Pause
+      this.__gamePausedState = this._gameState;
+      this._gameState = 3;
+      let pausePanel = new Pause ( this.canvas, this.panel );
+
+      if( this.panel && this.panel.constructor.name === "Wait" ){
+        pausePanel.previousPanel = this.panel.previousPanel;
+        this.panel.previousPanel = pausePanel;
+      } else {
+        this.panel = pausePanel;
+      }
+
+    } else if( -3 === newState && 3 === this._gameState){
+      // Unpause
+      this._gameState = this.__gamePausedState;
+      console.assert( this.panel.constructor.name == "Pause");
+      this.panel.exit();
+
+    }
+
+    //console.log([ "IDLE", "PLAY", "CRASH", "PAUSE" ][ newState ]);
 
   }
 
@@ -1380,7 +1402,10 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       if( 0 == this.gameState ) this._panel = new Greeter( this.canvas, this.notifier );
       else if( 2 == this.gameState ) this._panel = new GameOver( this.canvas );
       else this._panel = this._passthroughPanel;
-    else this._panel = newPanel;
+    else if( this._panel != newPanel ){
+      this._panel = newPanel;
+      newPanel.activate();
+    }
   }
 
   get panel(){
@@ -1573,20 +1598,15 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
     switch( e.type ){
       case OnDaRun.events.VISIBILITY:
-      case OnDaRun.events.FOCUS:
-      case OnDaRun.events.BLUR:
-      //FIXME impelmenet pause() toggler
-        if( this.panel.isWaiting ) break;
-        if( !this._handleEvent_Pause
-            && ( e.type == OnDaRun.events.BLUR
-                || document.hiddden || document.webkitHidden
-                || document.visibilityState != 'visible')){
-          this.panel = new Pause ( this.canvas, this.panel );
-          this._handleEvent_Pause = this.panel;
-        } else if( this._handleEvent_Pause ){
-          this._handleEvent_Pause.exit();
-          this._handleEvent_Pause = null;
+        if( document.visibilityState != 'visible' ){
+          this.gameState = 3;
+          break;
         }
+      case OnDaRun.events.FOCUS:
+        this.gameState = -3;
+        break;
+      case OnDaRun.events.BLUR:
+        this.gameState = 3;
         break;
       case OnDaRun.events.KEYDOWN:{
         if( !this.panel.handleEvent || !this.panel.handleEvent( e )){
@@ -1755,20 +1775,6 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       return;
     }
 
-    /* Don't forget another KeyP handling above.
-    if( e.code === "KeyP"){
-
-      if( this._handleEvent_Pause ){
-        this._handleEvent_Pause.exit();
-        this._handleEvent_Pause = null;
-      } else {
-        this.panel = new Pause ( this.canvas, this.panel, true );
-        this._handleEvent_Pause = this.panel;
-      }
-
-    }
-    */
-
     // Prevent native page scrolling whilst tapping on mobile.
     //if( IS_MOBILE && this.playing ){
       //e.preventDefault();
@@ -1806,10 +1812,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
         cancelAnimationFrame( this.raqId );
         this.raqId = 0;
       }
-      return;
+    } else {
+      this.raqId = requestAnimationFrame((now) => this.forward( now ));
     }
-
-    this.raqId = requestAnimationFrame((now) => this.forward( now ));
   }
 
   /*

@@ -18,6 +18,7 @@ export class NoPanel {
   constructor(){ this.passthrough = true; }
   forward(){ return this; }
   exit(){}
+  activate(){}
   handleEvent( e ){ return false; }
 }
 
@@ -32,6 +33,9 @@ export class Panel {
 
     this.previousPanel = previousPanel;
     this.nextPanel = undefined;
+  }
+
+  activate( isActive ){
   }
 
   resetTimer(){
@@ -120,7 +124,7 @@ export class Panel {
   get rightPressed(){
     return this.buttonDownTime.r > this.buttonUpTime.r;
   }
-  
+
   get noPressed(){
     return !this.leftPressed && !this.rightPressed;
   }

@@ -22,13 +22,10 @@ import { Panel } from './panel.js';
 export class Pause extends Panel {
   constructor( canvas, previousPanel = null , silent = false ){
     super( canvas, previousPanel );
-    this.isPaused = false;
     this.silent = silent;
   }
 
-  repaint(){
-    this.isPaused = true;
-
+  paintOnce(){
     if( !this.silent ){
       ODR.canvas.style.opacity /= 2;
 
@@ -40,27 +37,37 @@ export class Pause extends Panel {
         this.canvasCtx.fillRect( 310+i, 70+i, 20, 60 );
       }
       this.canvasCtx.restore();
-
     }
-    console.log('▮▮ PAUSED');
-    N7e.freeze = true;
   }
 
   handleEvent( e ){
-    //if( e.code === "KeyP") return false;
     return true;
   }
 
-  exit( panel ){
-    if( !this.silent && this.isPaused){
-      ODR.canvas.style.opacity = 1 - ODR.config.GRAPHICS_DAY_LIGHT/5;
-      console.log('▶ PLAYING');
-      N7e.freeze = false;
-      ODR.scheduleNextRepaint();
+  activate( isActive ){
+    console.log('▮▮ PAUSED');
+    this.paintOnce();
+    N7e.freeze = true;
+    ODR.__gamePausedSong = Sound.inst.currentSong;
+    if( ODR.__gamePausedSong ){
+      ODR.__gamePausedSong.stop( 1 );
+    }
+  }
 
+  exit( panel ){
+    if( !this.silent ){
+      ODR.canvas.style.opacity = 1 - ODR.config.GRAPHICS_DAY_LIGHT/5;
     }
 
-    this.isPaused = false;
+    console.log('▶ PLAYING');
+    N7e.freeze = false;
+    let currentSong = Sound.inst.currentSong;
+    if( currentSong && ODR.__gamePausedSong === currentSong ){
+      currentSong.resume( 1 );
+    }
+
+    ODR.scheduleNextRepaint();
+
     return super.exit( panel );
   }
 }
