@@ -172,15 +172,14 @@ export class Sequencer {
     return null;
   }
 
-
-
   getSituation( currentSpeed ) {
 
     if( ODR.gameMode.key == 'GAME_S'){
       return [
         Sequencer.situation.SituationA,
         Sequencer.situation.SituationB,
-        Sequencer.situation.SituationC ][ N7e.randomInt( 0, 2 )];
+        Sequencer.situation.SituationC,
+        Sequencer.situation.SituationD ][ N7e.randomInt( 0, 3 )];
     }
 
     let x = ( currentSpeed - 6 )/7;
@@ -325,11 +324,27 @@ export class Sequencer {
           let i,cactus;
           for( i = 0; i < 8; i++) {
             cactus = new SmallCactus( this.canvasCtx, N7e.randomInt( 1, 3 ));
-            this.addEntity( lastEntity.muster( i * 550 , currentSpeed, cactus ));
+            this.addEntity( lastEntity.muster( 250+ i * 550 , currentSpeed, cactus ));
           }
 
           this.addEntity( cactus.muster( 0, currentSpeed, new Space( 100*currentSpeed )));
         } break;
+
+        case Sequencer.situation.SituationD: {
+          this.addEntity( lastEntity.muster( 0, currentSpeed, new Space( 180*currentSpeed )));
+
+          this.addEntity( lastEntity.muster( 1500, currentSpeed,
+            new Rubber( this.canvasCtx, currentSpeed * Rubber.speedFactor *( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 1 ])));
+          this.addEntity( lastEntity.muster( 1600, currentSpeed,
+            new Liver( this.canvasCtx, currentSpeed * Liver.speedFactor, DuckType.elevationList[ 2 ])));
+          this.addEntity( lastEntity.muster( 1700, currentSpeed,
+            new Rubber( this.canvasCtx, currentSpeed * Rubber.speedFactor *( 0.9 + 0.1*Math.random()), DuckType.elevationList[ 4 ])));
+
+          this.addEntity( lastEntity.muster( 2000, currentSpeed, Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
+          this.addEntity( lastEntity.muster( 2100, currentSpeed, Cactus.getRandomObstacle( this.canvasCtx, currentSpeed )));
+
+        } break;
+
 
         /* Single Cactus */
         default:
@@ -439,6 +454,7 @@ Sequencer.situationList = [];
   <path class="SituationA" d="M 1,0.4 0.15,0.5 1,0.6 Z" />
   <path class="SituationB" d="M 1,0.1 0.25,0.15 1,0.2 Z" />
   <path class="SituationC" d="M 1,0.75 0.25,0.8 1,0.85 Z" />
+  <path class="SituationD" d="M 1,0.9 0.25,0.95 1,1 Z" />
 </svg>
 `;
 
