@@ -50,18 +50,28 @@ export class TitlePanel extends Panel {
     this.storyStartOffset = 18000;
 
     let glyphsForIndex = [
-      Text.glyphMap.get(Text.c.slide.codePointAt( 0 )),
+      Text.glyphMap.get( Text.c.left.codePointAt( 0 )),
+      Text.glyphMap.get( Text.c.slide.codePointAt( 0 )),
       Text.glyphMap.get( Text.c.jump.codePointAt( 0 )),
+      Text.glyphMap.get( Text.c.right.codePointAt( 0 )),
+    ];
+    let glyphDirForIndex = [
+      [ 1.5, 0 ],
+      [ 0, -1 ],
+      [ 0, -1 ],
+      [ -1.5, 0 ],
     ];
     function gd( x, y, text, ctx, gidx, cidx ){
       let glyph = glyphsForIndex[ cidx ];
-      let math = Math.abs(Math.sin( ODR.time/200 ));
+      let math = Math.abs(Math.sin( ODR.time/150 ));
 
       let alphaRestore = ctx.globalAlpha;
         ctx.globalAlpha*= 1 - 0.3*math;
         ctx.drawImage( ODR.spriteGUI,
           glyph, 0, 14, 16,
-          ~~x, ~~(y + 2 - 3*math), 14, 16 );
+          ~~(x+ (2- 3*math) *glyphDirForIndex[ cidx ][ 0 ]),
+          ~~(y+ (2- 3*math) *glyphDirForIndex[ cidx ][ 1 ]),
+          14, 16 );
       ctx.globalAlpha = alphaRestore;
     }
 
@@ -74,7 +84,7 @@ by making a donation to
 the thai redcross society
 
 
-${'left'} to donate ${gd}                ${gd} to sprint ${'right'}
+${gd} to donate ${gd}                ${gd} to sprint ${gd}
 `;
 
     let heartGlyph = new Text().set`${'heart'}`.glyphs[0];
@@ -297,29 +307,43 @@ The Thai Redcross Society ${'redcross'}
 /**
  * TitlePanel repaint.
  * @param {number} deltaTime - duration since last call.
- * @return {Panel} - a subsitute or null.
  */
   repaint( deltaTime ) {
-
-    //====== The Thai Redcross Society Advertisement ======//
     if( this.waitingForAudioContext || this.waitingForButtonUp ){
-      this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
-
-      let e = () => this.donationText.draw( this.canvasCtx, 300, 30, 0 );
-
-      if( !this.waitingForAudioContext && this.timer > this.buttonBlockStopTime ){
-        let alphaRestore = this.canvasCtx.globalAlpha;
-          this.canvasCtx.globalAlpha = 1 - Math.min( 2000, this.timer- this.buttonBlockStopTime )/2000;
-          e();
-        this.canvasCtx.globalAlpha = alphaRestore;
-        if( this.timer > this.buttonBlockStopTime + 2500 ) this.stopWaitingForButtonUp();
-      } else {
-        e();
-      }
-      return;
+      this.repaintThaiRedCross( deltaTime );
+    } else {
+      this.repaintTitle( deltaTime );
     }
+  }
 
-    //====== Logo Display ======//
+/**
+ * The Thai Redcross Society Advertisement
+ * @param {number} deltaTime - duration since last call.
+ */
+  repaintThaiRedCross ( deltaTime ) {
+    this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
+
+    if( !this.waitingForAudioContext && this.timer > this.buttonBlockStopTime ){
+      let alphaRestore = this.canvasCtx.globalAlpha;
+
+        this.canvasCtx.globalAlpha = 1 - Math.min( 2000, this.timer- this.buttonBlockStopTime )/2000;
+        this.donationText.draw( this.canvasCtx, 300, 30, 0 );
+
+      this.canvasCtx.globalAlpha = alphaRestore;
+      if( this.timer > this.buttonBlockStopTime + 2500 ) this.stopWaitingForButtonUp();
+    } else {
+
+      this.donationText.draw( this.canvasCtx, 300, 30, 0 );
+
+    }
+  }
+
+/**
+ * Draw the emblem and the stories.
+ * @param {number} deltaTime - duration since last call.
+ */
+  repaintTitle( deltaTime ) {
+
     let endingTimer = 0;
     let endingOffset = 0;
     let endingOpacity = 1;
@@ -375,52 +399,7 @@ The Thai Redcross Society ${'redcross'}
 
       ODR.sky.forward( deltaTime, this.canvasCtx );
 
-      // Falling tangerines on Thursday.
-      if( !this.__dayOfWeek ){
-        this.__dayOfWeek = new Date().getDay() + 1;
-        if( this.__dayOfWeek == 5 ){
-          Tangerine.dropRate = 5;
-        }
-      }
-      if( this.__dayOfWeek == 5 ){
-        let manyTangs = 40;
-        if( !this.__tangList ){
-          this.__tangList = [];
-          for( let i = 0 ; i < manyTangs; i++ ){
-            this.__tangList.push({
-              x: N7e.randomInt( -15, 595 ),
-              y: N7e.randomInt( -20, 195 ),
-              d: N7e.randomInt( 10000, 11000 ),
-              s: N7e.randomInt( 4, 9 )/10,
-              r: (Math.random()*0.5+0.5) * (N7e.randomInt(0,1)?1:-1),
-            });
-          }
-        }
-        if( this.__tangList.length < manyTangs && !endingTimer ){
-          for( let i = 0 ; i < 5; i++ ){
-            this.__tangList.push({
-              x: N7e.randomInt( -15, 595 ),
-              y: N7e.randomInt( -20, -200 ),
-              d: N7e.randomInt( 10000, 11000 ),
-              s: N7e.randomInt( 4, 9 )/10,
-              r: (Math.random()*0.5+0.5) * (N7e.randomInt(0,1)?1:-1),
-            });
-          }
-        }
-        let alphaRestore = this.canvasCtx.globalAlpha;
-        this.canvasCtx.globalAlpha = endingOpacity;
-        this.__tangList.forEach( t => {
-          t.d += deltaTime * t.r;
-          t.y += deltaTime / 5 * t.s;
-
-          this.canvasCtx.drawImage(ODR.spriteGUI,
-            ~~Math.floor(t.d/1000*8)%6 * 20, 20, 20, 20,
-            ~~t.x, ~~t.y+endingOffset, 20, 20 );
-        });
-        this.canvasCtx.globalAlpha = alphaRestore;
-        this.__tangList = this.__tangList.filter( t => t.y < 220 );
-      }
-
+      this.repaintTitleBackground( deltaTime );
       /* A AMANDARINE FRONTIER */
       this.canvasCtx.drawImage(ODR.spriteGUI,
         148,15,208,85,
@@ -536,6 +515,55 @@ The Thai Redcross Society ${'redcross'}
           this.__fastForwardingText.draw( this.canvasCtx, 600, 185, 1, 10 );
         }
       }
+    }
+  }
+
+
+  repaintTitleBackground( delaTime ){
+    // Falling tangerines on Thursday.
+    if( !this.__dayOfWeek ){
+      this.__dayOfWeek = new Date().getDay() + 1;
+      if( this.__dayOfWeek == 5 ){
+        Tangerine.dropRate = 5;
+      }
+    }
+    if( this.__dayOfWeek == 5 ){
+      let manyTangs = 40;
+      if( !this.__tangList ){
+        this.__tangList = [];
+        for( let i = 0 ; i < manyTangs; i++ ){
+          this.__tangList.push({
+            x: N7e.randomInt( -15, 595 ),
+            y: N7e.randomInt( -20, 195 ),
+            d: N7e.randomInt( 10000, 11000 ),
+            s: N7e.randomInt( 4, 9 )/10,
+            r: (Math.random()*0.5+0.5) * (N7e.randomInt(0,1)?1:-1),
+          });
+        }
+      }
+      if( this.__tangList.length < manyTangs && !endingTimer ){
+        for( let i = 0 ; i < 5; i++ ){
+          this.__tangList.push({
+            x: N7e.randomInt( -15, 595 ),
+            y: N7e.randomInt( -20, -200 ),
+            d: N7e.randomInt( 10000, 11000 ),
+            s: N7e.randomInt( 4, 9 )/10,
+            r: (Math.random()*0.5+0.5) * (N7e.randomInt(0,1)?1:-1),
+          });
+        }
+      }
+      let alphaRestore = this.canvasCtx.globalAlpha;
+      this.canvasCtx.globalAlpha = endingOpacity;
+      this.__tangList.forEach( t => {
+        t.d += deltaTime * t.r;
+        t.y += deltaTime / 5 * t.s;
+
+        this.canvasCtx.drawImage(ODR.spriteGUI,
+          ~~Math.floor(t.d/1000*8)%6 * 20, 20, 20, 20,
+          ~~t.x, ~~t.y+endingOffset, 20, 20 );
+      });
+      this.canvasCtx.globalAlpha = alphaRestore;
+      this.__tangList = this.__tangList.filter( t => t.y < 220 );
     }
   }
 }

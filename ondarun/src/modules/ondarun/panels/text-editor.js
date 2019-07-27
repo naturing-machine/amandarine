@@ -70,7 +70,7 @@ pxyghmjq${'sun'}
 `${gd}+${'jump'} Up
 
 ${gd} Left ${gd} Right
-  
+
 ${'slide'}+${gd} Down
 
 ${gd}+${gd} Choose`;
