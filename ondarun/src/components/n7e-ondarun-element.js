@@ -525,29 +525,48 @@ class OnDaRunElement extends LitElement {
         break;
     }
 
+    let pauseTimeout = 300;
     if( 3 === newState && 3 !== this._gameState ){
+      console.log(3)
       // Pause
       this.__gamePausedState = this._gameState;
       this._gameState = 3;
-      let pausePanel = new Pause ( this.canvas, this.panel );
-
-      if( this.panel && this.panel.constructor.name === "Wait" ){
-        pausePanel.previousPanel = this.panel.previousPanel;
-        this.panel.previousPanel = pausePanel;
-      } else {
-        this.panel = pausePanel;
-      }
-
+      setTimeout( this.statePause.bind( this ), pauseTimeout );
     } else if( -3 === newState && 3 === this._gameState){
+      console.log(-3)
       // Unpause
       this._gameState = this.__gamePausedState;
-      console.assert( this.panel.constructor.name == "Pause");
-      this.panel.exit();
-
+      if( !this.raqId ){
+        this.scheduleNextRepaint();
+      }
+      setTimeout( this.statePause.bind( this ), pauseTimeout );
     }
 
-    //console.log([ "IDLE", "PLAY", "CRASH", "PAUSE" ][ newState ]);
+    //console.log([ "IDLE", "PLAY", "CRASH", "PAUSE" ][ this._gameState ]);
 
+  }
+
+  statePause(){
+    if( 3 === this._gameState ){
+      if( !this.__gamePausePanel ) {
+        console.log('cr');
+        this.__gamePausePanel = new Pause ( this.canvas, this.panel );
+        if( this.panel && this.panel.constructor.name === "Wait" ){
+          console.log('insert')
+          this.__gamePausePanel.previousPanel = this.panel.previousPanel;
+          this.panel.previousPanel = this.__gamePausePanel;
+        } else {
+          console.log('set')
+          this.panel = this.__gamePausePanel;
+        }
+      }
+    } else {
+      if( this.__gamePausePanel ){
+        console.log('de');
+        this.__gamePausePanel.exit();
+        this.__gamePausePanel = null;
+      }
+    }
   }
 
   stateResetProperties(){

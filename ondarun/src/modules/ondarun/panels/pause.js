@@ -64,8 +64,6 @@ export class Pause extends Panel {
       currentSong.resume( 1 );
     }
 
-    ODR.scheduleNextRepaint();
-
     return super.exit( panel );
   }
 }
