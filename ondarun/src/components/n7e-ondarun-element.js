@@ -1807,7 +1807,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
   }
 
   scheduleNextRepaint() {
-    if( N7e.freeze ){
+    if( 3 === this.gameState ){
       if( this.raqId ){
         cancelAnimationFrame( this.raqId );
         this.raqId = 0;
@@ -2066,7 +2066,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
           default: /*priority*/
             console.error(action, action.priority);
-            N7e.freeze = true;
+            this.gameState = 3;
             /*
             this.amandarine.activateAction(action, deltaTime, speed);
             break HANDLE_ACTION_QUEUE;
@@ -2079,7 +2079,6 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       this.amandarine.activateAction( this.activeAction, deltaTime, speed );
     else {
       console.warn('No active action for repainting.');
-      //N7e.freeze = true;
     }
     //this.amandarine.forward(deltaTime, speed, activeAction);
   }

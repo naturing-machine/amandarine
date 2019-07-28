@@ -47,7 +47,6 @@ export class Pause extends Panel {
   activate( isActive ){
     console.log('▮▮ PAUSED');
     this.paintOnce();
-    N7e.freeze = true;
     ODR.__gamePausedSong = Sound.inst.currentSong;
     if( ODR.__gamePausedSong ){
       ODR.__gamePausedSong.stop( 1 );
@@ -60,7 +59,6 @@ export class Pause extends Panel {
     }
 
     console.log('▶ PLAYING');
-    N7e.freeze = false;
     let currentSong = Sound.inst.currentSong;
     if( currentSong && ODR.__gamePausedSong === currentSong ){
       currentSong.resume( 1 );
