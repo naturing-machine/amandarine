@@ -525,47 +525,43 @@ class OnDaRunElement extends LitElement {
         break;
     }
 
-    let pauseTimeout = 300;
-    if( 3 === newState && 3 !== this._gameState ){
-      console.log(3)
-      // Pause
-      this.__gamePausedState = this._gameState;
-      this._gameState = 3;
-      setTimeout( this.statePause.bind( this ), pauseTimeout );
-    } else if( -3 === newState && 3 === this._gameState){
-      console.log(-3)
-      // Unpause
-      this._gameState = this.__gamePausedState;
-      if( !this.raqId ){
-        this.scheduleNextRepaint();
-      }
-      setTimeout( this.statePause.bind( this ), pauseTimeout );
-    }
-
-    //console.log([ "IDLE", "PLAY", "CRASH", "PAUSE" ][ this._gameState ]);
+    //console.log([ "IDLE", "PLAY", "CRASH" ][ this._gameState ]);
 
   }
 
+  set pause( shouldPause ){
+    let pauseTimeout = 300;
+    if( shouldPause && !this._pause ){
+      setTimeout( this.statePause.bind( this ), pauseTimeout );
+      this._pause = true;
+    } else if( !shouldPause && this._pause ){
+      setTimeout( this.statePause.bind( this ), pauseTimeout );
+      // Unpause
+      this._pause = false;
+      if( !this.raqId ){
+        this.scheduleNextRepaint();
+      }
+    }
+  }
+
+  get pause(){
+    return this._pause;
+  }
+
   statePause(){
-    if( 3 === this._gameState ){
+    if( this.pause ){
       if( !this.__gamePausePanel ) {
-        console.log('cr');
         this.__gamePausePanel = new Pause ( this.canvas, this.panel );
         if( this.panel && this.panel.constructor.name === "Wait" ){
-          console.log('insert')
           this.__gamePausePanel.previousPanel = this.panel.previousPanel;
           this.panel.previousPanel = this.__gamePausePanel;
         } else {
-          console.log('set')
           this.panel = this.__gamePausePanel;
         }
       }
-    } else {
-      if( this.__gamePausePanel ){
-        console.log('de');
-        this.__gamePausePanel.exit();
-        this.__gamePausePanel = null;
-      }
+    } else if( this.__gamePausePanel ){
+      this.__gamePausePanel.exit();
+      this.__gamePausePanel = null;
     }
   }
 
@@ -1618,14 +1614,14 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     switch( e.type ){
       case OnDaRun.events.VISIBILITY:
         if( document.visibilityState != 'visible' ){
-          this.gameState = 3;
+          this.pause = true;
           break;
         }
       case OnDaRun.events.FOCUS:
-        this.gameState = -3;
+        this.pause = false;
         break;
       case OnDaRun.events.BLUR:
-        this.gameState = 3;
+        this.pause = true;
         break;
       case OnDaRun.events.KEYDOWN:{
         if( !this.panel.handleEvent || !this.panel.handleEvent( e )){
@@ -1826,7 +1822,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
   }
 
   scheduleNextRepaint() {
-    if( 3 === this.gameState ){
+    if( this.pause ){
       if( this.raqId ){
         cancelAnimationFrame( this.raqId );
         this.raqId = 0;
@@ -2085,7 +2081,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
           default: /*priority*/
             console.error(action, action.priority);
-            this.gameState = 3;
+            this.pause = true;
             /*
             this.amandarine.activateAction(action, deltaTime, speed);
             break HANDLE_ACTION_QUEUE;
