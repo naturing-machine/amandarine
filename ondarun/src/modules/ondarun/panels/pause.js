@@ -27,7 +27,6 @@ export class Pause extends Panel {
 
   paintOnce(){
     if( !this.silent ){
-      ODR.canvas.style.opacity /= 2;
 
       this.canvasCtx.save();
       for( let i = 4; i >= 0; i -= 4 ){
@@ -36,6 +35,8 @@ export class Pause extends Panel {
         this.canvasCtx.fillRect( 270+i, 70+i, 20, 60 );
         this.canvasCtx.fillRect( 310+i, 70+i, 20, 60 );
       }
+      this.canvasCtx.globalAlpha = 0.5;
+      this.canvasCtx.drawImage( ...ODR.consoleImageArguments );
       this.canvasCtx.restore();
     }
   }
@@ -55,7 +56,6 @@ export class Pause extends Panel {
 
   exit( panel ){
     if( !this.silent ){
-      ODR.canvas.style.opacity = 1 - ODR.config.GRAPHICS_DAY_LIGHT/5;
     }
 
     console.log('▶ PLAYING');
