@@ -19,33 +19,35 @@ import { User } from '../user.js';
 var FPS = N7e.FPS;
 
 class Cloud {
-  constructor( canvas, type, minX, minY ) {
+  constructor( canvas, type, minX, minY, subcloudCount = 0 ) {
     this.canvas = canvas;
     this.canvasCtx = this.canvas.getContext('2d');
     this.type = type;
-    this.type2 = N7e.randomInt( 0, 1 ) ? N7e.randomInt( 0, 5 ) : null;
     this.spriteX = Cloud.spriteXList[ N7e.randomInt( 0, 1 )];
     this.spriteY = Cloud.spriteYList[ type ];
-    if( this.type2 != null ){
-      this.spriteX2 = Cloud.spriteXList[ N7e.randomInt( 0, 1 )];
-      this.spriteY2 = Cloud.spriteYList[ this.type2 ];
-    }
     this.minX = minX;
     this.minY = minY;
-    this.rX = N7e.randomInt( 0, Cloud.width * 1.5 );
-    let h = Cloud.heightList[ this.type ] ;
-    this.rY = N7e.randomInt( -h, h );
     this.removed = false;
     this.speedModifier = 0.7 + 0.3*Math.random();
-    this.rSpeedModifier = 0.7 + 0.3*Math.random() - this.speedModifier;
     this.opacity = 1 - (type/10)*Math.random() ;
+    this.allSubclouds = subcloudCount ? [] : null;
+    for( let i = 0; i < subcloudCount; i++ ){
+      let mx = N7e.randomInt( -Cloud.width/2, Cloud.width/2 );
+      let my = N7e.randomInt( -Cloud.heightList[ type ]/2, Cloud.heightList[ type ]/2);
+      let mt = N7e.randomInt( 0, Math.max( type+ 1, 5 ));
+      let subcloud = new Cloud( canvas, mt, minX+ mx, minY+ my );
+      this.allSubclouds.push( subcloud );
+    }
   }
 
   get maxX(){
-    return Math.max( this.minX, this.minX + this.rX ) + Cloud.width;
+    return this.allSubclouds
+    ? this.allSubclouds.reduce(( m, c ) => Math.max( m, c.minX+ Cloud.width ), this.minX + Cloud.width )
+    : this.minX + Cloud.width;
   }
 
   get maxY(){
+    // We don't really use this value. AFAICT
     return this.minY + Cloud.heightList[ this.type ];
   }
 
@@ -57,13 +59,6 @@ class Cloud {
         Cloud.width, Cloud.heightList[ this.type ],
         Math.ceil( this.minX ), this.minY,
         Cloud.width, Cloud.heightList[ this.type ]);
-    if( this.type2 != null ){
-      this.canvasCtx.drawImage( ODR.spriteScene,
-        this.spriteX2, this.spriteY2,
-        Cloud.width, Cloud.heightList[ this.type2 ],
-        Math.ceil( this.minX + this.rX), this.minY + this.rY,
-        Cloud.width, Cloud.heightList[ this.type2 ]);
-    }
     this.canvasCtx.globalAlpha = alphaRestore;
   }
 
@@ -72,13 +67,15 @@ class Cloud {
 
       let fd = currentSpeed * FPS/1000 * deltaTime
       this.minX -= fd* this.speedModifier;
-      this.rX -= fd* this.rSpeedModifier;
       this.draw();
 
       // Mark as removeable if no longer in the canvas.
       if( this.maxX < 0 ){
         this.removed = true;
       }
+    }
+    if( this.allSubclouds ){
+      this.allSubclouds.forEach( c => c.forward( deltaTime, currentSpeed ));
     }
   }
 
@@ -129,7 +126,8 @@ export class Mountain {
 
     // First generation.
     let ofs = 0;
-    [100, 75, 50].forEach( height =>{
+
+    [ 100, 75, 50 ].forEach( height =>{
 
       for( let ty = 0; ty < height; ty++ ){
         let y = ~~( 100 * ty / height );
@@ -672,10 +670,9 @@ export class Scenery {
     this.nightMode = null;
 
     this.layerCount = 5;
-
-    this.layers = [];
+    this.layers = new Array( this.layerCount );
     for( let i = 0; i < this.layerCount; i++ ){
-      this.layers[i] = []; // At some points each layer will be a dedicated object.
+      this.layers[ i ] = []; // At some points each layer will be a dedicated object.
     }
 
     // Scenery
@@ -683,10 +680,10 @@ export class Scenery {
     this.horizonLine = new HorizonLine( this.canvas );
     this.nightMode = new NightMode( this.canvas );
 
-    for( let i = 0; i < this.cloudFrequency * 5; i++ ){
-      let x = N7e.randomInt(-50, 2*OnDaRun.DefaultWidth );
-      this.layers[[ 0, 2, 4 ][ N7e.randomInt( 0, 2 )]].push( new Cloud( this.canvas, Cloud.randomCloudType,
-        x, Cloud.randomCloudHeight ));
+    let numClouds = 0;
+    while( numClouds < 5 ){
+      this.addClouds( -50 );
+      numClouds+= 2;
     }
   }
 
@@ -793,22 +790,11 @@ export class Scenery {
 
     // Too few cloud, create one.
     if( numClouds < (ODR.config.GRAPHICS_CLOUDS || 0) * this.cloudFrequency / 2 ){
-      //HACK FIXME
-      let x = OnDaRun.DefaultWidth + N7e.randomInt(0,600);
-      this.layers[[0,2,2,4,4,4][N7e.randomInt(0,5)]].push( new Cloud( this.canvas, Cloud.randomCloudType,
-        x, Cloud.randomCloudHeight ));
+      this.addClouds();
     }
 
     if( numMountains < 10 && maxXMountain < OnDaRun.DefaultWidth ){
-      let generator = { energy: 7, mountains: [], minX: OnDaRun.DefaultWidth };
-      this.growMountain( generator );
-      if( generator.minX < OnDaRun.DefaultWidth ){
-        let shift = N7e.randomInt( 0, 400 ) + OnDaRun.DefaultWidth - generator.minX;
-        generator.mountains.forEach( mountain => {
-          mountain[0].minX += shift;
-          if( mountain[1] == 3 ) mountain[0].minX *= 1.2;
-        });
-      }
+      this.addMountains();
     }
 
     // Fill atmosphere
@@ -821,6 +807,26 @@ export class Scenery {
 
     this.horizonLine.forward( -currentSpeed * FPS / 1000 * deltaTime );
 
+  }
+
+  addClouds( offset = OnDaRun.DefaultWidth ){
+    //HACK FIXME
+    let min = 0;
+    let minLength = [ this.layers[ 0 ], this.layers[ 2 ], this.layers[ 4 ]].reduce(( a, b ) => a.length- b.length < 0 ? a : b );
+    minLength.push( new Cloud( this.canvas, Cloud.randomCloudType, offset + N7e.randomInt( 0, 700 ), Cloud.randomCloudHeight, N7e.randomInt( 0, 3 )));
+    minLength.push( new Cloud( this.canvas, Cloud.randomCloudType, offset + N7e.randomInt( 0, 700 ), Cloud.randomCloudHeight, N7e.randomInt( 0, 3 )));
+  }
+
+  addMountains(){
+    let generator = { energy: 7, mountains: [], minX: OnDaRun.DefaultWidth };
+    this.growMountain( generator );
+    if( generator.minX < OnDaRun.DefaultWidth ){
+      let shift = N7e.randomInt( 0, 400 ) + OnDaRun.DefaultWidth - generator.minX;
+      generator.mountains.forEach( mountain => {
+        mountain[0].minX += shift;
+        if( mountain[1] == 3 ) mountain[0].minX *= 1.2;
+      });
+    }
   }
 
   reset() {

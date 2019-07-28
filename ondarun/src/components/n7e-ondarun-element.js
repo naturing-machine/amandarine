@@ -760,7 +760,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     /* Listing & creating images for sprites */
     let loadingList = [];
 
-    let addSprite = (path) => {
+    let addSprite = ( path ) => {
       let sprite = new Image();
       sprite.src = 'assets/'+path+'.png';
       loadingList.push(sprite);
@@ -792,19 +792,19 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
     /* Make sure all sprites are ready then init() */
     let completion = 0;
-    let checkReady = (sprite) => {
-      completion++;
-      if (completion < loadingList.length)
+    let checkReady = () => {
+        completion++;
+      if( completion < loadingList.length )
         return;
 
       this.init();
     };
 
-    loadingList.forEach(sprite => {
-      if (sprite.complete) {
-        checkReady(sprite);
+    loadingList.forEach( sprite => {
+      if( sprite.complete ){
+        checkReady();
       } else {
-        sprite.addEventListener('load', checkReady(sprite));
+        sprite.addEventListener('load', checkReady );
       }
     });
 
