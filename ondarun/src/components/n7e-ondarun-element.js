@@ -41,212 +41,18 @@ import { Space, Tangerine, SmallCactus, LargeCactus, Velota, Rotata, DuckType, L
 import { A8e } from '../modules/ondarun/amandarine.js';
 import { Scenery, Sky, Mountain } from '../modules/ondarun/scenery.js';
 import { Terminal, Notifier, Scoreboard } from '../modules/ondarun/terminal.js';
+import { DefaultAction, SlideAction, JumpAction } from '../modules/ondarun/actions.js';
 
 var FPS = N7e.FPS;
 var IS_MOBILE = N7e.isMobile;
-
 
 class Figure {
   constructor( canvasOrImage, width, height ){
 
   }
 
-}
-
-//FIXME if runTime exist, action 'now' time should be converted to runTime
-class Action {
-  constructor( type ) {
-    this._begin = 0;
-    this._end = 0;
-    this._priority = 0;
-    //this._speed = undefined;
-    this._index = 0;
-
-    this._type = type;
-    Object.assign( this, A8e.animFrames[type] );
+  draw( x, y, frame ){
   }
-
-  get type() {
-    return this._type;
-  }
-
-  set type(_) {
-    console.trace();
-  }
-
-  get index() {
-    return this._index;
-  }
-
-  set index(index) {
-    if( !this._index ) {
-      this._index = index
-    } else if( this._index != Infinity ) console.error('can be written once');
-  }
-
-  set priority( newPriority ) {
-    this._priority = newPriority;
-  } get priority() { return this._priority;}
-
-  set begin( beginTime ) {
-    console.error('begin should be assigned only by constructor');
-  } get begin() { return this._begin; }
-
-
-  /* Guide drawing helper, this allows updating values for displaying guides */
-  willEnd() {
-    console.error('Subclass must implement.');
-  }
-
-  set end( endTime ) {
-    this.willEnd( endTime, this._speed );
-    this.priority = 1;
-  } get end() { return this._end; }
-
-  set speed( newSpeed ) {
-    if( this._end ) {
-      this.willEnd( this._end, newSpeed );
-    }
-  } get speed() { return this._speed || 0; }
-
-}
-
-
-class DefaultAction extends Action {
-  constructor( newSpeed = 0 ) {
-    super();
-    this.speed = newSpeed;
-    this.index = Infinity;
-    this._timer = 0;
-    this._priority = 3;
-  }
-
-  set timer( timer ) {
-    this._timer = timer;
-  } get timer() { return this._timer; }
-
-  // This action is a default action and won't be filtered by priority.
-  set priority( newPriority ) {
-    this._priority = Math.max(0, newPriority);
-  } get priority() { return this._priority; }
-
-  set speed( newSpeed ) {
-    if( this._speed != newSpeed && (this._speed || 0) <= ODR.config.SPEED ){
-      if( newSpeed == 0) {
-        this._type = A8e.status.WAITING;
-        Object.assign( this, A8e.animFrames.WAITING );
-        this.timer = 0;
-      } else {
-        this._type = A8e.status.RUNNING;
-        this.timer = 0;
-        if( newSpeed > 4 ) {
-          if( this._speed == 0 ){
-            for( let i = 0; i < 5; i++ ){
-              ODR.amandarine.dust.addPoint( 0, 0, -100 * Math.random() - 50, -15 * Math.random());
-              ODR.amandarine.dust.addPoint( 0, 0, -50 * Math.random() - 50,  15 * Math.random());
-            }
-          }
-          Object.assign(this, A8e.animFrames.RUNNING);
-          this.currentFrame = 0;
-        } else {
-          Object.assign(this, A8e.animFrames.WALKING);
-          this.currentFrame = 0;
-        }
-      }
-    }
-
-    this._speed = newSpeed;
-  } get speed() { return this._speed || 0; }
-
-}
-
-class JumpAction extends Action {
-  constructor( begin, speed ) {
-    super( A8e.status.JUMPING );
-    this._begin = begin;
-    this._speed = speed;
-
-    this.priority = 0;
-
-    this.control = true;
-    this.timer = 0;
-  }
-
-  //FIXME compute currentFrame here
-  set currentFrame(_) {}
-  get currentFrame() {
-    if (this.timer < 100) { return 0; }
-    if (this.timer < this.halfTime) { return 1; }
-    let a8e = ODR.amandarine;
-    if( a8e.groundMinY - a8e.minY < 20 ) {
-      return 3;
-    }
-    return 2;
-  }
-
-
-  willEnd( endTime, speed ) {
-    this._end = endTime;
-    this._speed = speed;
-
-    this.pressDuration = this._end - this._begin;
-    if( this.pressDuration > ODR.config.MAX_ACTION_PRESS )
-      this.pressDuration = ODR.config.MAX_ACTION_PRESS;
-
-    let minPress = ODR.config.MIN_ACTION_PRESS + ODR.config.MIN_ACTION_PRESS_FACTOR*speed;
-    this.maxPressDuration = this.pressDuration * (ODR.config.MAX_ACTION_PRESS - minPress)/ODR.config.MAX_ACTION_PRESS + minPress;
-
-    // It seems more ergonomically natural to simply add the minimum than to clip the value.
-    this.top = this.maxPressDuration / 1000;
-    this.halfTime = Math.sqrt( 2000 * this.maxPressDuration / A8e.config.GRAVITY );
-    this.duration = this.halfTime * 2;
-    this.msPerFrame = this.duration / 3.5;
-  }
-}
-
-class SlideAction extends Action {
-  constructor( begin, speed ) {
-    super( A8e.status.SLIDING );
-    this._begin = begin;
-    this._speed = speed;
-
-    this.priority = 0;
-
-    this.control = true;
-    this.timer = 0;
-  }
-
-  set currentFrame(_) {}
-  get currentFrame() {
-    if (this.duration - this.timer < 300) {
-      return 2 + Math.round( Math.max( 0, 2- ( this.duration- this.timer )/150 ));
-    }
-
-    return (this.timer >>> 6)&1;
-  }
-
-  willEnd( endTime, speed ) {
-    this._end = endTime;
-    this._speed = speed;
-
-    this.pressDuration = this._end - this._begin;
-    if( this.pressDuration > ODR.config.MAX_ACTION_PRESS )
-      this.pressDuration = ODR.config.MAX_ACTION_PRESS;
-
-    let minPress = ODR.config.MIN_ACTION_PRESS + ODR.config.MIN_ACTION_PRESS_FACTOR*speed;
-    this.maxPressDuration = this.pressDuration * (ODR.config.MAX_ACTION_PRESS - minPress)/ODR.config.MAX_ACTION_PRESS + minPress;
-
-    this.msPerFrame = this.duration / 2.25;
-  }
-
-  set maxPressDuration( mPD ) {
-    this._maxPressDuration = mPD;
-    this.fullDistance = this._speed * 0.001 * FPS * this._maxPressDuration;
-    this.fullTime = this._speed == 0 ? 0 : this.fullDistance / (this._speed * FPS);
-    this.duration = this.fullTime * 1000;
-    this.distance = 0;
-    this.friction = this._speed == 0 ? 0 : 2 * this.fullDistance / (this.fullTime * this.fullTime);
-  } get maxPressDuration() { return this._maxPressDuration; }
 
 }
 
@@ -611,13 +417,6 @@ class OnDaRunElement extends LitElement {
       this.scoreboard.replay = true;
     }
     this.scoreboard.existence = 1;
-
-      /*
-      if( this.distance > this.gameMode.distance )
-        this.notifier.notify( `A NEW HIGH!
-${this.gameMode.title} : ${Math.round( this.gameMode.distance * this.config.TO_SCORE )} ▻ ${Math.round( this.distance * this.config.TO_SCORE )}
-GOOD JOB! ${'natB'}`, 15000 );
-*/
 
     // Rebuild achievement strings on each restart.
     let d0 = Math.round( this.gameMode.distance * this.config.TO_SCORE );
@@ -988,9 +787,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
   start(){
     Sound.inst.effects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
 
-    let defaultAction = new DefaultAction(1);
+    let defaultAction = new DefaultAction( 1 );
     defaultAction.setX = -100;
-    this.queueAction(defaultAction);
+    this.queueAction( defaultAction );
 
     let greeter = new Greeter( this.canvas, this.notifier );
     // The zero-size of activeTasks means either all tasks are resolved
@@ -1181,9 +980,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     //FIXME dup screen forward
     Sound.inst.loadMusic('offline-intro-music', this.config.PLAY_MUSIC );
 
-    let defaultAction = new DefaultAction(1);
+    let defaultAction = new DefaultAction( 1 );
     defaultAction.setX = -100;
-    this.queueAction(defaultAction);
+    this.queueAction( defaultAction );
     Sound.inst.effects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
     this.sky.setShade( Sky.config.DAY, 0 );
 
@@ -1572,7 +1371,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     }
 
     let a = this.actions[0];
-    this.scheduleActionQueue( deltaTime );
+    this.activeAction = this.scheduleActionQueue( deltaTime, this.currentSpeed, this.amandarine );
     this.notifier.forward( deltaTime );
 
     if( this.playLyrics ){
@@ -1813,7 +1612,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
   queueAction( action ){
     this.actionIndex++;
     action.index = this.actionIndex;
-    this.actions.push(action);
+    this.actions.push( action );
   }
 
   isLeftClickOnCanvas(e) {
@@ -1907,14 +1706,13 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       3: Interrupting. (eg. Crash, Pause)
      -1: Zombie, a released task.
   */
-  scheduleActionQueue( deltaTime ){
+  scheduleActionQueue( deltaTime, speed, amandarine ){
     let now = this.time; //FIXME should not use now but runTime after start.
-    let speed = this.currentSpeed;
 
     /* activeAction points to the current active action, drawings & tests
     such as collision checkings will be done with this action.
     */
-    this.activeAction = null;
+    let activeAction = null;
 
     // Sort & filter main action queue.
     this.actions.sort((a,b) => a.priority == b.priority
@@ -1922,6 +1720,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       : b.priority - a.priority);
     this.actions = this.actions.filter( action => {
       if (action.priority == -1) return false;
+      action.forward( deltaTime );
       if (action.priority == 1
           && action.hasOwnProperty('duration')
           && action.end + action.duration < now - 500) {
@@ -1930,11 +1729,6 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       }
       return true;
     });
-
-    let gsi = this.amandarine.slidingGuideIntensity;
-    let gji = this.amandarine.jumpingGuideIntensity;
-    this.amandarine.slidingGuideIntensity = 0;
-    this.amandarine.jumpingGuideIntensity = 0;
 
     //Prevent modifications during traversing the queue.
 
@@ -1946,22 +1740,19 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
             switch(action.type) {
               case A8e.status.JUMPING:
-                this.amandarine.jumpingGuideIntensity = Math.min( 1, gji + deltaTime/200 );
-                this.amandarine.drawJumpingGuide(action, now, this.currentSpeed );
-                continue;
               case A8e.status.SLIDING:
-                this.amandarine.slidingGuideIntensity = Math.min( 1, gsi + deltaTime/200 );
-                this.amandarine.drawSlidingGuide(action, now, this.currentSpeed );
+                //amandarine.drawSlidingGuide( action, now, speed );
+                action.drawGuide( this.canvasCtx, amandarine.minX, amandarine.groundMinY, now, speed );
                 continue;
               case A8e.status.RUNNING:
 
                 action.timer = 0;
                 action.priority = 1;
-                this.activeAction = action;
+                activeAction = action;
 
                 break;
               case A8e.status.WAITING:
-                this.activeAction = action;
+                activeAction = action;
               default:;
             }
 
@@ -1971,7 +1762,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           case 1:  // Priority 1 : Initialising actions.
             switch(action.type) {
               case A8e.status.JUMPING:
-                this.activeAction = action;
+                activeAction = action;
 
                     if( 2 == this.gameState ) {
                       console.trace();
@@ -1981,14 +1772,14 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                     }
 
                 if (this.config.GRAPHICS_DUST != 'NONE') {
-                  this.amandarine.dust.minX = this.amandarine.minX - 24;
-                  this.amandarine.dust.addPoint(0, 0, -40, -10 * Math.random());
+                  amandarine.dust.minX = amandarine.minX - 24;
+                  amandarine.dust.addPoint(0, 0, -40, -10 * Math.random());
                 }
 
                 break;
               case A8e.status.SLIDING:
-                this.activeAction = action;
-                action.minX = this.amandarine.minX;
+                activeAction = action;
+                action.minX = amandarine.minX;
                 break;
 
               case A8e.status.WAITING:
@@ -1998,9 +1789,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
               // duration) below will 'continue' through the action queue
               // to proceed with the active preparing action (priority 0).
               case A8e.status.RUNNING:
-                this.activeAction = action;
-                action.speed = this.currentSpeed;
-                action.msPerFrame = 1000 /( 22+ this.currentSpeed );
+                activeAction = action;
+                action.speed = speed;
+                action.msPerFrame = 1000 /( 22+ speed );
 
                 continue;
 
@@ -2013,19 +1804,19 @@ https://www.redcross.or.th/donate/`,'color:crimson');
             action.priority = 2;
             // All 1s will progress into 2s
           case 2: // Priority 2 : Concurrent actions.
-            this.activeAction = action;
+            activeAction = action;
 
             break HANDLE_ACTION_QUEUE;
           case 3: // Priority 3 : Immediate actions.
-            this.activeAction = action;
+            activeAction = action;
             switch(action.type) {
               case A8e.status.RUNNING:
 
                 /* Running into the scene
                   (A8e.config.START_X_POS + 200)*1000/FPS*/
-                if( this.amandarine.minX > A8e.config.START_X_POS ) {
+                if( amandarine.minX > A8e.config.START_X_POS ) {
                   action.speed = 0;
-                  this.amandarine.minX = A8e.config.START_X_POS;
+                  amandarine.minX = A8e.config.START_X_POS;
                 }
                 // Don't proceed action while walking in.
                 break HANDLE_ACTION_QUEUE;
@@ -2041,14 +1832,14 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                     // Prepare crash animation.
                     let crashPoint = action.crash.C.center();
 
-                    this.runSession.crashSpeed = this.currentSpeed;
+                    this.runSession.crashSpeed = speed;
                     this.runSession.crashPoint = crashPoint;
                     this.runSession.crashAction = action;
 
                     this.gameState = 2;
 
                     //TODO 4 dirs
-                    if( crashPoint.minY - this.amandarine.minY < 20 ){
+                    if( crashPoint.minY - amandarine.minY < 20 ){
                       action.dir = -1;
                     } else {
                       action.dir = 1;
@@ -2058,8 +1849,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                     action.top = action.duration / 1000;
                     action.halfTime = Math.sqrt( 2000 * action.duration / A8e.config.GRAVITY );
                     action.timer = 0;
-                    action.crashedMinY = this.amandarine.minY;
-                    action.lagging = this.currentSpeed;
+                    action.crashedMinY = amandarine.minY;
+                    action.lagging = speed;
 
                   }
                 }
@@ -2069,7 +1860,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
               //break;
               case A8e.status.WAITING:
                 /*
-                if( this.amandarine.minX < A8e.config.START_X_POS ) {
+                if( amandarine.minX < A8e.config.START_X_POS ) {
                   action.speed = 1;
                 }*/
 
@@ -2083,19 +1874,21 @@ https://www.redcross.or.th/donate/`,'color:crimson');
             console.error(action, action.priority);
             this.pause = true;
             /*
-            this.amandarine.activateAction(action, deltaTime, speed);
+            amandarine.activateAction(action, deltaTime, speed);
             break HANDLE_ACTION_QUEUE;
             */
         }
       }
     }
 
-    if (this.activeAction)
-      this.amandarine.activateAction( this.activeAction, deltaTime, speed );
+    if (activeAction)
+      amandarine.activateAction( activeAction, deltaTime, speed );
     else {
       console.warn('No active action for repainting.');
     }
-    //this.amandarine.forward(deltaTime, speed, activeAction);
+    //amandarine.forward(deltaTime, speed, activeAction);
+
+    return activeAction;
   }
 }
 

@@ -20,6 +20,7 @@ import { CollisionBox } from '../collision-box.js';
 
 import { Text } from './text.js';
 import { A8e } from './amandarine.js';
+import { CrashAction } from './actions.js';
 
 var FPS = N7e.FPS;
 
@@ -333,13 +334,7 @@ class Obstacle extends Entity {
   }
 
   collide( collision ) {
-    return {
-      type: A8e.status.CEASING,
-      timer: 0,
-      priority: 3,
-      crash: collision,
-      obstacle: this
-    };
+    return new CrashAction( this, collision );
   }
 }
 

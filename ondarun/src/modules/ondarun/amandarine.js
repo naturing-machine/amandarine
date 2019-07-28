@@ -42,8 +42,6 @@ export class A8e {
     // Current status.
     //this.status = A8e.status.WAITING;
 
-    this.slidingGuideIntensity = 0;
-    this.jumpingGuideIntensity = 0;
     this.dust = new Particles(canvas, this.minX, this.minY, A8e.config.DUST_DURATION);
 
     this.init();
@@ -326,94 +324,6 @@ export class A8e {
     if (!action || action.priority == -1) return false;
 
     return true;
-  }
-
-  drawJumpingGuide( action, now, speed ){
-    if( action.start ) return;
-    /* Draw jumping guide */
-
-    action.willEnd(now,speed);
-
-    let alphaRestore = this.canvasCtx.globalAlpha;
-    {
-      this.canvasCtx.beginPath();
-      this.canvasCtx.strokeStyle = "white";
-
-      let baseX = this.minX + 12;
-      let baseY = this.groundMinY + 35;
-      let shiftLeft = 0;
-      let fadeOut = 1;
-      let DRAW_STEP = 50;
-      var increment = speed * 0.001 * FPS * DRAW_STEP;
-
-      if (action.priority == 2) {
-        let last = now - action.end;
-        shiftLeft = increment * last / DRAW_STEP;
-        fadeOut = ( action.halfTime - last )/ action.halfTime;
-          if (fadeOut < 0) fadeOut = 0;
-      }
-
-      let unit = action.halfTime * 2 / DRAW_STEP;
-      let gravityFactor = 0.0000005 * A8e.config.GRAVITY;
-      this.canvasCtx.moveTo(
-        baseX + unit * increment - shiftLeft,
-        baseY -( action.top -( gravityFactor * action.halfTime**2 ))* A8e.config.SCALE_FACTOR
-      );
-
-      for (let timer = action.halfTime; timer > - action.halfTime - DRAW_STEP; timer-= DRAW_STEP, unit--) {
-        let drawY = baseY -( action.top -( gravityFactor * timer * timer ))* A8e.config.SCALE_FACTOR;
-        let drawX = baseX + unit * increment - shiftLeft;
-
-        if (drawX < this.minX +20 && drawY > baseY -60 ) {
-          break;
-        }
-
-        this.canvasCtx.lineTo(drawX, drawY);
-      }
-
-      now = (now/10)%40;
-      let alpha = fadeOut *( action.halfTime -150 )/200;
-        if (alpha > 1) alpha = 1;
-
-      this.canvasCtx.lineCap = 'round';
-      this.canvasCtx.setLineDash([0,20]);
-      this.canvasCtx.globalAlpha = this.jumpingGuideIntensity * alpha;
-      this.canvasCtx.lineWidth = alpha*5;
-      this.canvasCtx.lineDashOffset = now;
-      this.canvasCtx.stroke();
-    }
-    this.canvasCtx.globalAlpha = alphaRestore;
-
-  }
-
-  drawSlidingGuide( action, now, speed ){
-    if( action.start )return;
-
-    let baseX = this.minX;
-    let alpha;
-
-    action.willEnd(now,speed);
-    if (action.priority != 0) {
-      baseX = A8e.config.START_X_POS -action.distance;
-      alpha = ( action.fullDistance -action.distance )/ action.fullDistance;
-      alpha*= alpha;
-    } else {
-      alpha = action.pressDuration/ODR.config.MAX_ACTION_PRESS;
-    }
-
-    let frame = ~~(now / A8e.animFrames.SLIDING.msPerFrame) % 3;
-
-    // Draw future destination body ghosts.
-    let alphaRestore = this.canvasCtx.globalAlpha;
-    for( let i = 0, len = ODR.config.GRAPHICS_SLIDE_STEPS, s = 0, sd = Math.abs( now/100 %4 -2 );
-        i < len; i++, s+=sd) {
-      this.canvasCtx.globalAlpha = this.slidingGuideIntensity * alpha/( 1<<i );
-      this.canvasCtx.drawImage(A8e.animFrames.SLIDING.sprite,
-        A8e.animFrames.SLIDING.frames[( frame +i )%3 ], 40, 40, 40,
-        ~~( baseX +action.fullDistance - 30*i *alpha ) - s**2, this.groundMinY,
-        A8e.config.WIDTH, A8e.config.HEIGHT);
-    }
-    this.canvasCtx.globalAlpha = alphaRestore;
   }
 
   reset(){
