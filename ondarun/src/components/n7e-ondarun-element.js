@@ -330,9 +330,7 @@ class OnDaRunElement extends LitElement {
         }
         break;
     }
-
     //console.log([ "IDLE", "PLAY", "CRASH" ][ this._gameState ]);
-
   }
 
   set pause( shouldPause ){
@@ -469,9 +467,9 @@ class OnDaRunElement extends LitElement {
 
     this.amandarine.reset();
 
-    let startingSlide = new SlideAction( this.time - ODR.config.MAX_ACTION_PRESS, 7.2);
+    let startingSlide = new SlideAction( 7.2 );
+    startingSlide.forward( -ODR.config.MAX_ACTION_PRESS );
     startingSlide.priority = 1;
-    startingSlide.end = this.time;
     startingSlide.maxPressDuration = 1500;
 
     this.queueAction( startingSlide );
@@ -1465,7 +1463,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           case this.consoleButtons.CONSOLE_RIGHT:{
             let action = this.consoleButtonActionMap.get( button );
             if( !action || action.priority != 0 ){
-              action = new JumpAction( this.time, this.currentSpeed );
+              action = new JumpAction( this.currentSpeed );
               this.consoleButtonActionMap.set( button, action );
               this.queueAction( action );
             }
@@ -1487,7 +1485,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           case this.consoleButtons.CONSOLE_RIGHT:{
             let action = this.consoleButtonActionMap.get( button );
             if( action && action.priority == 0 ){
-              action.willEnd( this.time, this.currentSpeed );
+              action.willEnd( this.currentSpeed );
               action.priority = 1;
               this.consoleButtonActionMap.delete( button );
             }
@@ -1715,15 +1713,15 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     let activeAction = null;
 
     // Sort & filter main action queue.
-    this.actions.sort((a,b) => a.priority == b.priority
+    this.actions.sort(( a, b ) => a.priority == b.priority
       ? a.index - b.index
       : b.priority - a.priority);
     this.actions = this.actions.filter( action => {
-      if (action.priority == -1) return false;
+      if( action.priority == -1 ) return false;
       action.forward( deltaTime );
-      if (action.priority == 1
+      if( action.priority == 1
           && action.hasOwnProperty('duration')
-          && action.end + action.duration < now - 500) {
+          && action.end + action.duration < action.timer - 500 ){
         action.priority = -1;
         return false;
       }
@@ -1741,12 +1739,17 @@ https://www.redcross.or.th/donate/`,'color:crimson');
             switch(action.type) {
               case A8e.status.JUMPING:
               case A8e.status.SLIDING:
-                //amandarine.drawSlidingGuide( action, now, speed );
-                action.drawGuide( this.canvasCtx, amandarine.minX, amandarine.groundMinY, now, speed );
+                action.drawGuide( this.canvasCtx, amandarine.minX, amandarine.groundMinY, speed );
+
+                // Note: This is how serveral actions in the current implementation got "blended" altogether.
+                // The priority-0 Jump/Slide got blended into the previously scheduled priority-2 RUNNING
+                // and will also allow blending with another priority-0 Jump/Slide. ie. instead of breaking
+                // the queue traversing, it continues to the lower priorities. This allows mixing guide drawings
+                // and so all blended actions can process simultaneously.
+                // This would allow mixing animations from different actions in future.
                 continue;
               case A8e.status.RUNNING:
 
-                action.timer = 0;
                 action.priority = 1;
                 activeAction = action;
 
@@ -1805,6 +1808,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
             // All 1s will progress into 2s
           case 2: // Priority 2 : Concurrent actions.
             activeAction = action;
+            if(/* action.type == A8e.status.SLIDING || */ action.type == A8e.status.JUMPING ){
+              action.drawGuide( this.canvasCtx, amandarine.minX, amandarine.groundMinY, speed );
+            }
 
             break HANDLE_ACTION_QUEUE;
           case 3: // Priority 3 : Immediate actions.

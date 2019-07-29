@@ -18,25 +18,30 @@ import { A8e } from './amandarine.js';
 
 var FPS = N7e.FPS;
 
-//FIXME if runTime exist, action 'now' time should be converted to runTime
 class Action {
   constructor( type ) {
-    this._begin = 0;
     this._end = 0;
-    this._priority = 0;
+    this.priority = 0;
     //this._speed = undefined;
     this._index = 0;
 
     this._type = type;
     Object.assign( this, A8e.animFrames[type] );
-    this._queueTimer = 0;
   }
 
-  get queueTimer(){
-    return this._queueTimer;
+  set priority( newPriority ) {
+    this._priority = newPriority;
+    this._timer = 0;
+  } get priority() { return this._priority;}
+
+  set timer(_){
+    console.error('Do not set timer!');
+  }
+  get timer(){
+    return this._timer;
   }
   forward( deltaTime ){
-    this._queueTimer += deltaTime;
+    this._timer += deltaTime;
   }
 
   get type() {
@@ -57,63 +62,64 @@ class Action {
     } else if( this._index != Infinity ) console.error('can be written once');
   }
 
-  set priority( newPriority ) {
-    this._priority = newPriority;
-  } get priority() { return this._priority;}
-
-  set begin( beginTime ) {
-    console.error('begin should be assigned only by constructor');
-  } get begin() { return this._begin; }
-
-
   /* Guide drawing helper, this allows updating values for displaying guides */
-  willEnd() {
+  willEnd( speed, end = this._timer ) {
+    this._speed = speed;
+    this._end = end;
     console.error('Subclass must implement.');
   }
 
-  set end( endTime ) {
-    this.willEnd( endTime, this._speed );
-    this.priority = 1;
+  set end( endTimer ) {
+    this.willEnd( this._speed, endTimer );
   } get end() { return this._end; }
 
+/**
+ * speed define the current speed of Natherine absolute to the currentSpeed.
+ * @memberof Action
+ * @type {number}
+ */
   set speed( newSpeed ) {
     if( this._end ) {
-      this.willEnd( this._end, newSpeed );
+      this.willEnd( newSpeed, this._end );
     }
   } get speed() { return this._speed || 0; }
 
 }
-
 
 export class DefaultAction extends Action {
   constructor( newSpeed = 0 ) {
     super();
     this.speed = newSpeed;
     this.index = Infinity;
-    this._timer = 0;
     this._priority = 3;
   }
 
-  set timer( timer ) {
-    this._timer = timer;
-  } get timer() { return this._timer; }
-
-  // This action is a default action and won't be filtered by priority.
+/**
+ * DefaultAction won't be filtered by priority.
+ * @type {number}
+ */
   set priority( newPriority ) {
-    this._priority = Math.max(0, newPriority);
+    this._priority = Math.max( 0, newPriority );
   } get priority() { return this._priority; }
 
+/**
+ * Setting speed will defines DefaultAction's type.
+ * @type {number}
+ */
   set speed( newSpeed ) {
     if( this._speed != newSpeed && (this._speed || 0) <= ODR.config.SPEED ){
       if( newSpeed == 0) {
         this._type = A8e.status.WAITING;
         Object.assign( this, A8e.animFrames.WAITING );
-        this.timer = 0;
+        this._timer = 0;
       } else {
+        // Moving and running share the same type but use different sprites.
         this._type = A8e.status.RUNNING;
-        this.timer = 0;
+        this._timer = 0;
         if( newSpeed > 4 ) {
           if( this._speed == 0 ){
+            // FIXME
+            // Taking-off dust.
             for( let i = 0; i < 5; i++ ){
               ODR.amandarine.dust.addPoint( 0, 0, -100 * Math.random() - 50, -15 * Math.random());
               ODR.amandarine.dust.addPoint( 0, 0, -50 * Math.random() - 50,  15 * Math.random());
@@ -134,22 +140,16 @@ export class DefaultAction extends Action {
 }
 
 export class JumpAction extends Action {
-  constructor( begin, speed ) {
+  constructor( speed ) {
     super( A8e.status.JUMPING );
-    this._begin = begin;
     this._speed = speed;
-
-    this.priority = 0;
-
-    this.control = true;
-    this.timer = 0;
   }
 
   //FIXME compute currentFrame here
   set currentFrame(_) {}
   get currentFrame() {
-    if (this.timer < 100) { return 0; }
-    if (this.timer < this.halfTime) { return 1; }
+    if (this._timer < 100) { return 0; }
+    if (this._timer < this.halfTime) { return 1; }
     let a8e = ODR.amandarine;
     if( a8e.groundMinY - a8e.minY < 20 ) {
       return 3;
@@ -158,11 +158,11 @@ export class JumpAction extends Action {
   }
 
 
-  willEnd( endTime, speed ) {
+  willEnd( speed, endTime = this._timer ){
     this._end = endTime;
     this._speed = speed;
 
-    this.pressDuration = this._end - this._begin;
+    this.pressDuration = endTime;
     if( this.pressDuration > ODR.config.MAX_ACTION_PRESS )
       this.pressDuration = ODR.config.MAX_ACTION_PRESS;
 
@@ -176,11 +176,9 @@ export class JumpAction extends Action {
     this.msPerFrame = this.duration / 3.5;
   }
 
-  drawGuide( canvasCtx, minX, minY, now, speed ){
+  drawGuide( canvasCtx, minX, minY, speed ){
     if( this.start ) return; //FIXME subclass ?
     /* Draw jumping guide */
-
-    this.willEnd( now, speed );
 
     canvasCtx.save();
     {
@@ -194,11 +192,13 @@ export class JumpAction extends Action {
       let DRAW_STEP = 50;
       var increment = speed * 0.001 * FPS * DRAW_STEP;
 
-      if( this.priority == 2 ){
-        let last = now - this.end;
+      if( 2 == this.priority ){
+        let last = this.timer;
         shiftLeft = increment * last / DRAW_STEP;
-        fadeOut = ( this.halfTime - last )/ this.halfTime;
-          if (fadeOut < 0) fadeOut = 0;
+        let h = this.halfTime/4;
+        fadeOut = 1 - Math.min( 1, this.timer/h );
+      } else if( 0 == this.priority ){
+        this.willEnd( speed );
       }
 
       let unit = this.halfTime * 2 / DRAW_STEP;
@@ -219,14 +219,14 @@ export class JumpAction extends Action {
         canvasCtx.lineTo(drawX, drawY);
       }
 
-      let offset = this.queueTimer;
+      let offset = this.timer;
       offset = ( offset/10 )%40;
       let alpha = fadeOut *( this.halfTime -150 )/200;
         if (alpha > 1) alpha = 1;
 
       canvasCtx.lineCap = 'round';
       canvasCtx.setLineDash([ 0, 20 ]);
-      canvasCtx.globalAlpha = Math.min( 1, this.queueTimer/150 ) * alpha;
+      canvasCtx.globalAlpha = Math.min( 1, this._timer/150 ) * alpha;
       canvasCtx.lineWidth = 5*alpha;
       canvasCtx.lineDashOffset = offset;
       canvasCtx.stroke();
@@ -238,31 +238,27 @@ export class JumpAction extends Action {
 }
 
 export class SlideAction extends Action {
-  constructor( begin, speed ) {
+  constructor( speed ) {
     super( A8e.status.SLIDING );
-    this._begin = begin;
     this._speed = speed;
-
-    this.priority = 0;
-
-    this.control = true;
-    this.timer = 0;
+    this._misdraw = 0;
+    this._fadeIn = 1;
   }
 
   set currentFrame(_) {}
   get currentFrame() {
-    if (this.duration - this.timer < 300) {
-      return 2 + Math.round( Math.max( 0, 2- ( this.duration- this.timer )/150 ));
+    if (this.duration - this._timer < 300) {
+      return 2 + Math.round( Math.max( 0, 2- ( this.duration- this._timer )/150 ));
     }
 
     return (this.timer >>> 6)&1;
   }
 
-  willEnd( endTime, speed ) {
+  willEnd( speed, endTime = this._timer ){
     this._end = endTime;
     this._speed = speed;
 
-    this.pressDuration = this._end - this._begin;
+    this.pressDuration = endTime;
     if( this.pressDuration > ODR.config.MAX_ACTION_PRESS )
       this.pressDuration = ODR.config.MAX_ACTION_PRESS;
 
@@ -281,35 +277,47 @@ export class SlideAction extends Action {
     this.friction = this._speed == 0 ? 0 : 2 * this.fullDistance / (this.fullTime * this.fullTime);
   } get maxPressDuration() { return this._maxPressDuration; }
 
-  drawGuide( canvasCtx, minX, minY, now, speed ){
+  forward( deltaTime ){
+    this._timer += deltaTime;
+    this._misdraw++;
+    this._fadeIn+= deltaTime/300;
+  }
+
+  drawGuide( canvasCtx, minX, minY, speed ){
     if( this.start )return;
+    if( this._misdraw >= 2 ){
+      this._fadeIn = 0;
+    }
+    this._misdraw = 0;
 
     let baseX = minX;
     let alpha;
 
-    this.willEnd(now,speed);
     if( this.priority != 0 ){
       baseX = A8e.config.START_X_POS -this.distance;
       alpha = ( this.fullDistance -this.distance )/ this.fullDistance;
       alpha*= alpha;
     } else {
+      this.willEnd( speed );
       alpha = this.pressDuration/ODR.config.MAX_ACTION_PRESS;
     }
 
-    let frame = ~~( this.queueTimer / A8e.animFrames.SLIDING.msPerFrame) % 3;
+    let frame = ~~( this._timer / A8e.animFrames.SLIDING.msPerFrame) % 3;
 
     // Draw future destination body ghosts.
-    let alphaRestore = canvasCtx.globalAlpha;
-    canvasCtx.globalAlpha = Math.min( 1, this.queueTimer/150 ) * alpha;
-    for( let i = 0, len = ODR.config.GRAPHICS_SLIDE_STEPS, s = 0, sd = Math.abs( this.queueTimer/100 %4 -2 );
-        i < len; i++, s+=sd) {
-      canvasCtx.globalAlpha /= 1.5;
-      canvasCtx.drawImage(A8e.animFrames.SLIDING.sprite,
-        A8e.animFrames.SLIDING.frames[( frame +i )%3 ], 40, 40, 40,
-        ~~( baseX +this.fullDistance - 30*i *alpha ) - s**2, minY,
-        A8e.config.WIDTH, A8e.config.HEIGHT);
-    }
-    canvasCtx.globalAlpha = alphaRestore;
+    let alphaRestore = canvasCtx.globalAlpha; {
+
+      canvasCtx.globalAlpha = this._fadeIn *Math.min( 1, this._timer/150 ) * alpha;
+      for( let i = 0, len = ODR.config.GRAPHICS_SLIDE_STEPS, s = 0, sd = Math.abs( this._timer/100 %4 -2 );
+          i < len; i++, s+=sd) {
+        canvasCtx.drawImage(A8e.animFrames.SLIDING.sprite,
+          A8e.animFrames.SLIDING.frames[( frame +i )%3 ], 40, 40, 40,
+          ~~( baseX +this.fullDistance - 30*i *alpha ) - s**2, minY,
+          A8e.config.WIDTH, A8e.config.HEIGHT);
+        canvasCtx.globalAlpha /= 1.5;
+      }
+
+    } canvasCtx.globalAlpha = alphaRestore;
   }
 }
 
@@ -318,7 +326,6 @@ export class CrashAction extends Action {
     super( A8e.status.CEASING );
     this.currentFrame = 0;
     this.priority = 3;
-    this.timer = 0;
     this.obstacle = obstacle;
     this.crash = collision;
   }

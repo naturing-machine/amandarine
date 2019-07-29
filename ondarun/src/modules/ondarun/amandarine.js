@@ -183,7 +183,8 @@ export class A8e {
         }
       } break;
       case A8e.status.JUMPING: {
-        if (action.timer == 0) {
+        if( !action[ A8e.__SymbolPlaySoundJumping ]){
+          action[ A8e.__SymbolPlaySoundJumping ] = true;
           Sound.inst.effects.SOUND_JUMP.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
           Sound.inst.effects.SOUND_DROP.play(
             action.pressDuration/ODR.config.MAX_ACTION_PRESS
@@ -318,7 +319,6 @@ export class A8e {
       this.dust.forward(deltaTime);
     }
 
-    action.timer += deltaTime;
     action.currentFrame = ~~(action.timer / action.msPerFrame) % action.frames.length;
 
     if (!action || action.priority == -1) return false;
@@ -332,6 +332,8 @@ export class A8e {
     this.dust.reset();
   }
 }
+
+A8e.__SymbolPlaySoundJumping = Symbol('play sound');
 
 A8e.config = {
   DUST_DURATION: 600,
