@@ -193,7 +193,7 @@ export class A8e {
       case A8e.status.JUMPING: {
         if( !action[ A8e.__SymbolPlaySoundJumping ]){
           action[ A8e.__SymbolPlaySoundJumping ] = true;
-          Sound.inst.effects.SOUND_JUMP.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+          Sound.inst.effects.SOUND_JUMP.play( 0.7*ODR.config.SOUND_EFFECTS_VOLUME/10 );
           Sound.inst.effects.SOUND_DROP.play(
             action.pressDuration/ODR.config.MAX_ACTION_PRESS
             * ODR.config.SOUND_EFFECTS_VOLUME/10 );
@@ -206,11 +206,11 @@ export class A8e {
           + ( A8e.config.GRAVITY_FACTOR * timer * timer
               - action.top * A8e.config.SCALE_FACTOR );
 
-        if (timer - 30 < -action.halfTime && !action.playedDrop ) {
+        if( timer - 30 < -action.halfTime && !action[ A8e.__SymbolPlaySoundDrop ] ){
           Sound.inst.effects.SOUND_DROP.play(
             action.pressDuration/ODR.config.MAX_ACTION_PRESS
             * ODR.config.SOUND_EFFECTS_VOLUME/10 );
-          action.playedDrop = true;
+          action[ A8e.__SymbolPlaySoundDrop ] = true;
         }
 
         if (timer < -action.halfTime) {
@@ -337,7 +337,8 @@ export class A8e {
   }
 }
 
-A8e.__SymbolPlaySoundJumping = Symbol('play sound');
+A8e.__SymbolPlaySoundJumping = Symbol('play sound jumping');
+A8e.__SymbolPlaySoundDrop = Symbol('play sound drop');
 
 A8e.config = {
   DUST_DURATION: 600,

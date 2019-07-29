@@ -65,7 +65,7 @@ class Audio {
     this.controller = null;
   }
 
-  play( volume, delay = 0, pan = null, loop = false, offset /*,duration*/ ){
+  play( volume, delay = 0, pan = null, loop = false, offset = 0 /*,duration*/ ){
 
     let actx = Sound.inst.audioContext;
     let star
@@ -270,8 +270,15 @@ class Song {
           }
           return;
         }
+        //console.log('dataReceived:', dataReceived,'value.length:',value.length );
         // Copy all read data into a source
-        source.set( value, dataReceived );
+        if( value.length + dataReceived > total ){
+          value = value.slice( 0, total - dataReceived );
+          //console.log('dataReceived:', dataReceived,'sliced value.length:',value.length );
+        }
+        if( value.length ){
+          source.set( value, dataReceived );
+        }
 
         this.loadingProgress = value.length/total;
         dataReceived+= value.length;
@@ -286,6 +293,7 @@ class Song {
       total = Number( response.headers.get('content-length'));
       reader = response.body.getReader();
       dataReceived = 0;
+      //console.log('total:', total );
       source = new Uint8Array( total );
       reader.read().then( processData );
     });
