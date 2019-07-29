@@ -61,13 +61,14 @@ class GameMode {
     this.title = config.title;
     this.icon = config.icon;
     this.acceleration = config.acceleration;
+    this.user = User.inst;
   }
 
   get distance(){
-    return User.inst.odrLongestDistanceList[ this.key ] || 0;
+    return this.user.odrLongestDistanceList[ this.key ] || 0;
   }
   set distance( newDistance ){
-    User.inst.odrRegisterDistance( this.key, newDistance );
+    this.user.odrRegisterDistance( this.key, newDistance );
   }
 }
 
@@ -396,8 +397,7 @@ class OnDaRunElement extends LitElement {
     this.showGameModeInfo();
     this.invert( true );
 
-    let user = User.inst;
-    if( user.uidRef ){
+    if( this.user.uidRef ){
       Tangerine.allDayMax = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
       this.scoreboard.maxTangerines = Tangerine.allDayMax;
       Tangerine.increaseTangerine( 0 ).then( dayCount => this.scoreboard.minTangerines = dayCount );
@@ -670,10 +670,10 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
     this.startListening();
 
-    this.user = new User();
+    this.user = User.inst;
     this.user.signIn().then( data  => {
 
-      if( !User.inst.uidRef ){
+      if( !this.user.uidRef ){
         // No user
         let banner = document.getElementById('game-banner');
         banner.style.visibility = 'visible';
@@ -915,8 +915,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
         if( entry.value != this.config[ entry.name ] ) {
           this.config[ entry.name ] = entry.value;
-          if( User.inst.odrRef ){
-            User.inst.odrRef.child('settings/' + entry.name ).set( entry.value );
+          if( this.user.odrRef ){
+            this.user.odrRef.child('settings/' + entry.name ).set( entry.value );
           }
 
           if( entry.name == 'PLAY_MUSIC' ) {
@@ -945,8 +945,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       enter: ( entryIndex, entry ) => {
         if( entry.value ) {
           this.config.GRAPHICS_MODE_SETTINGS[ 3 ][ entry.name ] = entry.value;
-          if( User.inst.odrRef ){
-            User.inst.odrRef.child(`settings/${entry.name}`).set( entry.value );
+          if( this.user.odrRef ){
+            this.user.odrRef.child(`settings/${entry.name}`).set( entry.value );
           }
         }
         this.setGraphicsMode( 3 );
@@ -1035,7 +1035,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
   createUserMenu(){
     Sound.inst.currentSong = null;
-    let user = User.inst;
+    let user = this.user;
     let userMenu =
       user.uidRef
       ? new Menu( this.canvas, {
@@ -1123,7 +1123,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                    'google'][entryIndex]
                    }..please wait`);
 
-                User.inst.signIn([
+                this.user.signIn([
                   'facebook.com',
                   'twitter.com',
                   'google.com',
@@ -1158,8 +1158,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           this.setGameMode( this.gameMode );
           this.cc.append("REPLAY MODE ENABLED", 2000);
           this.cc.append("IN THE GAME MENU.", 2000,2000);
-          if( User.inst.odrRef ){
-            User.inst.odrRef.child('settings/GAME_MODE_REPLAY').set( this.config.GAME_MODE_REPLAY );
+          if( this.user.odrRef ){
+            this.user.odrRef.child('settings/GAME_MODE_REPLAY').set( this.config.GAME_MODE_REPLAY );
           }
         }
         return null;
@@ -1636,8 +1636,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
   */
 
   updateScore(){
-    let user = User.inst;
-    user.maxSpeed = { value: this.runSession.crashSpeed, time: new Date().getTime()};
+    this.user.maxSpeed = { value: this.runSession.crashSpeed, time: new Date().getTime()};
 
     let d = this.score;
 
@@ -1649,7 +1648,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
     // Update the high score.
     this.gameMode.distance = this.distance;
-    if( user.uidRef ){
+    if( this.user.uidRef ){
       Tangerine.allDayMax = Math.max( 1, ~~( this.gameModeTotalScore/100 ));
     }
   }
@@ -1854,14 +1853,13 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                     action.duration = 200;
                     action.top = action.duration / 1000;
                     action.halfTime = Math.sqrt( 2000 * action.duration / A8e.config.GRAVITY );
-                    action.timer = 0;
                     action.crashedMinY = amandarine.minY;
                     action.lagging = speed;
 
+                  } else {
+                    console.log('no crash');
                   }
                 }
-
-
               } break HANDLE_ACTION_QUEUE;
               //break;
               case A8e.status.WAITING:
