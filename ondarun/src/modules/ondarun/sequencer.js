@@ -139,13 +139,10 @@ export class Sequencer {
 
   forwardEntities( deltaTime, cs, decrement ){
     // Obstacles, move to Scenery layer.
-    for (let i = 0; i < this.entities.length; i++) {
-      this.entities[i].forward( deltaTime, cs );
-    }
-
     // Clean bygone obstacles & find right-most entity.
     let lastEntity = null;
     this.entities = this.entities.filter( entity => {
+      entity.forward( deltaTime, cs );
       if( entity.removed ) return false;
       if( !lastEntity || entity.maxX > lastEntity.maxX ) {
         lastEntity = entity;
