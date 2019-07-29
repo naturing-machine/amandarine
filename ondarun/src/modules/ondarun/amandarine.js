@@ -137,22 +137,19 @@ export class A8e {
     return false;
   }
 
-  activateAction( action, deltaTime, speed ){
-    console.assert(action && action.priority != -1, action);
-
-    let adjustXToStart = () => {
-      if (this.minX < A8e.config.START_X_POS) {
-        this.minX += 0.2 * speed * (FPS / 1000) * deltaTime;
-        if (this.minX > A8e.config.START_X_POS) {
-          this.minX = A8e.config.START_X_POS;
-        }
-      } else if (this.minX > A8e.config.START_X_POS) {
-        this.minX -= 0.2 * speed * (FPS / 1000) * deltaTime;
-        if (this.minX < A8e.config.START_X_POS) {
-          this.minX = A8e.config.START_X_POS;
-        }
+  _adjustXToStart( targetX, factor, increment ){
+    if( this.minX < targetX ){
+      this.minX += factor * increment;
+      if( this.minX > targetX ){
+        this.minX = targetX ;
+      }
+    } else if( this.minX > targetX ){
+      this.minX -= factor * increment;
+      if( this.minX < targetX ){
+        this.minX = targetX ;
       }
     }
+  }
 
   activateAction( action, deltaTime, speed ){
     console.assert(action && action.priority != -1, action);
@@ -180,7 +177,17 @@ export class A8e {
           let increment = sp * FPS / 1000 * deltaTime;
           this.minX += increment;
         } else {
-          adjustXToStart(speed);
+          this._adjustXToStart( A8e.config.START_X_POS, 0.2, speed * (FPS / 1000) * deltaTime );
+          /*
+          this.__stepping = this.__stepping || 0;
+          this.__stepping += deltaTime;
+          if( this.__stepping > 200 ){
+            Sound.inst.effects.SOUND_DROP.play(
+              0.1
+              * ODR.config.SOUND_EFFECTS_VOLUME/10 );
+            this.__stepping -= 200;
+          }
+          */
         }
       } break;
       case A8e.status.JUMPING: {
@@ -194,7 +201,7 @@ export class A8e {
 
         let timer = action.halfTime - action.timer;
 
-        adjustXToStart();
+        this._adjustXToStart( A8e.config.START_X_POS, 0.2, speed * (FPS / 1000) * deltaTime );
         this.minY = this.groundMinY
           + ( A8e.config.GRAVITY_FACTOR * timer * timer
               - action.top * A8e.config.SCALE_FACTOR );
