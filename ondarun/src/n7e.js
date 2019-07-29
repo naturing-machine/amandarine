@@ -11,7 +11,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file AND if possible, in the Public Domain.
 
-var VERSION = "1.2"
+var VERSION = "1.19"
 var DEFAULT_WIDTH = 600;
 var DEFAULT_HEIGHT = 200;
 var FPS = 60;

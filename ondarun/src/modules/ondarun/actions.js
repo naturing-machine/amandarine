@@ -25,6 +25,9 @@ class Action {
     //this._speed = undefined;
     this._index = 0;
 
+    // callback( Action, A8e ) for everytime A8e.activate this.
+    // this.activate = null;
+
     this._type = type;
     Object.assign( this, A8e.animFrames[type] );
   }

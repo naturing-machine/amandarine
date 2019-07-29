@@ -786,7 +786,11 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     Sound.inst.effects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
 
     let defaultAction = new DefaultAction( 1 );
-    defaultAction.setX = -100;
+    defaultAction.activate = function( action, a8e ){
+      a8e.minX = -100;
+      action.activate = null;
+      return false;
+    };
     this.queueAction( defaultAction );
 
     let greeter = new Greeter( this.canvas, this.notifier );
@@ -979,7 +983,11 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     Sound.inst.loadMusic('offline-intro-music', this.config.PLAY_MUSIC );
 
     let defaultAction = new DefaultAction( 1 );
-    defaultAction.setX = -100;
+    defaultAction.activate = function( action, a8e ){
+      a8e.minX = -100;
+      action.activate = null;
+      return false;
+    };
     this.queueAction( defaultAction );
     Sound.inst.effects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
     this.sky.setShade( Sky.config.DAY, 0 );

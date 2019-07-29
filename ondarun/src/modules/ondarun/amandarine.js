@@ -154,11 +154,12 @@ export class A8e {
       }
     }
 
-    if (action.hasOwnProperty('setX')) {
-      this.minX = action.setX;
-      delete action.setX;
-    }
+  activateAction( action, deltaTime, speed ){
+    console.assert(action && action.priority != -1, action);
 
+    if( action.activate && action.activate( action, this )){
+      return;
+    }
 
     if (!action.frames) {
       Object.assign(action, A8e.animFrames[action.type]);
@@ -320,10 +321,6 @@ export class A8e {
     }
 
     action.currentFrame = ~~(action.timer / action.msPerFrame) % action.frames.length;
-
-    if (!action || action.priority == -1) return false;
-
-    return true;
   }
 
   reset(){
