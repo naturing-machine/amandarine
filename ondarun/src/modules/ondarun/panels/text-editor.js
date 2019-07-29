@@ -38,13 +38,13 @@ export class TextEditor extends Panel {
 
     this.callback = callback;
     this.pattern = Text.$
-`${'natA'}${'cake'}'!c?"${'natB'}${'heart'}
-,zjfrwk${'football'}${'trophy'}
-lnat eoid
-pxyghmjq${'sun'}
-()%buv.${'redcross'}${'noentry'}
+`${'natA'}${'cake'}'!l?"${'heart'}${'natB'}
+,qkwhmv${'football'}${'trophy'}
+dnat eoir
+yjgfsujx${'sun'}
+()%pcbz${'redcross'}${'noentry'}
 01234+-${'tangerine'}${'false'}
-56789*/${'speed'}${'true'}`
+56789*/.${'true'}`
 
     this.textPattern = new Text().setString( this.pattern );
     this.supportedChars = [...this.pattern.split('\n').join('')];
