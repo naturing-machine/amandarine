@@ -22,7 +22,7 @@ import { LitElement, html, css } from 'lit-element';
 import { N7e } from '../n7e.js';
 import { OnDaRun } from '../ondarun.js';
 import { User } from '../modules/user.js';
-import { Sound } from '../modules/sound.js';
+import { Sound, Audio } from '../modules/sound.js';
 import { ConsoleLeftButton, ConsoleRightButton, ConsoleAButton, ConsoleBButton, ConsoleCButton, ConsoleDButton, ConsoleN7EButton, ConsoleResetButton } from '../modules/ondarun/console-buttons.js';
 import { Text } from '../modules/ondarun/text.js';
 import { CollisionBox } from '../modules/collision-box.js';
@@ -214,6 +214,8 @@ class OnDaRunElement extends LitElement {
     this.scenery = null;
     this.sequencer = null;
     this.amandarine = null;
+
+    this.soundEffects = {};
 
     this.time = 0;
     Tangerine.allDayMax = 0;
@@ -440,7 +442,7 @@ class OnDaRunElement extends LitElement {
     this.activeAction.priority = 1;
 
     this.notifier.notify("go go go!!", 2000 );
-    Sound.inst.effects.SOUND_GOGOGO.play( 0.8 * this.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2);
+    this.soundEffects.SOUND_GOGOGO.play( 0.8 * this.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2);
   }
 
   stateCrash(){
@@ -453,7 +455,7 @@ class OnDaRunElement extends LitElement {
     this.panel = null;
     N7e.vibrate(200);
     Sound.inst.currentSong = null;
-    Sound.inst.effects.SOUND_OGGG.play( ODR.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2 );
+    this.soundEffects.SOUND_OGGG.play( ODR.config.SOUND_EFFECTS_VOLUME/10, 0, -0.2 );
     this.sky.setShade( Sky.config.SUNSET, 3000 );
 
   }
@@ -463,7 +465,7 @@ class OnDaRunElement extends LitElement {
 
     this.sequencer.reset();
 
-    Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    this.soundEffects.SOUND_SCORE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
 
     this.amandarine.reset();
 
@@ -487,7 +489,7 @@ class OnDaRunElement extends LitElement {
   firstUpdated( changedProperties ){
 //    let natImgUrl = 'https://scontent.fbkk5-4.fna.fbcdn.net/v/t1.0-0/c0.0.200.200a/p200x200/65054160_2418918275098581_5937603192194859008_n.jpg?_nc_cat=103&_nc_oc=AQnvd5AaFFq4TRM-0kj-LiNT0AY1tcoMaGl_hO3DeCsk2GOu70lP3W5ga5MX0YaF-scCBFMouA-CYssu8aw2lwNe&_nc_ht=scontent.fbkk5-4.fna&oh=e9977f6d444f931c04db4aa9b8ee9dd9&oe=5DC119D4';
 //    let natImgUrl = 'https://scontent.fbkk5-4.fna.fbcdn.net/v/t1.0-9/65054160_2418918275098581_5937603192194859008_n.jpg?_nc_cat=103&_nc_oc=AQln9fwCciCiy6gosrHzt0kVadWmaEASNIsC0VwgZpJoBHNodpoHqTT7sZTMqsT2ZhlHpMz6RYrjoGttVZTj3syA&_nc_ht=scontent.fbkk5-4.fna&oh=904fd5ba5537447d65106826ee988cd5&oe=5DB738CB';
-    console.log(`Amandarine Frontier : OnDaRun Version ${N7e.version}
+    console.log(`\nAmandarine Frontier "On Da Run"\nVersion ${N7e.version}
 %c
 ░░░░░░░░░░ Amandarine Frontier
 ░░░░██░░░░ aims to support The
@@ -501,7 +503,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     let natImg = new Image();
     natImg.onload = () => {
       console.log("%c█",`border-radius:50%; border:5px solid orange;font-size: 0px; padding: 0px 50px; line-height:100px;background: url(${natImgUrl}); background-size:100px 100px; background-position: center center; color: red;`);
-      console.log(`Built among the asleep newborns in Nagoya 🗾\nFrom the ground up overnight into the moonlit sky 🎑\nEspecially for Natherine BNK48 with my %c❤❤❤❤%cplus enough neurons to operate a supernova 🌟`,'color:crimson','color:black',"\nhttps://www.facebook.com/bnk48official.natherine/");
+      console.log(`\nBuilt among the asleep newborns in Nagoya 🗾\nFrom the ground up overnight into the moonlit sky 🎑\nEspecially for Natherine BNK48 with my %c❤❤❤❤%cplus enough neurons to operate a supernova 🌟`,'color:crimson','color:black',"\nhttps://www.facebook.com/bnk48official.natherine/");
     };
     natImg.src = natImgUrl;
 
@@ -607,8 +609,63 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
   }
 
-/** Class OnDarun
+/**
+ * Load sound effects from the HTML.
+ * @memberof OnDaRunElement
+ */
+  loadSoundResources(){
+
+    let soundPath = firebase.storage().ref().child('sounds');
+    OnDaRun.effectNameList.forEach( name =>
+      soundPath.child(`${name+'.m4a'}`)
+      .getDownloadURL()
+      .then( url => new Audio( url, name ).decoded())
+      .then( audio => this.soundEffects[ name ] = audio )
+    );// name
+
+              //audioData => this.soundEffects[ name ] = new Audio( audioData, name )
+    /* Keep for file conversion.
+    Sound.inst.contextReady().then( actx => {
+
+      var resourceTemplate = document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID ).content;
+
+      let counter = 0;
+      let entries = Object.entries( Sound.effectIds );
+      let entriesLen = entries.length;
+
+      entries.forEach(([ sound, id ]) => {
+        var soundSrc =
+          resourceTemplate.getElementById( id ).src;
+        soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
+        let len = (soundSrc.length / 4) * 3;
+        let str = atob(soundSrc);
+        let arrayBuffer = new ArrayBuffer(len);
+        let bytes = new Uint8Array(arrayBuffer);
+
+        for (let i = 0; i < len; i++) {
+          bytes[i] = str.charCodeAt(i);
+        }
+
+        {
+          let url = window.URL.createObjectURL(new Blob([bytes.buffer], {type: "octet/stream"}));
+          console.log(sound,'normal')
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = sound;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+        }
+
+      });// entries.forEach()
+    });// contextReady()
+    */
+  }
+
+
+/**
  * Initialize the game parameters & game-play graphics.
+ * @memberof OnDaRunElement
  */
   init(){
     this.gameMode = this.gameModeList[ this.config.GAME_MODE ];
@@ -622,12 +679,13 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     //this.generateShadowCache();
     Mountain.generateMountainImages();
 
+    // Sound system
     this.config.PLAY_MUSIC = true;
+    this.loadSoundResources();
     Sound.inst.musicVolume = ODR.config.SOUND_MUSIC_VOLUME/10;
     Sound.inst.loadMusic('offline-intro-music', false );
     Sound.inst.loadMusic('offline-play-music', false );
     //Sound.inst.loadMusic('amandarine-frontier', false );
-    Sound.inst.loadSoundResources();
 
     this.sky = new Sky( this.canvas );
     this.sky.setShade( Sky.config.START, 0 );
@@ -783,7 +841,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
  * Amandarine walks into the scene.
  */
   start(){
-    Sound.inst.effects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
+    this.soundEffects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
 
     let defaultAction = new DefaultAction( 1 );
     defaultAction.activate = function( action, a8e ){
@@ -886,11 +944,11 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           if( model.name == 'SOUND_MUSIC_VOLUME' && vol == 11) {
             Sound.inst.musicVolume = ODR.config.SOUND_MUSIC_VOLUME/10;
           } else {
-            Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            this.soundEffects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
           }
         } else {
           if( model.name == 'SOUND_SYSTEM_VOLUME' ) {
-            Sound.inst.effects.SOUND_BLIP.play( vol/10 );
+            this.soundEffects.SOUND_BLIP.play( vol/10 );
           } else if( model.name == 'SOUND_EFFECTS_VOLUME' ) {
             model.sampleNames = model.sampleNames || [
               'SOUND_QUACK',
@@ -904,7 +962,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
               'SOUND_BLIP',
               'SOUND_POP',
             ];
-            Sound.inst.effects[ model.sampleNames[ 0 ]].play( vol/10 );
+            this.soundEffects[ model.sampleNames[ 0 ]].play( vol/10 );
             model.sampleNames.push( model.sampleNames.shift());
           } else if( model.name == 'SOUND_MUSIC_VOLUME' ) {
             Sound.inst.musicVolume = vol/10;
@@ -989,7 +1047,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       return false;
     };
     this.queueAction( defaultAction );
-    Sound.inst.effects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
+    this.soundEffects.SOUND_SCORE.play( this.config.SOUND_SYSTEM_VOLUME/10 );
     this.sky.setShade( Sky.config.DAY, 0 );
 
     this.showGameModeInfo();
@@ -1065,9 +1123,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           if( choice == "SET NAME"){
             let editor = userMenu.exit( new TextEditor( this.canvas, user.nickname || '', newNickname => {
               if( !newNickname ){
-                Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+                this.soundEffects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
               } else {
-                Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+                this.soundEffects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
                 user.setNickname( newNickname );
                 this.notifier.notify(`all hail ${newNickname.split(' ').join('_')}!`, 5000 );
                 editor.exit( null );
@@ -1198,7 +1256,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
         this.notifier.notify('ROCK-BOTTOM', 5000 );
         break;
       case 3:
-        this.notifier.notify('CUSTOM GRAPHICS MODE', 5000 );
+        this.notifier.notify('CUSTOM', 5000 );
       default:
         break;
     }
@@ -1477,6 +1535,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
             }
           } break;
 
+          default:
+            this.soundEffects.SOUND_PRESS.play( this.config.SOUND_SYSTEM_VOLUME/10 );
         }
 
       } break;

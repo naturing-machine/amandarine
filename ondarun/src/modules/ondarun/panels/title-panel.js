@@ -348,7 +348,7 @@ The Thai Redcross Society ${'redcross'}
     let endingOffset = 0;
     let endingOpacity = 1;
 
-    if( this.endTime && Sound.inst.effectsLoadingProgress == 1 ){
+    if( this.endTime && Object.keys( ODR.soundEffects ).length == OnDaRun.effectNameList.length ){ // All effects are 
       endingTimer = this.timer - this.endTime;
 
       if ( endingTimer > 863) { // -endingOffset > ~200
@@ -368,8 +368,8 @@ The Thai Redcross Society ${'redcross'}
         this.titleAmandarineFrontierAudio.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
         /*
         for( let i = 0, j = 1.5 ; i <= 1 ; i+=0.5,j+=0.1){
-          Sound.inst.effects.SOUND_SCORE.play( ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
-          Sound.inst.effects.SOUND_SCORE.play( ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
+          ODR.soundEffects.SOUND_SCORE.play( ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
+          ODR.soundEffects.SOUND_SCORE.play( ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
         }
         */
         this.titleAmandarineFrontierAudio = null;

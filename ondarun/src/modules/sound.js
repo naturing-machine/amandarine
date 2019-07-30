@@ -58,9 +58,41 @@ class AudioController{
  * Audio class act like a generator, each play() streams and returns
  * a collection of audio nodes that can be used to control the on-going audio.
  */
-class Audio {
-  constructor( soundBuffer, title ){
-    this.soundBuffer = soundBuffer;
+export class Audio {
+  decoded(){
+    if( this.soundBuffer ){
+      return Promise.solve( this );
+    }
+
+    function audioPending( resolve ){
+      this.__pendingForAudioDecoded = resolve;
+    }
+    return new Promise( audioPending.bind( this ));
+  }
+
+  constructor( soundBufferOrURL, title ){
+    if( typeof soundBufferOrURL === 'string'){
+      fetch( soundBufferOrURL )
+      .then( function( response ){
+        if( response.ok ){
+          return response.arrayBuffer();
+        }
+        throw new Error('Network response was not ok.');
+      })
+      .then( buffer => Sound.inst.contextReady()
+        .then( audioContext => audioContext
+          .decodeAudioData( buffer, audioData => {
+            this.soundBuffer = audioData;
+            if( this.__pendingForAudioDecoded ){
+              this.__pendingForAudioDecoded( this );
+              this.__pendingForAudioDecoded = null;
+            }
+          })
+        ) // has context
+      );
+    } else {
+      this.soundBuffer = soundBufferOrURL;
+    }
     this.title = title;
     this.controller = null;
   }
@@ -258,8 +290,13 @@ class Song {
     let processData = function({ done, value }){
         if( done ){
           this.loadingProgress = 1.0;
+
+          // Content-Length mismatched.
+          if( total > dataReceived ){
+            source = source.slice( 0, dataReceived );
+          }
+
           if( decode ){
-            //console.log('Decoding requested data...', this.name );
             // This actually should be
             // source.buffer.slice(source.byteOffset, source.byteLength + source.byteOffset);
             // but skipped since it should be already set at the allocation.
@@ -270,15 +307,16 @@ class Song {
           }
           return;
         }
-        //console.log('dataReceived:', dataReceived,'value.length:',value.length );
-        // Copy all read data into a source
+
+        // Content-Length mismatched.
         if( value.length + dataReceived > total ){
-          value = value.slice( 0, total - dataReceived );
-          //console.log('dataReceived:', dataReceived,'sliced value.length:',value.length );
+          total = value.length + dataReceived;
+          let newSource = new Uint8Array( total );
+          newSource.set( source );
+          source = newSource;
         }
-        if( value.length ){
-          source.set( value, dataReceived );
-        }
+        // Copy all read data into a source
+        source.set( value, dataReceived );
 
         this.loadingProgress = value.length/total;
         dataReceived+= value.length;
@@ -290,10 +328,13 @@ class Song {
       document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID )
       .content.getElementById( this.name ).src
     ).then( response => {
-      total = Number( response.headers.get('content-length'));
+      let headers = response.headers;
+      // Warning! Content-Length could be very misleading.
+      // Even exists, it can be INCORRECT
+      // But it will be used for guiding the allocation.
+      total = Number( response.headers.get('Content-Length') || 0 );
       reader = response.body.getReader();
       dataReceived = 0;
-      //console.log('total:', total );
       source = new Uint8Array( total );
       reader.read().then( processData );
     });
@@ -348,7 +389,6 @@ export class Sound {
     this.musicVolume = 0.5;
     this.songs = {};
     this.currentSong = null;
-    this.effectsLoadingProgress = 0;
   }
 
 /** Class Sound
@@ -377,57 +417,6 @@ export class Sound {
         resolve( this.audioContext );
       };
     });
-  }
-
-
-/** Class Sound
- * Load sound effects from the HTML.
- */
-  loadSoundResources(){
-    if( IS_SOUND_DISABLED ){
-      this.effects = {};
-      this.effectsLoadingProgress = 1;
-      return;
-    }
-
-    if( !this.effects ){
-      this.effects = {};
-
-      //console.log("Decoding sound effects...");
-      Sound.inst.contextReady().then( actx => {
-
-        var resourceTemplate = document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID ).content;
-
-        let counter = 0;
-        let entries = Object.entries( Sound.effectIds );
-        let entriesLen = entries.length;
-
-        entries.forEach(([ sound, id ]) => {
-          var soundSrc =
-            resourceTemplate.getElementById( id ).src;
-          soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
-          let len = (soundSrc.length / 4) * 3;
-          let str = atob(soundSrc);
-          let arrayBuffer = new ArrayBuffer(len);
-          let bytes = new Uint8Array(arrayBuffer);
-
-          for (let i = 0; i < len; i++) {
-            bytes[i] = str.charCodeAt(i);
-          }
-
-          // Async, so no guarantee of order in array.
-          this.audioContext.decodeAudioData( bytes.buffer , audioData => {
-
-            this.effects[ sound ] = new Audio( audioData, sound );
-            counter++;
-            this.effectsLoadingProgress = counter/entriesLen;
-
-          });
-
-        });// entries.forEach()
-      });// contextReady()
-
-    }
   }
 
   updateLyricsIfNeeded( callback ){
@@ -499,20 +488,3 @@ export class Sound {
   }
 
 }
-
-Sound.effectIds = {
-  BUTTON_PRESS: 'offline-sound-press',
-  SOUND_HIT: 'offline-sound-hit',
-  SOUND_ERROR: 'offline-sound-error',
-  SOUND_SCORE: 'offline-sound-reached',
-  SOUND_SLIDE: 'offline-sound-slide',
-  SOUND_DROP: 'offline-sound-drop',
-  SOUND_JUMP: 'offline-sound-piskup',
-  SOUND_CRASH: 'offline-sound-crash',
-  SOUND_OGGG: 'offline-sound-oggg',
-  SOUND_GOGOGO: 'offline-sound-gogogo',
-  SOUND_QUACK: 'offline-sound-quack',
-  SOUND_BICYCLE: 'offline-sound-bicycle',
-  SOUND_BLIP: 'offline-sound-blip',
-  SOUND_POP: 'offline-sound-pop',
-};

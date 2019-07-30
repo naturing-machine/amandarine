@@ -207,8 +207,8 @@ export class Tangerine extends Entity {
 
   collide( collision ) {
     if( !this.collected ) {
-      Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-      Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/20 );
+      ODR.soundEffects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      ODR.soundEffects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/20 );
       this.collected = true;
       this.timer = 0;
       this.collectedY = this.minY;
@@ -390,7 +390,7 @@ class MultiWidth extends Obstacle {
   }
 
   collide( collision ) {
-    Sound.inst.effects.SOUND_HIT.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    ODR.soundEffects.SOUND_HIT.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
     return super.collide( collision );
   }
 }
@@ -499,7 +499,7 @@ export class DuckType extends DynamicObstacle {
   }
 
   collide( collision ) {
-    Sound.inst.effects.SOUND_QUACK.play( 0.8 * ODR.config.SOUND_EFFECTS_VOLUME/10, 0.1 );
+    ODR.soundEffects.SOUND_QUACK.play( 0.8 * ODR.config.SOUND_EFFECTS_VOLUME/10, 0.1 );
     return super.collide( collision );
   }
 
@@ -549,7 +549,7 @@ export class Liver extends DuckType {
       // Calculate the location that match the sound at time for setting the panner
       // 300 == center
       let s = this.minX - t * ( currentSpeed - this.speed )*FPS - 300;
-      Sound.inst.effects.SOUND_QUACK.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, N7e.clamp( s, -600, 600)/600 );
+      ODR.soundEffects.SOUND_QUACK.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, N7e.clamp( s, -600, 600)/600 );
 
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
         ODR.cc.append('quack', 1000, t*1000 );
@@ -590,8 +590,8 @@ class BicycleType extends DynamicObstacle {
   }
 
   collide( collision ) {
-    Sound.inst.effects.SOUND_CRASH.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
-    Sound.inst.effects.SOUND_BICYCLE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    ODR.soundEffects.SOUND_CRASH.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+    ODR.soundEffects.SOUND_BICYCLE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
     return super.collide( collision );
   }
 
@@ -625,7 +625,7 @@ export class Velota extends BicycleType {
       // Calculate the location that match the sound at time for setting the panner
       // 300 == center
       let s = this.minX - t * ( currentSpeed - this.speed )*FPS - 300;
-      Sound.inst.effects.SOUND_BICYCLE.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, N7e.clamp( s, -600, 600 )/600 );
+      ODR.soundEffects.SOUND_BICYCLE.play( 0.3 * ODR.config.SOUND_EFFECTS_VOLUME/10, t, N7e.clamp( s, -600, 600 )/600 );
 
       if( ODR.config.GRAPHICS_SUBTITLES == 'YES' )
         ODR.cc.append( `ring${Text.c.bell}`, 1000, t *1000 );

@@ -168,12 +168,12 @@ export class GameOver extends Panel {
             this.playedHiscoreTune = true;
             /*
             if( IS_IOS ){
-              Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+              ODR.soundEffects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
             } else
             */
             for( let i = 0, j = 0 ; i <= 1 ; i+=0.1,j+=0.1){
-              Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
-              Sound.inst.effects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
+              ODR.soundEffects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, -i );
+              ODR.soundEffects.SOUND_SCORE.play( 0.5 * ( 1 - i )*ODR.config.SOUND_SYSTEM_VOLUME/10, j, i );
             }
 
             this.playMusicIfNeeded( 1 );
@@ -202,7 +202,7 @@ export class GameOver extends Panel {
             this.__tangScore.set` ${gotO}${gotT}`.draw( this.canvasCtx, 300, lineY );
 
           if( !this.playedGotO && gotO ){
-            Sound.inst.effects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            ODR.soundEffects.SOUND_POP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
             this.playedGotO = true;
           }
         }

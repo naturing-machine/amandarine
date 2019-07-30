@@ -245,11 +245,10 @@ export class User {
         var errorCode = error.code;
         var errorMessage = error.message;
         console.log("Error", error);
-        /*
+        /* TODO should have this in ODR
         ODR.panel.exit();
-        Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        ODR.soundEffects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
         ODR.cc.append('Error Linking; details in the console.', 5000 );
-        N7e.user = null;
         */
       });
     }

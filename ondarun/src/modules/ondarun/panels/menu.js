@@ -83,7 +83,7 @@ export class Menu extends Panel {
         if( this.offset ){
 
           if( !this.muted )
-            Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            ODR.soundEffects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
 
           let newIdx = this.model.currentIndex + this.offset;
           let length = this.model.entries.length;
@@ -230,9 +230,9 @@ export class Menu extends Panel {
     let entry = model.entries[ model.currentIndex ];
 
     if( entry.disabled || ( entry.hasOwnProperty('value') && !entry.options )){
-      Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      ODR.soundEffects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
     } else {
-      Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      ODR.soundEffects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
 
       if( entry.exit ){
         this.exit();

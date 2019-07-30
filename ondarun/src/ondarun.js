@@ -59,6 +59,23 @@ OnDaRun.keycodes = {
   RESTART: { '13': 1 }  // Enter
 };
 
+OnDaRun.effectNameList = [
+  'SOUND_CRASH',
+  'SOUND_ERROR',
+  'SOUND_HIT',
+  'SOUND_OGGG',
+  'SOUND_SLIDE',
+  'SOUND_DROP',
+  'SOUND_GOGOGO',
+  'SOUND_JUMP',
+  'SOUND_SCORE',
+  'SOUND_PRESS',
+  'SOUND_QUACK',
+  'SOUND_BICYCLE',
+  'SOUND_BLIP',
+  'SOUND_POP',
+];
+
 class GameModeConfiguration {
   constructor( title, icon, acceleration ){
     this.title = title;

@@ -101,12 +101,12 @@ ${gd}+${gd} Choose`;
           || this.supportedChars.indexOf( e.key.toLowerCase()) != -1 );
       case OnDaRun.events.KEYUP:
         if( e.key == 'Delete' ){
-          Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          ODR.soundEffects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
           this.codes = this.codes.slice( 0, this.codes.length- 1 );
           this.updateCodeText();
           return true;
         } else if (e.key == 'Enter') {
-          Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          ODR.soundEffects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
           this.curX = 8;
           this.curY = 6;
           this.enterAtCursor();
@@ -114,10 +114,10 @@ ${gd}+${gd} Choose`;
         } else if( this.supportedChars.indexOf(e.key.toLowerCase()) != -1) {
           if( this.codes.length >= 25 ){
             this.codes = this.codes.slice( 0, 25 );
-            Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            ODR.soundEffects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
           } else {
             this.codes.push( e.key.toLowerCase());
-            Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            ODR.soundEffects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
           }
           this.updateCodeText();
           return true;
@@ -171,7 +171,7 @@ ${gd}+${gd} Choose`;
 
         if( this.offsetV || this.offsetH ){
           if( !this.muted ){
-            Sound.inst.effects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+            ODR.soundEffects.SOUND_BLIP.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
           }
 
           if( this.offsetH != 0 ){
@@ -200,7 +200,7 @@ ${gd}+${gd} Choose`;
       this.callback( this.value );
     } else if( this.curX == 8 && this.curY == 5 ){
       // Delete
-      Sound.inst.effects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
+      ODR.soundEffects.SOUND_POP.play( 0.5 * ODR.config.SOUND_SYSTEM_VOLUME/10 );
       this.codes = this.codes.slice( 0, this.codes.length- 1 );
       this.updateCodeText();
     } else if( this.curX == 8 && this.curY == 4 ){
@@ -217,9 +217,9 @@ ${gd}+${gd} Choose`;
 
       if( this.codes.length > 25 ){
         this.codes = this.codes.slice( 0, 25 ).join('');
-        Sound.inst.effects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        ODR.soundEffects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
       } else {
-        Sound.inst.effects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        ODR.soundEffects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
       }
       this.updateCodeText();
     }

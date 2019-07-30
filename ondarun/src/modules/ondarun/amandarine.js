@@ -182,7 +182,7 @@ export class A8e {
           this.__stepping = this.__stepping || 0;
           this.__stepping += deltaTime;
           if( this.__stepping > 200 ){
-            Sound.inst.effects.SOUND_DROP.play(
+            ODR.soundEffects.SOUND_DROP.play(
               0.1
               * ODR.config.SOUND_EFFECTS_VOLUME/10 );
             this.__stepping -= 200;
@@ -193,8 +193,8 @@ export class A8e {
       case A8e.status.JUMPING: {
         if( !action[ A8e.__SymbolPlaySoundJumping ]){
           action[ A8e.__SymbolPlaySoundJumping ] = true;
-          Sound.inst.effects.SOUND_JUMP.play( 0.7*ODR.config.SOUND_EFFECTS_VOLUME/10 );
-          Sound.inst.effects.SOUND_DROP.play(
+          ODR.soundEffects.SOUND_JUMP.play( 0.7*ODR.config.SOUND_EFFECTS_VOLUME/10 );
+          ODR.soundEffects.SOUND_DROP.play(
             action.pressDuration/ODR.config.MAX_ACTION_PRESS
             * ODR.config.SOUND_EFFECTS_VOLUME/10 );
         }
@@ -207,7 +207,7 @@ export class A8e {
               - action.top * A8e.config.SCALE_FACTOR );
 
         if( timer - 30 < -action.halfTime && !action[ A8e.__SymbolPlaySoundDrop ] ){
-          Sound.inst.effects.SOUND_DROP.play(
+          ODR.soundEffects.SOUND_DROP.play(
             action.pressDuration/ODR.config.MAX_ACTION_PRESS
             * ODR.config.SOUND_EFFECTS_VOLUME/10 );
           action[ A8e.__SymbolPlaySoundDrop ] = true;
@@ -226,7 +226,7 @@ export class A8e {
         var increment = speed * FPS / 1000 * deltaTime;
 
         if( action.distance == 0 && increment > 0 ){
-          Sound.inst.effects.SOUND_SLIDE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
+          ODR.soundEffects.SOUND_SLIDE.play( ODR.config.SOUND_EFFECTS_VOLUME/10 );
         }
 
         action.distance += increment;

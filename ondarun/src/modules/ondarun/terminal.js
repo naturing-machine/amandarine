@@ -256,7 +256,7 @@ export class Scoreboard {
       this._playAchievement = 0;
       while( newScore > this.nextScoreAchievement ){
         if( !this._playAchievement ){
-          Sound.inst.effects.SOUND_SCORE.play( 0.2 * ODR.config.SOUND_SYSTEM_VOLUME/10, 0, 0.8 );
+          ODR.soundEffects.SOUND_SCORE.play( 0.2 * ODR.config.SOUND_SYSTEM_VOLUME/10, 0, 0.8 );
           this.flashAchievementTimer = 2300;
         }
         this._playAchievement = this.nextScoreAchievement;
