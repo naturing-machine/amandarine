@@ -41,6 +41,9 @@ export class Menu extends Panel {
     this.offset = 0;
   }
 
+/**
+ * @return {boolean} true if the event was handled and shouldn't be handled again.
+ */
   handleEvent( e ){
     // Only handle known event types, default to passing the event back to the parent.
     if( !super.handleEvent( e )){

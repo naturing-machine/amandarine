@@ -173,7 +173,7 @@ class Song {
     this._volume = ODR.config.SOUND_MUSIC_VOLUME/10;
 
     if( autoload ){
-      this.load( decode );
+      this._load( decode );
     }
   }
 
@@ -254,7 +254,6 @@ class Song {
       Sound.inst.contextReady().then( actx => {
 
         actx.decodeAudioData( src, buffer => {
-          //console.log(this.name+': Song was successfully decoded.');
           this.audio = new Audio( buffer, this.name );
           if( this._audioReadyCallback ){
             this._audioReadyCallback( this.audio );
@@ -265,13 +264,6 @@ class Song {
             this.audio.play( this._volume, Math.max( 0, adjustedDelay ));
           }
 
-          /* For testing
-          if( this.name == "offline-play-music" ){
-            console.log(name,'loaded 3')
-            let con = this.audio.play( 1 );
-            con.gainNode.gain.exponentialRampToValueAtTime( 0.00001, actx.currentTime+10 );
-          }
-          */
         });
 
       });
@@ -279,7 +271,7 @@ class Song {
     }
   }
 
-  load( decode ){
+  _load( decode ){
     if( this.loadingProgress != null ){
       return;
     }
@@ -293,6 +285,7 @@ class Song {
 
           // Content-Length mismatched.
           if( total > dataReceived ){
+            console.warn('Content-Length mismatched.');
             source = source.slice( 0, dataReceived );
           }
 
@@ -310,6 +303,7 @@ class Song {
 
         // Content-Length mismatched.
         if( value.length + dataReceived > total ){
+          console.warn('Content-Length mismatched.');
           total = value.length + dataReceived;
           let newSource = new Uint8Array( total );
           newSource.set( source );
@@ -324,20 +318,19 @@ class Song {
         return reader.read().then( processData );
       }.bind( this );
 
-    fetch(
-      document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID )
-      .content.getElementById( this.name ).src
-    ).then( response => {
-      let headers = response.headers;
-      // Warning! Content-Length could be very misleading.
-      // Even exists, it can be INCORRECT
-      // But it will be used for guiding the allocation.
-      total = Number( response.headers.get('Content-Length') || 0 );
-      reader = response.body.getReader();
-      dataReceived = 0;
-      source = new Uint8Array( total );
-      reader.read().then( processData );
-    });
+    firebase.storage().ref().child(`sounds/${this.name}.m4a`).getDownloadURL()
+    .then( url => fetch( url ).then( response => {
+        let headers = response.headers;
+        // Warning! Content-Length could be very misleading.
+        // Even exists, it can be INCORRECT
+        // But it will be used for guiding the allocation.
+        total = Number( response.headers.get('Content-Length') || 0 );
+        reader = response.body.getReader();
+        dataReceived = 0;
+        source = new Uint8Array( total );
+        reader.read().then( processData );
+      })
+    );
 
 
     //console.log('Downloading the requested song...',this.name);
@@ -475,16 +468,9 @@ export class Sound {
 
   }
 
-  loadEffect( name ){
-    if( IS_SOUND_DISABLED ) return;
-
-    return new Promise(( resolve, reject ) => {
-
-      new Song( name, null, true, true, audio => {
-        resolve( audio );
-      });
-
-    });
+  loadAudio( name ){
+    return firebase.storage().ref().child(`sounds/${name}.m4a`)
+    .getDownloadURL().then( url => new Audio( url, name ).decoded());
   }
 
 }

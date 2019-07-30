@@ -233,9 +233,8 @@ The Thai Redcross Society ${'redcross'}
     }
     this.storyEndTime = this.photoTiming[ this.story.length- 1][ 1 ];
 
-    Sound.inst.loadEffect('amandarine-frontier').then( audio => {
-      this.titleAmandarineFrontierAudio = audio;
-    });
+    Sound.inst.loadAudio('SOUND_AMANDARINE_FRONTIER')
+    .then( audio => this.titleAmandarineFrontierAudio = audio );
 
   }
 
@@ -470,7 +469,7 @@ The Thai Redcross Society ${'redcross'}
           if( storyTimer > beginTime && storyTimer < endTime ){
 
             if( index == 4 ){
-              Sound.inst.loadMusic('offline-intro-music', true );
+              Sound.inst.loadMusic('MUSIC_INTRO', true );
             }
 
             beginTime = storyTimer - beginTime;

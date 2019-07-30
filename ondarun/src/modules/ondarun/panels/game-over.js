@@ -49,7 +49,7 @@ export class GameOver extends Panel {
         lyrics.push( new Message( string, 10000, 0, l[ i ]));
       }
 
-      Sound.inst.loadMusic('offline-intro-music', ODR.config.PLAY_MUSIC, d, lyrics );
+      Sound.inst.loadMusic('MUSIC_INTRO', ODR.config.PLAY_MUSIC, d, lyrics );
     }
   }
 
