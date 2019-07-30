@@ -155,6 +155,25 @@ export class User {
       + rname[ randomInt( 0, rname.length- 1 )];
   }
 
+  _setPendingForData(){
+    // TODO, have a better solution for this. Like stop relying with onAuthStateChanged
+    // but signIns Promise instead.
+    if( this.__pendingForDataResolve ){
+      return this.__pendingForDataResolve;
+    }
+
+    function dataPending( resolve ){
+      this.__pendingForDataResolve = resolve;
+    }
+
+    function dataReady(){
+      this.__pendingForDataResolve = null;
+    }
+
+    this.setTask( new Promise( dataPending.bind( this ))).then( dataReady.bind( this ));
+    return this.__pendingForDataResolve;
+  }
+
   constructor(){
     if( User.instance ){
       return User.instance;
@@ -170,30 +189,18 @@ export class User {
     // Here trying to keep onAuthStateChanged() out side of
     // The promise to aviod unsubscribing loop.
 
-    let pendingForDataResolve;
-    function dataPending( resolve ){
-      pendingForDataResolve = resolve;
-    }
-
-    function dataReady(){
-      pendingForDataResolve = null;
-    }
-
-    this.setTask( new Promise( dataPending )).then( dataReady );
-
     this.__AUTH_UNSUBSCRIBE = firebase.auth().onAuthStateChanged( u => {
+      let pendingResolve = this._setPendingForData();
+
       if( u ){
-        this.__setUser( u, pendingForDataResolve );
+        this.__setUser( u, pendingResolve );
 
         // Transfering scores from older locations.
       } else {
-        if( pendingForDataResolve ){
-          pendingForDataResolve();
-        }
+        this._setPendingForData()();
 
         this.allTasksSettled().then(() => {
           this.reset();
-          this.setTask( new Promise( dataPending )).then( dataReady );
         });
         // Renew to wait for another sign-in.
       }
@@ -221,6 +228,10 @@ export class User {
   signIn( providerName, redirect = false ){
 
     if( providerName ){
+
+      // With provider, ( probably invoked by the menu ) set up new data pending task.
+      this._setPendingForData();
+
       let authProvider;
       firebase.auth().setPersistence( firebase.auth.Auth.Persistence.LOCAL ).then(() => {
         switch( providerName ){
