@@ -1,16 +1,18 @@
 {
   "entrypoint": "index.html",
-  "shell": "src/components/n7e-ondarun.js",
+  "shell": "src/components/n7e-ondarun-element.js",
   "sources": [
     "index.css",
     "images/**/*",
+    "src/**.js",
     "assets/**/*"
   ],
   "extraDependencies": [
     "manifest.json",
     "node_modules/@webcomponents/webcomponentsjs/**",
     "push-manifest.json",
-    "privacy-policy.txt"
+    "privacy-policy.txt",
+    "config.js"
   ],
   "builds": [
     {

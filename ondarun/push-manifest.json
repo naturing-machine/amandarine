@@ -1,9 +1,0 @@
-{
-  "/": {
-    "src/components/n7e-ondarun.js": {
-      "crossorigin": "anonymous",
-      "type": "script",
-      "weight": 1
-    }
-  }
-}
