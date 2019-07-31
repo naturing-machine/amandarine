@@ -1670,7 +1670,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     }
 
     if( e.code == 'Escape' ){
-      this.panel.exit();
+      this.panel.canEscape && this.panel.exit();
+      this.soundEffects.SOUND_PRESS.play( this.config.SOUND_SYSTEM_VOLUME/10 );
     }
   }
 

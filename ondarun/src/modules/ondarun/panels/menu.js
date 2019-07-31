@@ -39,6 +39,7 @@ export class Menu extends Panel {
 
     // For button scrolling.
     this.offset = 0;
+    this.canEscape = true;
   }
 
 /**

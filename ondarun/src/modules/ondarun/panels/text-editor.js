@@ -23,6 +23,7 @@ import { Panel } from './panel.js';
 export class TextEditor extends Panel {
   constructor( canvas, value, callback, previousPanel ){
     super( canvas, previousPanel );
+    this.canEscape = true;
     this.xOffset = 0;
     this.yOffset = 0;
     this.bottomText = new Text().set`press both ${'slide'}+${'jump'} to select`;
