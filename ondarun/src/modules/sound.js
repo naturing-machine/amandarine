@@ -203,7 +203,7 @@ class Song {
       this.controller.drop( volumeTransitionDuration );
       this.controller = null;
     }
-    this.stopOffset = Sound.inst.audioContext.currentTime- this.startTime+ volumeTransitionDuration;
+    this.stopOffset = Math.max( 0, Sound.inst.audioContext.currentTime- this.startTime )+ volumeTransitionDuration;
     this.startTime = Infinity;
   }
 
