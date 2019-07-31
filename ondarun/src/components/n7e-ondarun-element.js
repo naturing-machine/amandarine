@@ -615,7 +615,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
  */
   loadSoundResources(){
 
-    let soundPath = firebase.storage().ref().child('sounds');
+    let soundPath = N7e.storageReference.child(`sounds`);
     OnDaRun.effectNameList.forEach( name =>
       soundPath.child(`${name}.m4a`)
       .getDownloadURL()

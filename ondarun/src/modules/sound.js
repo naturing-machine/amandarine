@@ -318,7 +318,7 @@ class Song {
         return reader.read().then( processData );
       }.bind( this );
 
-    firebase.storage().ref().child(`sounds/${this.name}.m4a`).getDownloadURL()
+    N7e.storageReference.child(`sounds/${this.name}.m4a`).getDownloadURL()
     .then( url => fetch( url ).then( response => {
         let headers = response.headers;
         // Warning! Content-Length could be very misleading.
@@ -469,7 +469,7 @@ export class Sound {
   }
 
   loadAudio( name ){
-    return firebase.storage().ref().child(`sounds/${name}.m4a`)
+    return N7e.storageReference.child(`sounds/${name}.m4a`)
     .getDownloadURL().then( url => new Audio( url, name ).decoded());
   }
 

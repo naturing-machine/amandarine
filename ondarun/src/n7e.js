@@ -52,3 +52,4 @@ N7e.isMobile = IS_MOBILE = /Android/.test(window.navigator.userAgent) || IS_IOS;
 N7e.isTouchEnabled = IS_TOUCH_ENABLED = 'ontouchstart' in window;
 N7e.isSoundDisabled = IS_SOUND_DISABLED = false;
 N7e.FPS = FPS;
+N7e.storageReference = firebase.storage().refFromURL('gs://amandarine-frontier.appspot.com/');
