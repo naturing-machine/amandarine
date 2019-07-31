@@ -230,7 +230,7 @@ export class User {
     if( providerName ){
 
       // With provider, ( probably invoked by the menu ) set up new data pending task.
-      this._setPendingForData();
+      let resolveOnError = this._setPendingForData();
 
       let authProvider;
       firebase.auth().setPersistence( firebase.auth.Auth.Persistence.LOCAL ).then(() => {
@@ -249,13 +249,20 @@ export class User {
         if( redirect ){
           firebase.auth().signInWithRedirect( authProvider )
         } else {
-          firebase.auth().signInWithPopup( authProvider );
+          firebase.auth().signInWithPopup( authProvider )
+          .then(u => {
+            console.log('signInWithPopup', u );
+          }, function( error ){
+            resolveOnError();
+            console.log('Error:', error );
+          });
         }
 
-      }).catch(function(error) {
+      }, function( error ){
         var errorCode = error.code;
         var errorMessage = error.message;
-        console.log("Error", error);
+        resolveOnError();
+        console.log("Error:", error );
         /* TODO should have this in ODR
         ODR.panel.exit();
         ODR.soundEffects.SOUND_ERROR.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
