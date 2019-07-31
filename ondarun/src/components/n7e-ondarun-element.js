@@ -503,7 +503,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     let natImg = new Image();
     natImg.onload = () => {
       console.log("%c█",`border-radius:50%; border:5px solid orange;font-size: 0px; padding: 0px 50px; line-height:100px;background: url(${natImgUrl}); background-size:100px 100px; background-position: center center; color: red;`);
-      console.log(`\nBuilt among the asleep newborns in Nagoya 🗾\nFrom the ground up overnight into the moonlit sky 🎑\nEspecially for Natherine BNK48 with my %c❤❤❤❤%cplus enough neurons to operate a supernova 🌟`,'color:crimson','color:black',"\nhttps://www.facebook.com/bnk48official.natherine/");
+      console.log(`\nBuilt among the asleep newborns in Nagoya 🗾\nFrom the ground up overnight into the moonlit sky 🎑\nEspecially for Natherine BNK48 with my %c❤❤❤❤%calong with enough neurons to operate a supernova 🌟`,'color:crimson','color:black',"\nhttps://www.facebook.com/bnk48official.natherine/");
     };
     natImg.src = natImgUrl;
 
@@ -726,6 +726,14 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     this.style.opacity = 1;
 
     this.startListening();
+
+    if( window.location.hostname.startsWith('localhost')){
+        let banner = document.getElementById('message-banner');
+        banner.textContent = "Welcome to TESTING SERVER. Please visit the GitHub link for more information of the app. Only Google Account is enabled.";
+        banner = document.getElementById('game-banner');
+        banner.style.visibility = 'visible';
+        banner.style.opacity = 1;
+    }
 
     this.user = User.inst;
     this.user.signIn().then( data  => {
