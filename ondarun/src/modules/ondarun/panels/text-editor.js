@@ -263,7 +263,6 @@ ${gd}+${gd} Choose`;
       this.xOffset + 5,
       this.yOffset + 7);
 
-    return this;
   }
 
 }

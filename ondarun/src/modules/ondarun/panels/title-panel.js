@@ -398,7 +398,7 @@ The Thai Redcross Society ${'redcross'}
 
       ODR.sky.forward( deltaTime, this.canvasCtx );
 
-      this.repaintTitleBackground( deltaTime );
+      this.repaintTitleBackground( deltaTime, endingOpacity, endingTimer, endingOffset);
       /* A AMANDARINE FRONTIER */
       this.canvasCtx.drawImage(ODR.spriteGUI,
         148,15,208,85,
@@ -518,7 +518,7 @@ The Thai Redcross Society ${'redcross'}
   }
 
 
-  repaintTitleBackground( delaTime ){
+  repaintTitleBackground( deltaTime, endingOpacity, endingTimer, endingOffset ){
     // Falling tangerines on Thursday.
     if( !this.__dayOfWeek ){
       this.__dayOfWeek = new Date().getDay() + 1;

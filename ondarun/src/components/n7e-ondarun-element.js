@@ -36,6 +36,8 @@ import { GameOver } from '../modules/ondarun/panels/game-over.js';
 import { Wait } from '../modules/ondarun/panels/wait.js';
 import { Pause } from '../modules/ondarun/panels/pause.js';
 
+import { WormGame } from '../modules/ondarun/panels/worm-game.js';
+
 import { Sequencer } from '../modules/ondarun/sequencer.js';
 import { Space, Tangerine, SmallCactus, LargeCactus, Velota, Rotata, DuckType, Liver, Rubber } from '../modules/ondarun/entity.js';
 import { A8e } from '../modules/ondarun/amandarine.js';
@@ -503,7 +505,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     let natImg = new Image();
     natImg.onload = () => {
       console.log("%c█",`border-radius:50%; border:5px solid orange;font-size: 0px; padding: 0px 50px; line-height:100px;background: url(${natImgUrl}); background-size:100px 100px; background-position: center center; color: red;`);
-      console.log(`\nBuilt among the asleep newborns in Nagoya 🗾\nFrom the ground up overnight into the moonlit sky 🎑\nEspecially for Natherine BNK48 with my %c❤❤❤❤%calong with enough neurons to operate a supernova 🌟`,'color:crimson','color:black',"\nhttps://www.facebook.com/bnk48official.natherine/");
+      console.log(`\nBuilt among the asleep newborns in Nagoya 🗾\nFrom the ground up overnight into the moonlit sky for Natherine BNK48 with all of my %c❤❤❤❤`,'color:crimson',"\nhttps://www.facebook.com/bnk48official.natherine/");
     };
     natImg.src = natImgUrl;
 
@@ -727,8 +729,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
     this.startListening();
 
-    if( window.location.hostname.startsWith('localhost')){
+    if( !window.location.hostname.startsWith('amandarine-frontier')){
         let banner = document.getElementById('message-banner');
+        // This message is intended for enirehtan server. All accounts should work with localhost testing.
         banner.textContent = "Welcome to TESTING SERVER. Please visit the GitHub link for more information of the app. Only Google Account is enabled.";
         banner = document.getElementById('game-banner');
         banner.style.visibility = 'visible';
@@ -755,7 +758,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           Object.assign( this.config.GRAPHICS_MODE_SETTINGS[ 3 ], data.odr.settings );
 
           if( this.config.GRAPHICS_MODE == 3 ){
-            console.log('Apply custom graphics settings.')
+            console.log('Applying custom graphics settings.')
             this.setGraphicsMode( 3, false );
             this.scenery.horizonLine.generateGroundCache( ODR.config.GRAPHICS_GROUND_TYPE );
           }
@@ -1240,6 +1243,11 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     }, this.consoleButtons.CONSOLE_RESET );
   }
 
+  createWormGame(){
+    Sound.inst.currentSong = null;
+    this.panel = new WormGame( this.canvas, this.panel );
+  }
+
   setGraphicsMode( mode, notify = true){
 
     if (mode == -1) {
@@ -1442,7 +1450,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     }
 
     let a = this.actions[0];
-    this.activeAction = this.scheduleActionQueue( deltaTime, this.currentSpeed, this.amandarine );
+    this.activeAction = this.forwardActionQueue( deltaTime, this.currentSpeed, this.amandarine );
     this.notifier.forward( deltaTime );
 
     if( this.playLyrics ){
@@ -1680,6 +1688,12 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     if( e.code == 'Escape' ){
       this.panel.canEscape && this.panel.exit();
       this.soundEffects.SOUND_PRESS.play( this.config.SOUND_SYSTEM_VOLUME/10 );
+      return;
+    }
+
+    if( e.code == 'KeyW' ){
+      this.createWormGame();
+      return;
     }
   }
 
@@ -1687,11 +1701,6 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     this.actionIndex++;
     action.index = this.actionIndex;
     this.actions.push( action );
-  }
-
-  isLeftClickOnCanvas(e) {
-    return e.button != null && e.button < 2 &&
-      e.type == OnDaRun.events.MOUSEUP && e.target == this.canvas;
   }
 
   scheduleNextRepaint() {
@@ -1765,7 +1774,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
   /* Phear the Scheduler. Cuz it's a fucking mess.
      Scheduler is for conducting all actions into their priority handlers,
-     before activating them in activateAction().
+     before activating them in forwardAction().
 
      *** Action Priority Definitions ***
       0: Either...
@@ -1779,7 +1788,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       3: Interrupting. (eg. Crash, Pause)
      -1: Zombie, a released task.
   */
-  scheduleActionQueue( deltaTime, speed, amandarine ){
+  forwardActionQueue( deltaTime, speed, amandarine ){
     let now = this.time; //FIXME should not use now but runTime after start.
 
     /* activeAction points to the current active action, drawings & tests
@@ -1954,7 +1963,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
             console.error(action, action.priority);
             this.pause = true;
             /*
-            amandarine.activateAction(action, deltaTime, speed);
+            amandarine.forwardAction(action, deltaTime, speed);
             break HANDLE_ACTION_QUEUE;
             */
         }
@@ -1962,7 +1971,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     }
 
     if (activeAction)
-      amandarine.activateAction( activeAction, deltaTime, speed );
+      amandarine.forwardAction( activeAction, deltaTime, speed );
     else {
       console.warn('No active action for repainting.');
     }

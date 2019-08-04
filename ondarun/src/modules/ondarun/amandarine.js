@@ -151,7 +151,7 @@ export class A8e {
     }
   }
 
-  activateAction( action, deltaTime, speed ){
+  forwardAction( action, deltaTime, speed ){
     console.assert(action && action.priority != -1, action);
 
     if( action.activate && action.activate( action, this )){
