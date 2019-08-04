@@ -113,25 +113,43 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
     this.stepping = 0;
     this.stepLength = 200;
     this.stepPause = /* 0.5* */this.stepLength;
-    this.spinTimer = this.maxSpinTimer = 0.8*this.stepLength;
+
+    this.radianPerMS = 0.5*Math.PI/0.8*this.stepLength;
+    this.controlDir = this.dir;
+    this.currentRotation = this.controlDir.r;
   }
 
   handleEvent( e ){
     if( !super.handleEvent( e )){
       return false;
     }
-    let button;
-    if( e.type == OnDaRun.events.CONSOLEDOWN ){
-      button = e.detail.consoleButton;
-      switch( button ){
-        case ODR.consoleButtons.CONSOLE_LEFT:
-        case ODR.consoleButtons.CONSOLE_RIGHT:{
-          if( !this.end ){
-            this.buttonQueue.push( button );
-          } else if( this.timer - this.end > 1000){
-            this.exit();
-          }
-        } break;
+
+    BUTTONS_DOWN:{
+      if( e.type == OnDaRun.events.CONSOLEDOWN ){
+        let button = e.detail.consoleButton;
+        switch( button ){
+          case ODR.consoleButtons.CONSOLE_LEFT:
+            this.controlDir = this.controlDir.acw;
+            break;
+          case ODR.consoleButtons.CONSOLE_RIGHT:{
+            this.controlDir = this.controlDir.cw;
+          } break;
+          default:
+            break BUTTONS_DOWN;
+        }
+
+        if( !this.endedTimer ){
+          this.buttonQueue.push( button );
+        }
+      } else if( e.type == OnDaRun.events.CONSOLEUP ){
+        // Manage & leave on button ups so they won't go to the next panel.
+        switch( e.detail.consoleButton ){
+          case ODR.consoleButtons.CONSOLE_LEFT:
+          case ODR.consoleButtons.CONSOLE_RIGHT:
+            if( this.timer - this.endedTimer > 1000){
+              this.exit();
+            }
+        }
       }
     }
 
@@ -146,7 +164,7 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
   }
 
   forward( deltaTime ){
-    if( this.end ){
+    if( this.endedTimer ){
       return super.forward( deltaTime );
     }
     this.stepping+= deltaTime;
@@ -188,7 +206,7 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
         // After shrinking, test hit.
         if( this.map[ d ] !== null ){
          ODR.soundEffects.SOUND_HIT.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
-         this.end = this.timer;
+         this.endedTimer = this.timer;
         }
 
         this.map[ d ] = 'W';
@@ -208,34 +226,28 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
         }
 
         this.targetRot = -this.dir.r;
-        this.spinTimer = 0;
-
         //this.dirText.setString(`${this.dir}`);
       }
-      //this.turningLines[0].push;
 
       this.toY += this.dir.y;
       this.toX += this.dir.x;
+    }
 
-      //hit test here
-    }
-    if( this.spinTimer < this.maxSpinTimer){
-      this.spinTimer+= deltaTime;
+    // Smoothing the display direction toward the final value.
+    let rDiff = N7e.mod( this.controlDir.r- this.currentRotation+ Math.PI, 2*Math.PI ) - Math.PI;
+    if( Math.abs( rDiff ) < Math.PI/180 ){
+      this.currentRotation = this.controlDir.r;
     } else {
-      this.spinTimer = this.maxSpinTimer;
-      this.displayRot = this.targetRot;
+      this.currentRotation+= deltaTime * rDiff/this.radianPerMS;
     }
+
     return super.forward( deltaTime );
   }
 
   repaint( deltaTime ){
-    if( this.end ){
+    if( this.endedTimer ){
       return;
     }
-
-    let rot = this.displayRot;
-    let rs = this.spinTimer / this.maxSpinTimer
-      *( N7e.mod( this.targetRot- this.displayRot+ Math.PI, 2*Math.PI )- Math.PI );
 
     let ctx = this.canvasCtx;
     ctx.drawImage( ...ODR.consoleImageArguments );
@@ -249,7 +261,7 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
       ctx.lineWidth = 1/5;
 
       ctx.save(); {
-        ctx.rotate( rot+rs );
+        ctx.rotate( -this.currentRotation );
 
         let s = Math.max( this.stepping - this.stepLength+ this.stepPause, 0 ) /this.stepPause;
         let sx = s*( this.toX- this.curX );
@@ -275,7 +287,7 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
             ctx.translate( this.tangerineX+ 0.5, this.tangerineY+ 0.5 );
 						let tscale = 0.8+ 0.2*Math.abs(Math.sin( this.timer/100 ));
 						ctx.scale( tscale, tscale );
-            ctx.rotate( -rot-rs );
+            ctx.rotate( this.currentRotation );
             ctx.beginPath();
             ctx.arc( 0, 0, 0.65, -Math.PI/2, Math.PI );
             ctx.fill();
