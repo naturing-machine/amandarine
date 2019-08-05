@@ -8,4 +8,4 @@
 
 ## Cumin Comic
 
-<img src="https://docs.google.com/drawings/d/e/2PACX-1vTXixE2GgA8m43Kpg3Ya6CZRDrSMcHF6NsQEf3QIusnGNah6XY0OtdnKBFbzpCXVvj7uvGzi7QKnQ3R/pub?w=486&h=814" />
+<img width="486" height="813" src="https://docs.google.com/drawings/d/e/2PACX-1vTXixE2GgA8m43Kpg3Ya6CZRDrSMcHF6NsQEf3QIusnGNah6XY0OtdnKBFbzpCXVvj7uvGzi7QKnQ3R/pub?w=486&h=814" />
