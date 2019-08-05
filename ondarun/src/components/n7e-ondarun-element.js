@@ -1223,13 +1223,16 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     return new Menu( this.canvas, {
       title: 'WHOA...DEJA VU?',
       entries: [
-        { title:'YES', disabled:this.config.GAME_MODE_REPLAY },
-        { title:'NO', disabled:!this.config.GAME_MODE_REPLAY},
+        { title:'YES, RED.', disabled:this.config.GAME_MODE_REPLAY },
+        { title:'NO, BLUE.', disabled:!this.config.GAME_MODE_REPLAY},
+        { title:"WORM...SOMETHING?" },
         { title:'CANCEL', exit:true }
       ],
       currentIndex: 1,
       enter: ( idx, confirmation ) => {
-        if( !confirmation.exit ){
+        if( idx === 2 ){
+          this.createWormGame();
+        } else if( !confirmation.exit ){
           this.config.GAME_MODE_REPLAY = [ true, false ][ idx ];
           this.setGameMode( this.gameMode );
           this.cc.append("REPLAY MODE ENABLED", 2000);

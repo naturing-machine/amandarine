@@ -48,28 +48,28 @@ export class WormGame extends Panel {
     let mapSource =
 `
 _#_#_#_#_#_#_#0#0#0#_O0#0#0#_#_#_#_#_#_#_#
-_#_#_#_#_#0#0#1_1_1_1_1_1_1_0#0#_#_#_#_#_#
-_#_#_#_#0#1_1_1_1_1_1_1_1_2_2_2_0#_#_#_#_#
-_#_#_#0#1_1_1_1_1_1_1_2_2_2_3_3_2_0#_#_#_#
-_#_#0#1_1_1_1_1_1_1_1_2_2_3_3_3_3_2_0#_#_#
-_#0#1_1_1_1_1_1_1_1_2_2_2_3_3_3_3_3_2_0#_#
-_#0#1_1_1_1_1_1_1_1_2_2_2_2_3_3_3_3_2_0#_#
-0#1_1_1_1_1_1_1_1_1_2_2_2_2_2_3_3_2_2_1_0#
-0#1_1_1_1_1_1_1_1_1_1_2_2_2_2_2_2_2_1_1_0#
-0#1_1_1_1_1_1_1_1_1_1_2_2_2_2_2_2_2_1_1_0#
-0#1_1_1_1_1_1_1_1_1_1_1_1_2_2_2_1_1_1_1_0#
-0#1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_0#
-0#1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_0#
-0#1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_0#
-_#0#1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_0#_#
-_#0#1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_0#_#
-_#_#0#1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_0#_#_#
-_#_#_#0#1_1_1_1_1_1_1_1_1_1_1_1_1_0#_#_#_#
-_#_#_#_#0#1_1_1_1_1_1_1_1_1_1_1_0#_#_#_#_#
-_#_#_#_#_#0#0#1_1_1_1_1_1_1_0#0#_#_#_#_#_#
+_#_#_#_#_#0#0#1_2_1_2_1_2_1_0#0#_#_#_#_#_#
+_#_#_#_#0#2_1_2_1_2_1_2_3_2_3_2_0#_#_#_#_#
+_#_#_#0#2_1_2_1_2_1_2_3_2_3_4_3_4_0#_#_#_#
+_#_#0#2_1_2_1_2_1_2_3_2_3_2_3_4_3_4_0#_#_#
+_#0#2_1_2_1_2_1_2_1_2_3_2_3_4_3_4_3_2_0#_#
+_#0#1_2_1_2_1_2_1_2_3_2_3_2_3_4_3_4_3_0#_#
+0#1_2_1_2_1_2_1_2_1_2_3_2_3_2_3_2_3_2_1_0#
+0#2_1_2_1_2_1_2_1_2_1_2_3_2_3_2_3_2_3_2_0#
+0#1_2_1_2_1_2_1_2_1_2_1_2_3_2_3_2_3_2_1_0#
+0#2_1_2_1_2_1_2_1_2_1_2_1_2_3_2_3_2_1_2_0#
+0#1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_0#
+0#2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_0#
+0#1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_0#
+_#0#1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_0#_#
+_#0#2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_0#_#
+_#_#0#2_1_2_1_2_1_2_1_2_1_2_1_2_1_2_0#_#_#
+_#_#_#0#2_1_2_1_2_1_2_1_2_1_2_1_2_0#_#_#_#
+_#_#_#_#0#2_1_2_1_2_1_2_1_2_1_2_0#_#_#_#_#
+_#_#_#_#_#0#0#1_2_1_2_1_2_1_0#0#_#_#_#_#_#
 _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
 `.split('\n').join('').split('');
-    let mapColors = new Map([['0', '#2a595f'],['1', '#8f3900'], ['2', '#8f4c00'], ['3', '#af7500'], ['_', null ]]);
+    let mapColors = new Map([['0', '#2a595f'], ['1', '#bc5000'], ['2', '#bc5d00'], ['3', '#ca6d00'], ['4', '#e49600'], ['_', null ]]);
     let mapBlocks = new Map([['_', null ],['#', '#'],['O','O']]);
 
     this.freeSpace = 0;
@@ -85,7 +85,8 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
       } else if( this.map[ d ] === 'O'){
         this.curX = x;
         this.curY = y;
-        this.map[ d ] = null; // Should be a way-out symbol.
+        this.originX = x;
+        this.originY = y;
       }
     }
 
@@ -114,9 +115,9 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
     this.stepLength = 200;
     this.stepPause = /* 0.5* */this.stepLength;
 
-    this.radianPerMS = 0.5*Math.PI/0.8*this.stepLength;
+    this.rFactor = 0.625*Math.PI*this.stepLength;
     this.controlDir = this.dir;
-    this.currentRotation = this.controlDir.r;
+    this.currentRotation = this.controlDir.cw.cw.r;
   }
 
   handleEvent( e ){
@@ -167,11 +168,14 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
     if( this.endedTimer ){
       return super.forward( deltaTime );
     }
+
     this.stepping+= deltaTime;
     while( this.stepping > this.stepLength ){
+      let tl = this.turningLines;
+      let lastPos = tl[ tl.length - 1 ].positions;
+
       this.stepping-= this.stepLength;
 
-      let tl = this.turningLines;
       tl[ 0 ].positions.unshift({
         x: this.curX,
         y: this.curY,
@@ -179,6 +183,12 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
 
       this.curX = this.toX;
       this.curY = this.toY;
+      if( this.curY == this.originY && this.curX == this.originX ){
+        ODR.soundEffects.SOUND_SCORE.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+        this.exit();
+        break;
+      }
+
       this.length++;
 
       let d =  this.curY *this.width+ this.curX;
@@ -189,7 +199,7 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
       } else {
 
         // Only adjust length if the worm part is inside the map.
-        let p = tl[ tl.length - 1 ].positions.pop();
+        let p = lastPos.pop();
         if( N7e.clamp( p.x, 0, this.width- 1 ) == p.x
           && N7e.clamp( p.y, 0, this.height- 1 ) == p.y ){
 
@@ -197,17 +207,19 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
           this.length--;
         }
 
-        if( tl[ tl.length - 1 ].positions.length == 0 ){
+        if( lastPos.length == 0 ){
           tl.pop();
+          lastPos = tl[ tl.length - 1 ].positions;
         }
-        let positions = tl[ tl.length - 1 ].positions;
-        positions[ positions.length - 1 ].last = true;
+        lastPos[ lastPos.length - 1 ].last = true;
 
         // After shrinking, test hit.
+        /*
         if( this.map[ d ] !== null ){
          ODR.soundEffects.SOUND_HIT.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
          this.endedTimer = this.timer;
         }
+        */
 
         this.map[ d ] = 'W';
       }
@@ -229,25 +241,33 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
         //this.dirText.setString(`${this.dir}`);
       }
 
-      this.toY += this.dir.y;
-      this.toX += this.dir.x;
+      this.toY+= this.dir.y;
+      this.toX+= this.dir.x;
+      let entity = this.map[ this.toY *this.width+ this.toX ];
+      if( entity ) console.log(entity);
+      switch( entity ){
+        case 'W':{
+          let p = lastPos[ lastPos.length - 1 ];
+          if( p.last && this.toX == p.x && this.toY == p.y ){
+            break;
+          }
+        }
+        case '#':
+          ODR.soundEffects.SOUND_HIT.play( ODR.config.SOUND_SYSTEM_VOLUME/10 );
+          this.endedTimer = this.timer;
+          break;
+      }
     }
 
     // Smoothing the display direction toward the final value.
     let rDiff = N7e.mod( this.controlDir.r- this.currentRotation+ Math.PI, 2*Math.PI ) - Math.PI;
-    if( Math.abs( rDiff ) < Math.PI/180 ){
-      this.currentRotation = this.controlDir.r;
-    } else {
-      this.currentRotation+= deltaTime * rDiff/this.radianPerMS;
-    }
+    this.currentRotation+= deltaTime * rDiff/this.rFactor;
 
     return super.forward( deltaTime );
   }
 
   repaint( deltaTime ){
-    if( this.endedTimer ){
-      return;
-    }
+    let timer = this.endedTimer || this.timer;
 
     let ctx = this.canvasCtx;
     ctx.drawImage( ...ODR.consoleImageArguments );
@@ -283,11 +303,15 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
 
           //Tangerine
           ctx.save();
+            ctx.strokeStyle = '#000';
             ctx.fillStyle = '#f28500';
             ctx.translate( this.tangerineX+ 0.5, this.tangerineY+ 0.5 );
-						let tscale = 0.8+ 0.2*Math.abs(Math.sin( this.timer/100 ));
+						let tscale = 0.9+ 0.1*Math.abs(Math.sin( timer/100 ));
 						ctx.scale( tscale, tscale );
             ctx.rotate( this.currentRotation );
+            ctx.beginPath();
+            ctx.arc( 0, 0, 0.65, 0, 2*Math.PI );
+            ctx.stroke();
             ctx.beginPath();
             ctx.arc( 0, 0, 0.65, -Math.PI/2, Math.PI );
             ctx.fill();
@@ -316,7 +340,7 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
           point.positions.forEach(( pos, index ) => {
             ctx.beginPath();
             let r = pos.last ? 0.4 : 0.5;
-            r+= Math.sin( l + this.timer/200 )/20;
+            r+= Math.sin( l + timer/200 )/20;
             if( pos.last && this.toX === this.tangerineX && this.toY === this.tangerineY ){
               ctx.arc( pos.x- this.curX, pos.y- this.curY, r, 0, 2*Math.PI );
               ctx.closePath();
@@ -350,11 +374,22 @@ _#_#_#_#_#_#_#0#0#0#0#0#0#0#_#_#_#_#_#_#_#
           ctx.arc(-0.3, -0.2, 0.2, 0, 2 * Math.PI);
           ctx.arc( 0.3, -0.2, 0.2, 0, 2 * Math.PI);
           ctx.fill();
-          ctx.fillStyle = "#000";
-          ctx.beginPath();
-          ctx.arc(-0.3, -0.3, 0.1, 0, 2 * Math.PI);
-          ctx.arc( 0.3, -0.3, 0.1, 0, 2 * Math.PI);
-          ctx.fill();
+          if( this.endedTimer ){
+            ctx.lineWidth = 1/10;
+            ctx.strokeStyle = "#000";
+            ctx.beginPath();
+            ctx.moveTo( -0.5, -0.1 );
+            ctx.lineTo( -0.2, -0.3 );
+            ctx.moveTo( 0.5, -0.1 );
+            ctx.lineTo( 0.2, -0.3 );
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = "#000";
+            ctx.beginPath();
+            ctx.arc(-0.3, -0.3, 0.1, 0, 2 * Math.PI);
+            ctx.arc( 0.3, -0.3, 0.1, 0, 2 * Math.PI);
+            ctx.fill();
+          }
     } ctx.restore();
   }
 
