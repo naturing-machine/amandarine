@@ -23,12 +23,14 @@ import { Panel } from './panel.js';
 export class WormGame extends Panel {
 
   dropTangerine(){
-    let putPoint = N7e.randomInt( 0, this.freeSpace- this.length- 1);
+    let putPoint = N7e.randomInt( 0, this.freeSpace -this.length -2); //2 = head + origin
     for( let y = 0; y < this.height; y++ )
     for( let x = 0; x < this.width; x++ ){
-      if( null === this.map[ y *this.width+ x ]){
+      if( x == this.originX && y == this.originY ){
+        continue;
+      } else if( null === this.map[ y* this.width +x ]){
         if( putPoint == 0 ){
-          this.map[ y *this.width+ x ] = "T";
+          this.map[ y* this.width +x ] = "T";
           this.tangerineX = x;
           this.tangerineY = y;
           return;
@@ -52,11 +54,11 @@ export class WormGame extends Panel {
     let mapBlocks = new Map([['_', null ],['#', '#'],['O','O']]);
 
     this.freeSpace = 0;
-    this.map = Array( this.width * this.height );
+    this.map = Array( this.width* this.height );
     this.mapStyles = Array( this.width * this.height );
     for( let y = 0; y < this.height; y++ )
     for( let x = 0; x < this.width; x++ ){
-      let d = y *this.width+ x;
+      let d = y* this.width +x;
       this.mapStyles[ d ] = mapColors.get( mapSource.shift());
       this.map[ d ] = mapBlocks.get( mapSource.shift());
       if( this.map[ d ] === null ){
@@ -75,8 +77,8 @@ export class WormGame extends Panel {
     // Worm
 
     this.dir = map.dir;
-    this.toX = this.curX+ this.dir.x;
-    this.toY = this.curY+ this.dir.y;
+    this.toX = this.curX +this.dir.x;
+    this.toY = this.curY +this.dir.y;
     let tl = {
       dir: this.dir,
       positions: [],
@@ -94,7 +96,7 @@ export class WormGame extends Panel {
     this.stepLength = 200;
     this.stepPause = /* 0.5* */this.stepLength;
 
-    this.rFactor = 0.625*Math.PI*this.stepLength;
+    this.rFactor = 0.625*Math.PI* this.stepLength;
     this.controlDir = this.dir;
     this.currentRotation = this.controlDir.cw.cw.r;
 
@@ -172,7 +174,7 @@ export class WormGame extends Panel {
 
       this.length++;
 
-      let d =  this.curY *this.width+ this.curX;
+      let d =  this.curY* this.width +this.curX;
       if( this.map[ d ] === 'T' ){
         this.map[ d ] = 'W';
         this.dropTangerine();
@@ -184,7 +186,7 @@ export class WormGame extends Panel {
         if( N7e.clamp( p.x, 0, this.width- 1 ) == p.x
           && N7e.clamp( p.y, 0, this.height- 1 ) == p.y ){
 
-          this.map[ p.y *this.width+ p.x ] = null;
+          this.map[ p.y* this.width +p.x ] = null;
           this.length--;
         }
 
@@ -224,7 +226,7 @@ export class WormGame extends Panel {
 
       this.toY+= this.dir.y;
       this.toX+= this.dir.x;
-      let entity = this.map[ this.toY *this.width+ this.toX ];
+      let entity = this.map[ this.toY* this.width +this.toX ];
       switch( entity ){
         case 'W':{
           let p = lastPos[ lastPos.length - 1 ];
@@ -240,8 +242,8 @@ export class WormGame extends Panel {
     }
 
     // Smoothing the display direction toward the final value.
-    let rDiff = N7e.mod( this.controlDir.r- this.currentRotation+ Math.PI, 2*Math.PI ) - Math.PI;
-    this.currentRotation+= deltaTime * rDiff/this.rFactor;
+    let rDiff = N7e.mod( this.controlDir.r -this.currentRotation +Math.PI, 2*Math.PI ) - Math.PI;
+    this.currentRotation+= deltaTime* rDiff/ this.rFactor;
 
     return super.forward( deltaTime );
   }
@@ -249,9 +251,9 @@ export class WormGame extends Panel {
   repaint( deltaTime ){
     let timer = this.endedTimer || this.timer;
     let scale = 15 - Math.max( 0, ( 2000- timer )/200 );
-    let s = Math.max( this.stepping - this.stepLength+ this.stepPause, 0 ) /this.stepPause;
-    let sx = s*( this.toX- this.curX );
-    let sy = s*( this.toY- this.curY );
+    let s = Math.max( this.stepping -this.stepLength +this.stepPause, 0 )/this.stepPause;
+    let sx = s*( this.toX -this.curX );
+    let sy = s*( this.toY -this.curY );
 
     let ctx = this.canvasCtx;
     ctx.drawImage( ...ODR.consoleImageArguments );
@@ -273,7 +275,7 @@ export class WormGame extends Panel {
           for( let y = 0; y < this.height; y++ ){
             // let d =  this.curY *this.width+ this.curX;
             // let entity = this.map[ d ];
-            let s = this.mapStyles[ y * this.width + x ];
+            let s = this.mapStyles[ y* this.width +x ];
             if( s ){
               ctx.fillStyle = s;
               ctx.fillRect( x, y, 1, 1 );
@@ -284,8 +286,8 @@ export class WormGame extends Panel {
           ctx.save();
             ctx.strokeStyle = '#000';
             ctx.fillStyle = '#f28500';
-            ctx.translate( this.tangerineX+ 0.5, this.tangerineY+ 0.5 );
-						let tscale = 0.9+ 0.1*Math.abs(Math.sin( timer/100 ));
+            ctx.translate( this.tangerineX +0.5, this.tangerineY +0.5 );
+						let tscale = 0.9 +0.1*Math.abs( Math.sin( timer/100 ));
 						ctx.scale( tscale, tscale );
             ctx.rotate( this.currentRotation );
             ctx.beginPath();
@@ -315,22 +317,21 @@ export class WormGame extends Panel {
         let l = 0;
         this.turningLines.forEach( point => {
           let dir = point.dir;
-  //        ctx.fillStyle = `hsl(${(dir.r *180/Math.PI)|0}, 100%, 50%)`;
           point.positions.forEach(( pos, index ) => {
             ctx.beginPath();
             let r = pos.last ? 0.4 : 0.5;
-            r+= Math.sin( l + timer/200 )/20;
+            r+= Math.sin( l +timer/200 )/20;
             if( pos.last && this.toX === this.tangerineX && this.toY === this.tangerineY ){
               ctx.arc( pos.x- this.curX, pos.y- this.curY, r, 0, 2*Math.PI );
               ctx.closePath();
-              ctx.arc( pos.x- this.curX+ s *dir.x/2, pos.y- this.curY+ s *dir.y/2, r, 0, 2*Math.PI );
+              ctx.arc( pos.x- this.curX +s* dir.x/2, pos.y -this.curY +s* dir.y/2, r, 0, 2*Math.PI );
               ctx.closePath();
             }
-            let px = pos.x- this.curX+ s *dir.x;
-            let py = pos.y- this.curY+ s *dir.y;
+            let px = pos.x -this.curX +s* dir.x;
+            let py = pos.y -this.curY +s* dir.y;
             ctx.arc( px, py, r, 0, 2*Math.PI );
             ctx.closePath();
-            ctx.arc(( px + lastSpot.x )/2, ( py + lastSpot.y )/2, r+0.05, 0, 2*Math.PI );
+            ctx.arc(( px +lastSpot.x )/2, ( py +lastSpot.y )/2, r +0.05, 0, 2*Math.PI );
             ctx.closePath();
             lastSpot.x = px;
             lastSpot.y = py;
@@ -345,35 +346,35 @@ export class WormGame extends Panel {
       // Head
       ctx.fillStyle = "#0f0";
       ctx.beginPath();
-      ctx.arc(0, 0, 0.4, 0, 2 * Math.PI);
+      ctx.arc(0, 0, 0.4, 0, 2*Math.PI);
       ctx.fill();
           // Eyes
           ctx.fillStyle = "#fff";
           ctx.beginPath();
-          ctx.arc(-0.3, -0.2, 0.3, 0, 2 * Math.PI);
-          ctx.arc( 0.3, -0.2, 0.3, 0, 2 * Math.PI);
+          ctx.arc(-0.3, 0, 0.3, 0, 2*Math.PI);
+          ctx.arc( 0.3, 0, 0.3, 0, 2*Math.PI);
           ctx.fill();
           if( this.endedTimer ){
             ctx.lineWidth = 1/10;
             ctx.strokeStyle = "#000";
             ctx.beginPath();
-            ctx.moveTo( -0.5, -0.1 );
-            ctx.lineTo( -0.2, -0.3 );
-            ctx.lineTo( -0.5, -0.3 );
-            ctx.moveTo( 0.5, -0.1 );
-            ctx.lineTo( 0.2, -0.3 );
-            ctx.lineTo( 0.5, -0.3 );
+            ctx.moveTo( -0.5,  0.1 );
+            ctx.lineTo( -0.2, -0.1 );
+            ctx.lineTo( -0.5, -0.1 );
+            ctx.moveTo( 0.5,  0.1 );
+            ctx.lineTo( 0.2, -0.1 );
+            ctx.lineTo( 0.5, -0.1 );
             ctx.stroke();
           } else {
             ctx.fillStyle = "#000";
-            let dx = this.tangerineX- (this.curX+ sx);
-            let dy = (this.curY+ sy)- this.tangerineY;
-            let ang = Math.atan2( dy, dx )+ this.currentRotation;
+            let dx = this.tangerineX -this.curX -sx;
+            let dy = this.tangerineY -this.curY -sy;
+            let ang = Math.atan2( dy, dx )- this.currentRotation;
             dx = 0.1*Math.cos( ang );
             dy = 0.1*Math.sin( ang );
             ctx.beginPath();
-            ctx.arc(-0.3+ dx, -0.2- dy, 0.2, 0, 2 * Math.PI);
-            ctx.arc( 0.3+ dx, -0.2- dy, 0.2, 0, 2 * Math.PI);
+            ctx.arc(-0.3 +dx, dy, 0.2, 0, 2*Math.PI);
+            ctx.arc( 0.3 +dx, dy, 0.2, 0, 2*Math.PI);
             ctx.fill();
           }
     } ctx.restore();
@@ -383,14 +384,14 @@ export class WormGame extends Panel {
 
 WormGame.direction = {
   0: { x: 0, y: -1, i:0, r: 0 },
-  1: { x: 1, y: 0, i:1, r: Math.PI/2 },
+  1: { x: 1, y: 0, i:1, r: 0.5*Math.PI },
   2: { x: 0, y: 1, i:2, r: Math.PI },
-  3: { x: -1, y: 0, i:3, r: Math.PI*3/2 },
+  3: { x: -1, y: 0, i:3, r: 1.5*Math.PI },
 }
 
 for( let i = 0; i < 4; i++ ){
-  WormGame.direction[ i ].acw = WormGame.direction[ N7e.mod( i- 1, 4 )];
-  WormGame.direction[ i ].cw = WormGame.direction[ N7e.mod( i+ 1, 4 )];
+  WormGame.direction[ i ].acw = WormGame.direction[ N7e.mod( i -1, 4 )];
+  WormGame.direction[ i ].cw = WormGame.direction[ N7e.mod( i +1, 4 )];
 }
 
 WormGame.maps = [{
