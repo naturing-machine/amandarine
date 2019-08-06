@@ -1618,13 +1618,12 @@ https://www.redcross.or.th/donate/`,'color:crimson');
             } break;
 
           case this.consoleButtons.CONSOLE_N7E:{
-            if (!this.n7eUrlList || this.n7eUrlList.length == 0) {
-              this.n7eUrlList = [
-                { name: 'IG', url: 'https://www.instagram.com/natherine.bnk48official'},
-                { name: 'FACEBOOK', url: 'https://www.facebook.com/bnk48official.natherine'},
-              ];
-            }
-            window.open( this.n7eUrlList.splice( N7e.randomInt( 0, this.n7eUrlList.length - 1 ), 1)[ 0 ].url, '_blank');
+            this.__n7eUrlList = this.__n7eUrlList || [
+              { name: 'FACEBOOK', url: 'https://www.facebook.com/bnk48official.natherine'},
+              { name: 'IG', url: 'https://www.instagram.com/natherine.bnk48official'},
+            ];
+            window.open( this.__n7eUrlList[ 0 ].url, '_blank');
+            this.__n7eUrlList.push( this.__n7eUrlList.shift());
           } break;
         }
 
