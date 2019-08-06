@@ -249,6 +249,9 @@ export class WormGame extends Panel {
   repaint( deltaTime ){
     let timer = this.endedTimer || this.timer;
     let scale = 15 - Math.max( 0, ( 2000- timer )/200 );
+    let s = Math.max( this.stepping - this.stepLength+ this.stepPause, 0 ) /this.stepPause;
+    let sx = s*( this.toX- this.curX );
+    let sy = s*( this.toY- this.curY );
 
     let ctx = this.canvasCtx;
     ctx.drawImage( ...ODR.consoleImageArguments );
@@ -263,12 +266,7 @@ export class WormGame extends Panel {
 
       ctx.save(); {
         ctx.rotate( -this.currentRotation );
-
-        let s = Math.max( this.stepping - this.stepLength+ this.stepPause, 0 ) /this.stepPause;
-        let sx = s*( this.toX- this.curX );
-        let sy = s*( this.toY- this.curY );
         ctx.translate( -sx, -sy );
-
         ctx.save();
           ctx.translate( -this.curX- 0.5, -this.curY- 0.5 );
           for( let x = 0; x < this.width; x++ )
@@ -352,8 +350,8 @@ export class WormGame extends Panel {
           // Eyes
           ctx.fillStyle = "#fff";
           ctx.beginPath();
-          ctx.arc(-0.3, -0.2, 0.2, 0, 2 * Math.PI);
-          ctx.arc( 0.3, -0.2, 0.2, 0, 2 * Math.PI);
+          ctx.arc(-0.3, -0.2, 0.3, 0, 2 * Math.PI);
+          ctx.arc( 0.3, -0.2, 0.3, 0, 2 * Math.PI);
           ctx.fill();
           if( this.endedTimer ){
             ctx.lineWidth = 1/10;
@@ -361,14 +359,21 @@ export class WormGame extends Panel {
             ctx.beginPath();
             ctx.moveTo( -0.5, -0.1 );
             ctx.lineTo( -0.2, -0.3 );
+            ctx.lineTo( -0.5, -0.3 );
             ctx.moveTo( 0.5, -0.1 );
             ctx.lineTo( 0.2, -0.3 );
+            ctx.lineTo( 0.5, -0.3 );
             ctx.stroke();
           } else {
             ctx.fillStyle = "#000";
+            let dx = this.tangerineX- (this.curX+ sx);
+            let dy = (this.curY+ sy)- this.tangerineY;
+            let ang = Math.atan2( dy, dx )+ this.currentRotation;
+            dx = 0.1*Math.cos( ang );
+            dy = 0.1*Math.sin( ang );
             ctx.beginPath();
-            ctx.arc(-0.3, -0.3, 0.1, 0, 2 * Math.PI);
-            ctx.arc( 0.3, -0.3, 0.1, 0, 2 * Math.PI);
+            ctx.arc(-0.3+ dx, -0.2- dy, 0.2, 0, 2 * Math.PI);
+            ctx.arc( 0.3+ dx, -0.2- dy, 0.2, 0, 2 * Math.PI);
             ctx.fill();
           }
     } ctx.restore();
