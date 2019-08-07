@@ -169,12 +169,15 @@ class Song {
     this.delayStart = 0; // For resuming calculation.
     this.startTime = Infinity;
     this.trueStartTime = 0;
-    this.loadingProgress = null;
+    this._loadingInfo = undefined; //{ length: number, totalLength: number };
     this._volume = ODR.config.SOUND_MUSIC_VOLUME/10;
 
     if( autoload ){
       this._load( decode );
     }
+  }
+  get loadingInfo(){
+    return this._loadingInfo ||{ totalLength: 1, length: 0 };
   }
 
   play( delay, volume ){
@@ -191,10 +194,10 @@ class Song {
     } else if( this.source ){
       this._decodeAudioData( this.source );
       this.source = null;
-    } else if( this.loadingProgress !== null ){
+    } else if( this._loadingInfo !== undefined ){
       console.log(this.name,'Loading');
     } else {
-      console.log('FIXME');
+      console.assert( null !== this._loadingInfo, 'FIXME' );
     }
   }
 
@@ -272,22 +275,22 @@ class Song {
   }
 
   _load( decode ){
-    if( this.loadingProgress != null ){
+    if( this._loadingInfo !== undefined ){
       return;
     }
 
     // Not sure why I spent an evening rewriting the perfectly working XMLHttpRequest with a fetch.
-    this.loadingProgress = 0;
+    this._loadingInfo = { length: 0, totalLength: 1 };
     let source, dataReceived, total, reader;
     let processData = function({ done, value }){
         if( done ){
-          this.loadingProgress = 1.0;
-
           // Content-Length mismatched.
           if( total > dataReceived ){
             console.warn('Content-Length mismatched.');
             source = source.slice( 0, dataReceived );
           }
+
+          this._loadingInfo = { length: dataReceived, totalLength: dataReceived };
 
           if( decode ){
             // This actually should be
@@ -305,6 +308,7 @@ class Song {
         if( value.length + dataReceived > total ){
           console.warn('Content-Length mismatched.');
           total = value.length + dataReceived;
+          this._loadingInfo.totalLength = total;
           let newSource = new Uint8Array( total );
           newSource.set( source );
           source = newSource;
@@ -312,8 +316,8 @@ class Song {
         // Copy all read data into a source
         source.set( value, dataReceived );
 
-        this.loadingProgress = value.length/total;
         dataReceived+= value.length;
+        this._loadingInfo.length = dataReceived;
 
         return reader.read().then( processData );
       }.bind( this );
@@ -325,40 +329,13 @@ class Song {
         // Even exists, it can be INCORRECT
         // But it will be used for guiding the allocation.
         total = Number( response.headers.get('Content-Length') || 0 );
+        this._loadingInfo.totalLength = total;
         reader = response.body.getReader();
         dataReceived = 0;
         source = new Uint8Array( total );
         reader.read().then( processData );
       })
     );
-
-
-    //console.log('Downloading the requested song...',this.name);
-    // Start loading the song.
-    // TODO, option to load on playing.
-    /*
-    let resourceTemplate = document.getElementById( ODR.config.RESOURCE_TEMPLATE_ID ).content;
-    let request = new XMLHttpRequest();
-    request.open('GET', resourceTemplate.getElementById( this.name ).src, true);
-    request.responseType = 'arraybuffer';
-    request.onload = () => {
-
-      this.loadingProgress = 1;
-
-      if( decode ){
-        //console.log('Decoding requested data...', this.name );
-        this._decodeAudioData( request.response );
-      } else {
-        // Without an audio context, just keep the blob for later decoding.
-        this.source = request.response;
-      }
-
-    }
-    request.onprogress = (e) => {
-      this.loadingProgress = e.loaded/e.total;
-    }
-    request.send();
-    */
 
   }
 
@@ -448,11 +425,6 @@ export class Sound {
     this._currentSong = song;
     if( song )
       song.play( delayStart, this._musicVolume );
-  }
-
-  // FIXME should not sum.
-  get musicLoadingProgress(){
-    return Object.entries( this.songs ).reduce(( acc, nameSong, index, array) => acc + (nameSong[1].loadingProgress || 0) /array.length, 0);
   }
 
   loadSong( name, autoplay, delayStart = 0, lyrics = null ){

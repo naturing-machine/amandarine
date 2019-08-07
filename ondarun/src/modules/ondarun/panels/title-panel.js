@@ -236,6 +236,10 @@ The Thai Redcross Society ${'redcross'}
     Sound.inst.loadAudio('SOUND_AMANDARINE_FRONTIER')
     .then( audio => this.titleAmandarineFrontierAudio = audio );
 
+    this.loadingSongs = [
+      Sound.inst.loadSong('MUSIC_INTRO', false ),
+      Sound.inst.loadSong('MUSIC_GAMEPLAY', false ),
+    ];
   }
 
   loadImages(a,...theArgs){
@@ -356,8 +360,12 @@ The Thai Redcross Society ${'redcross'}
       endingOffset = ( 40000- ( 0.8*endingTimer - 200 )**2 )/1000 ;
       endingOpacity = 1 - Math.min( endingTimer, 400 )/400;
     }
-
-    let dataDownloaded = N7e.isSoundDisabled ? 100 : Sound.inst.musicLoadingProgress * 100;
+    let songsLoaded = this.loadingSongs.map( song => song.loadingInfo ).reduce(( sum, song ) =>
+    ({
+      totalLength: sum.totalLength +song.totalLength,
+      length: sum.length +song.length,
+    }));
+    let dataDownloaded = N7e.isSoundDisabled ? 100 : 100*songsLoaded.length/ songsLoaded.totalLength;
 
     if( this.timer <= 800 ){
       this.blackoutOpacity = 1 - Math.min(1, this.timer / 800);
