@@ -1693,10 +1693,12 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       return;
     }
 
+    /*
     if( e.code == 'KeyW' ){
       this.createWormGame();
       return;
     }
+    */
   }
 
   queueAction( action ){
