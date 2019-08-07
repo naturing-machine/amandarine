@@ -133,7 +133,7 @@ export class Greeter extends Panel {
 
     if( !this.__reloadIntroMusic ){
       this.__reloadIntroMusic = true;
-      Sound.inst.loadMusic('MUSIC_INTRO', ODR.config.PLAY_MUSIC );
+      Sound.inst.loadSong('MUSIC_INTRO', ODR.config.PLAY_MUSIC );
     }
   }
 

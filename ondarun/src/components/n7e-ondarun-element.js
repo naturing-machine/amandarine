@@ -396,7 +396,7 @@ class OnDaRunElement extends LitElement {
   statePrestart( musicDelay ){
     this.scoreboard.reset();
     this.scenery.reset();
-    Sound.inst.loadMusic('MUSIC_GAMEPLAY', this.config.PLAY_MUSIC, musicDelay );
+    Sound.inst.loadSong('MUSIC_GAMEPLAY', this.config.PLAY_MUSIC, musicDelay );
     this.sky.setShade( Sky.config.DAY, 3000 );
     this.showGameModeInfo();
     this.invert( true );
@@ -685,8 +685,8 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     this.config.PLAY_MUSIC = true;
     this.loadSoundResources();
     Sound.inst.musicVolume = ODR.config.SOUND_MUSIC_VOLUME/10;
-    Sound.inst.loadMusic('MUSIC_INTRO', false );
-    Sound.inst.loadMusic('MUSIC_GAMEPLAY', false );
+    Sound.inst.loadSong('MUSIC_INTRO', false );
+    Sound.inst.loadSong('MUSIC_GAMEPLAY', false );
 
     this.sky = new Sky( this.canvas );
     this.sky.setShade( Sky.config.START, 0 );
@@ -867,12 +867,12 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     if( this.user.signInInProgress ){
       let waitPanel = new Wait( this.canvas, greeter, "signing in..please wait" );
       this.user.allTasksSettled().then(() => {
-        Sound.inst.loadMusic('MUSIC_INTRO', this.config.PLAY_MUSIC );
+        Sound.inst.loadSong('MUSIC_INTRO', this.config.PLAY_MUSIC );
         waitPanel.exit();
       });
       return waitPanel;
     } else {
-        Sound.inst.loadMusic('MUSIC_INTRO', this.config.PLAY_MUSIC );
+        Sound.inst.loadSong('MUSIC_INTRO', this.config.PLAY_MUSIC );
       return greeter;
     }
 
@@ -887,9 +887,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       this.config.PLAY_MUSIC = true;
 
       if( 1 == this.gameState ){
-        Sound.inst.loadMusic('MUSIC_GAMEPLAY', this.config.PLAY_MUSIC );
+        Sound.inst.loadSong('MUSIC_GAMEPLAY', this.config.PLAY_MUSIC );
       } else {
-        Sound.inst.loadMusic('MUSIC_INTRO', this.config.PLAY_MUSIC );
+        Sound.inst.loadSong('MUSIC_INTRO', this.config.PLAY_MUSIC );
       }
       this.notifier.notify('♬ ON', 2000 );
     }
@@ -981,7 +981,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       },
       enter: ( entryIndex, entry, expandingOptions ) => {
         if( entry.name == 'SOUND_MUSIC_VOLUME' && expandingOptions ){
-          Sound.inst.loadMusic('MUSIC_GAMEPLAY', true );
+          Sound.inst.loadSong('MUSIC_GAMEPLAY', true );
           return;
         }
 
@@ -1048,7 +1048,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     this.invert(true);
 
     //FIXME dup screen forward
-    Sound.inst.loadMusic('MUSIC_INTRO', this.config.PLAY_MUSIC );
+    Sound.inst.loadSong('MUSIC_INTRO', this.config.PLAY_MUSIC );
 
     let defaultAction = new DefaultAction( 1 );
     defaultAction.activate = function( action, a8e ){

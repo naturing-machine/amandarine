@@ -450,11 +450,12 @@ export class Sound {
       song.play( delayStart, this._musicVolume );
   }
 
+  // FIXME should not sum.
   get musicLoadingProgress(){
     return Object.entries( this.songs ).reduce(( acc, nameSong, index, array) => acc + (nameSong[1].loadingProgress || 0) /array.length, 0);
   }
 
-  loadMusic( name, autoplay, delayStart = 0, lyrics = null ){
+  loadSong( name, autoplay, delayStart = 0, lyrics = null ){
     if( IS_SOUND_DISABLED ) return;
     let song = this.songs[ name ] || ( this.songs[ name ] = new Song( name, lyrics, true ));
     song.lyrics = lyrics;
@@ -466,6 +467,7 @@ export class Sound {
       this.setCurrentSong( song, delayStart );
     }
 
+    return song;
   }
 
   loadAudio( name ){

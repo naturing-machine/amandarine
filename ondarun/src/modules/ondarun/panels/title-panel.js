@@ -347,7 +347,7 @@ The Thai Redcross Society ${'redcross'}
     let endingOffset = 0;
     let endingOpacity = 1;
 
-    if( this.endTime && Object.keys( ODR.soundEffects ).length == OnDaRun.effectNameList.length ){ // All effects are 
+    if( this.endTime && Object.keys( ODR.soundEffects ).length == OnDaRun.effectNameList.length ){ // All effects are loaded.
       endingTimer = this.timer - this.endTime;
 
       if ( endingTimer > 863) { // -endingOffset > ~200
@@ -469,7 +469,7 @@ The Thai Redcross Society ${'redcross'}
           if( storyTimer > beginTime && storyTimer < endTime ){
 
             if( index == 4 ){
-              Sound.inst.loadMusic('MUSIC_INTRO', true );
+              Sound.inst.loadSong('MUSIC_INTRO', true );
             }
 
             beginTime = storyTimer - beginTime;
