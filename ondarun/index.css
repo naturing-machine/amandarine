@@ -33,6 +33,42 @@ n7e-ondaarun {
   display: none;
 }
 
+#game-banner {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 1s linear;
+  background-color: #fee;
+  font-size: 13px;
+  line-height: 16px;
+  min-height: 100px;
+  max-width: 200px;
+  min-width: 200px;
+  padding: 5px;
+  border-radius: 5px;
+  position: fixed;
+  top: calc(50% - 360px);
+  left: calc(50% - 400px);
+  transform: rotate(-20deg);
+  font-family: sans-serif;
+  text-align: center;
+  box-shadow: 1px 1px 2px 0px #0002;
+}
+
+#version-banner {
+  font-weight: bold;
+  color: black;
+}
+
+#message-banner {
+  text-align: left;
+  color: maroon;
+  border-radius: 3px;
+  padding: 5px;
+  font-weight: normal;
+  font-size: 13px;
+  line-height: 13px;
+}
+
 #github {
   position: absolute;
   top: 0px;
