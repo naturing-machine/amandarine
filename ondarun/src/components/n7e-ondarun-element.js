@@ -1009,10 +1009,10 @@ https://www.redcross.or.th/donate/`,'color:crimson');
       entries.push({title:key.slice(9), name:key, options:def, value:this.config[key]});
     }
 
-    entries.push({title:'exit', exit:true});
+    entries.push({ title:'exit', exit: true });
 
-    return new Menu( this.canvas, {
-      title: 'graphics',
+    let graphicsMenu = new Menu( this.canvas, {
+      title:'graphics',
       entries: entries,
       enter: ( entryIndex, entry ) => {
         if( entry.value ) {
@@ -1022,9 +1022,9 @@ https://www.redcross.or.th/donate/`,'color:crimson');
           }
         }
         this.setGraphicsMode( 3 );
-        return null;
       },
     }, this.consoleButtons.CONSOLE_B );
+    return graphicsMenu;
   }
 
   showGameModeInfo( duration = 3000, delay = 0 ){
@@ -1220,7 +1220,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
 
   createResetMenu(){
     Sound.inst.currentSong = null;
-    return new Menu( this.canvas, {
+    let resetMenu = new Menu( this.canvas, {
       title: 'WHOA...DEJA VU?',
       entries: [
         { title:'YES, RED.', disabled:this.config.GAME_MODE_REPLAY },
@@ -1235,15 +1235,18 @@ https://www.redcross.or.th/donate/`,'color:crimson');
         } else if( !confirmation.exit ){
           this.config.GAME_MODE_REPLAY = [ true, false ][ idx ];
           this.setGameMode( this.gameMode );
-          this.cc.append("REPLAY MODE ENABLED", 2000);
-          this.cc.append("IN THE GAME MENU.", 2000,2000);
+          if( this.config.GAME_MODE_REPLAY ){
+            this.cc.append("REPLAY MODE ENABLED", 2000);
+            this.cc.append("IN THE GAME MENU.", 2000,2000);
+          }
           if( this.user.odrRef ){
             this.user.odrRef.child('settings/GAME_MODE_REPLAY').set( this.config.GAME_MODE_REPLAY );
           }
         }
-        return null;
+        resetMenu.exit( null );
       },
     }, this.consoleButtons.CONSOLE_RESET );
+    return resetMenu;
   }
 
   createWormGame(){
