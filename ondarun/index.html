@@ -20,6 +20,25 @@
 
 <body>
 
+<noscript>Please enable JavaScript to view this website.</noscript>
+<!--<script>
+if('serviceWorker' in navigator ){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+</script>-->
+<script src="https://www.gstatic.com/firebasejs/6.3.4/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/6.3.4/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/6.3.4/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/6.3.4/firebase-storage.js"></script>
+
+<script src="config.js"></script>
+
+<script src="node_modules/@webcomponents/webcomponentsjs/webcomponents-loader.js"></script>
+<script type="module" src="src/components/n7e-ondarun-element.js"></script>
+
+
 <a id="github" href="https://github.com/naturing-machine/amandarine/wiki"><img style="border: 0;" src="assets/github.png" alt="Fork me on GitHub"></a>
 <a id="redcross" href="https://www.redcrossfundraising.org/"><img style="border: 0;" src="assets/redcross.png" alt="Thai Red Cross"></a>
 
@@ -33,36 +52,6 @@
 </div>
 
 <n7e-ondarun-element></n7e-ondarun-element>
-<noscript>
-Please enable JavaScript to view this website.
-</noscript>
-<script>
-
-</script>
-<script src="https://www.gstatic.com/firebasejs/6.3.4/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/6.3.4/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/6.3.4/firebase-database.js"></script>
-<script src="https://www.gstatic.com/firebasejs/6.3.4/firebase-storage.js"></script>
-
-<script src="config.js"></script>
-
-<script src="node_modules/@webcomponents/webcomponentsjs/webcomponents-loader.js"></script>
-<script type="module" src="src/components/n7e-ondarun-element.js"></script>
-
-<template id="audio-resources">
-  <audio id="offline-intro-music" src="assets/sounds/tangerine-amandarine-frontier-edition.mp3"></audio>
-  <audio id="offline-play-music" src="assets/sounds/tangerine-amandarine-frontier-game-play.mp3"></audio>
-  <audio id="amandarine-frontier" src="assets/sounds/amandarine-frontier.mp3"></audio>
-</template>
-
-<!--
-<div style="position:fixed;left:0;bottom:0;display:grid;margin:1px;width:15px;height:15px;grid-template-columns:auto auto auto">
-  <div></div><div style="border-radius:50%;background-color:black"></div><div></div>
-  <div></div><div></div><div style="border-radius:50%;background-color:black"></div>
-  <div style="border-radius:50%;background-color:black"></div><div style="border-radius:50%;background-color:black"></div><div style="border-radius:50%;background-color:black"></div>
-</div>
--->
 
 </body>
-
 </html>

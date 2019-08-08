@@ -739,7 +739,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     }
 
     this.user = User.inst;
-    this.user.signIn().then( data  => {
+    this.user.signIn().then( data => {
 
       if( !this.user.uidRef ){
         // No user
@@ -1045,7 +1045,7 @@ https://www.redcross.or.th/donate/`,'color:crimson');
     this.scenery.reset();
     this.sequencer.reset();
 
-    this.invert(true);
+    this.invert( true );
 
     //FIXME dup screen forward
     Sound.inst.loadSong('MUSIC_INTRO', this.config.PLAY_MUSIC );
@@ -1372,17 +1372,10 @@ https://www.redcross.or.th/donate/`,'color:crimson');
                  }));
             }
           }
-
-          this.runTime += deltaTime;
-          this.scoreboard.score = this.score;
-        } else {
-          this.runTime += deltaTime;
-          //this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
         }
-      } else {
-        this.runTime += deltaTime;
-        //this.distance += this.currentSpeed * deltaTime / this.msPerFrame;
       }
+
+      this.runTime += deltaTime;
 
       this.scenery.forward( deltaTime, this.currentSpeed, this.inverted );
       this.sequencer.forward( deltaTime, this.currentSpeed, true );
